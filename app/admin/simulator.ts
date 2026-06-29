@@ -215,6 +215,101 @@ export async function simulateNextGameweek() {
       }
     }
   }
+
+  // =========================================
+  // ONION BAGGERS CUP ENGINE
+  // =========================================
+  const { data: obConfig } = await supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single();
+  
+  if (obConfig) {
+    // PHASE 1: QUALIFIERS
+    if (nextGw >= obConfig.qualifiers_start_gw && nextGw < obConfig.knockout_start_gw) {
+      const { data: currentEntrants } = await supabase.from('onion_baggers_entrants').select('*').eq('season_id', SEASON_ID);
+      const qualifiedCount = currentEntrants?.length || 0;
+      
+      if (qualifiedCount < 16) {
+        const qualifiedIds = currentEntrants?.map(e => e.manager_fpl_id) || [];
+        const remainingSlots = 16 - qualifiedCount;
+        const weeksLeft = obConfig.knockout_start_gw - nextGw;
+        
+        const toQualifyCount = Math.ceil(remainingSlots / weeksLeft);
+        
+        const availableScores = Object.entries(managerPointsMap)
+          .filter(([id, _]) => !qualifiedIds.includes(parseInt(id)))
+          .sort((a, b) => b[1] - a[1]); // Highest score gets first available seed
+          
+        const winners = availableScores.slice(0, toQualifyCount);
+        
+        const inserts = winners.map((w, idx) => ({
+          season_id: SEASON_ID, manager_fpl_id: parseInt(w[0]),
+          seed: qualifiedCount + idx + 1, qualified_in_gw: nextGw
+        }));
+        
+        await supabase.from('onion_baggers_entrants').insert(inserts);
+      }
+    }
+
+    // PHASE 2A: INITIALIZE BRACKET
+    if (nextGw === obConfig.knockout_start_gw) {
+      const { data: entrants } = await supabase.from('onion_baggers_entrants').select('*').eq('season_id', SEASON_ID);
+      if (entrants && entrants.length === 16) {
+        const seedMap: Record<number, number> = {};
+        entrants.forEach(e => seedMap[e.seed] = e.manager_fpl_id);
+        
+        // Mathematically perfect 16-team bracket matchups
+        const r16Matchups = [[1, 16], [8, 9], [4, 13], [5, 12], [2, 15], [7, 10], [3, 14], [6, 11]];
+        const r16Fixtures = r16Matchups.map((m, idx) => ({
+          season_id: SEASON_ID, gw_number: nextGw, tournament_type: 'ONION_BAGGERS_CUP', stage: 'Round of 16',
+          manager_1_id: seedMap[m[0]], manager_2_id: seedMap[m[1]],
+          manager_1_score: null, manager_2_score: null, winner_id: null,
+          match_order: idx // <--- Locks the bracket progression in place
+        }));
+        await supabase.from('tournament_fixtures').insert(r16Fixtures);
+      }
+    }
+
+    // PHASE 2B: PLAY KNOCKOUTS & PROGRESS WINNERS
+    if (nextGw >= obConfig.knockout_start_gw) {
+      // Must sort by match_order so winner of Match 1 plays winner of Match 2
+      const { data: activeFixtures } = await supabase.from('tournament_fixtures')
+        .select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'ONION_BAGGERS_CUP').eq('gw_number', nextGw)
+        .order('match_order', { ascending: true });
+
+      if (activeFixtures && activeFixtures.length > 0) {
+        const resolvedFixtures = [];
+        for (const fix of activeFixtures) {
+          const score1 = managerPointsMap[fix.manager_1_id] || 0;
+          const score2 = managerPointsMap[fix.manager_2_id] || 0;
+          
+          // Tiebreaker: Higher Seed (Manager 1) goes through if points are drawn
+          const winner = score1 >= score2 ? fix.manager_1_id : fix.manager_2_id;
+          
+          await supabase.from('tournament_fixtures').update({ manager_1_score: score1, manager_2_score: score2, winner_id: winner }).eq('id', fix.id);
+          resolvedFixtures.push({ ...fix, winner_id: winner });
+        }
+
+        const currentStage = activeFixtures[0].stage;
+        let nextStage = null;
+        if (currentStage === 'Round of 16') nextStage = 'Quarter-Final';
+        else if (currentStage === 'Quarter-Final') nextStage = 'Semi-Final';
+        else if (currentStage === 'Semi-Final') nextStage = 'Final';
+
+        if (nextStage) {
+          const nextRoundFixtures = [];
+          for (let i = 0; i < resolvedFixtures.length; i += 2) {
+            nextRoundFixtures.push({
+              season_id: SEASON_ID, gw_number: nextGw + 1, tournament_type: 'ONION_BAGGERS_CUP', stage: nextStage,
+              manager_1_id: resolvedFixtures[i].winner_id, manager_2_id: resolvedFixtures[i+1].winner_id,
+              manager_1_score: null, manager_2_score: null, winner_id: null,
+              match_order: i / 2 // <--- Calculate the new match_order to maintain the bracket
+            });
+          }
+          await supabase.from('gameweeks').upsert([{ season_id: SEASON_ID, gw_number: nextGw + 1, is_finished: false }], { onConflict: 'season_id,gw_number', ignoreDuplicates: true });
+          await supabase.from('tournament_fixtures').insert(nextRoundFixtures);
+        }
+      }
+    }
+  }
   revalidatePath('/', 'layout');
 }
 
@@ -225,5 +320,6 @@ export async function resetSeason() {
   await supabase.from('manager_gw_scores').delete().eq('season_id', SEASON_ID);
   await supabase.from('gameweeks').delete().eq('season_id', SEASON_ID);
   await supabase.from('eliminator_status').update({ is_eliminated: false, eliminated_gw: null }).eq('season_id', SEASON_ID);
+  await supabase.from('onion_baggers_entrants').delete().eq('season_id', SEASON_ID);
   revalidatePath('/', 'layout');
 }
