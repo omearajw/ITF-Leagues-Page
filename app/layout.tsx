@@ -1,4 +1,4 @@
-import './globals.css'; // Make sure this matches your CSS file name
+import './globals.css';
 import Link from 'next/link';
 
 export const metadata = {
@@ -13,50 +13,54 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
+      <body className="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
         
         {/* GLOBAL NAVIGATION BAR */}
         <nav className="bg-slate-900 text-white shadow-md">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="flex justify-between items-center h-16">
+          
+          {/* TOP TIER: Logo and Tools */}
+          <div className="border-b border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center h-14">
+                <div className="flex-shrink-0 flex items-center">
+                  <Link href="/" className="font-extrabold text-xl tracking-tight hover:opacity-80 transition">
+                    ITF<span className="text-blue-400">LEAGUE</span>
+                  </Link>
+                </div>
+                <div className="flex space-x-6 text-xs font-medium uppercase tracking-wider">
+                  <Link href="/editor" className="text-slate-400 hover:text-white transition">Editor</Link>
+                  <Link href="/admin" className="text-slate-400 hover:text-white transition">Admin</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* BOTTOM TIER: Grouped Navigation */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-center py-3 overflow-x-auto no-scrollbar">
               
-              {/* Logo / Brand */}
-              <div className="flex-shrink-0 flex items-center">
-                <Link href="/" className="font-bold text-xl tracking-tight">
-                  ITF<span className="text-blue-400">LEAGUE</span>
-                </Link>
+              {/* GROUP 1: DIVISIONS (First) */}
+              <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Divisions</span>
+                <Link href="/divisions/premier-league" className="text-sm text-slate-300 hover:text-white transition">Premier League</Link>
+                <Link href="/divisions/championship" className="text-sm text-slate-300 hover:text-white transition">Championship</Link>
+                <Link href="/divisions/league-one" className="text-sm text-slate-300 hover:text-white transition">League One</Link>
               </div>
 
-              {/* Main Nav Links */}
-              <div className="hidden md:flex space-x-6">
-                <Link href="/" className="hover:text-blue-400 transition-colors">Dashboard</Link>
-                <Link href="/itf-open" className="hover:text-blue-400 transition-colors">ITF Open</Link>
-                <Link href="/form" className="hover:text-blue-400 transition-colors">Form Grid</Link>
-                
-                {/* Simple Dropdown representation (can make interactive later) */}
-                <div className="group relative">
-                  <span className="hover:text-blue-400 cursor-pointer transition-colors">Divisions ▾</span>
-                  <div className="absolute hidden group-hover:block bg-white text-gray-800 mt-2 p-2 rounded shadow-lg z-50 w-40">
-                    <Link href="/divisions/premier-league" className="block px-2 py-1 hover:bg-gray-100 rounded">Premier League</Link>
-                    <Link href="/divisions/championship" className="block px-2 py-1 hover:bg-gray-100 rounded">Championship</Link>
-                    <Link href="/divisions/league-one" className="block px-2 py-1 hover:bg-gray-100 rounded">League One</Link>
-                  </div>
-                </div>
-
-                <div className="group relative">
-                  <span className="hover:text-blue-400 cursor-pointer transition-colors">Tournaments ▾</span>
-                  <div className="absolute hidden group-hover:block bg-white text-gray-800 mt-2 p-2 rounded shadow-lg z-50 w-48">
-                    <Link href="/tournaments/eliminator" className="block px-2 py-1 hover:bg-gray-100 rounded">Eliminator</Link>
-                    <Link href="/tournaments/champions-league" className="block px-2 py-1 hover:bg-gray-100 rounded">Champions League</Link>
-                    <Link href="/tournaments/onion-baggers-cup" className="block px-2 py-1 hover:bg-gray-100 rounded">Onion Baggers Cup</Link>
-                  </div>
-                </div>
+              {/* GROUP 2: TOURNAMENTS (Second) */}
+              <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Cups</span>
+                <Link href="/tournaments/eliminator" className="text-sm text-slate-300 hover:text-white transition">Eliminator</Link>
+                <Link href="/tournaments/champions-league" className="text-sm text-slate-300 hover:text-white transition">Champions League</Link>
+                <Link href="/tournaments/onion-baggers-cup" className="text-sm text-slate-300 hover:text-white transition">Onion Baggers</Link>
               </div>
 
-              {/* Admin / Editor Tools */}
-              <div className="flex space-x-4 text-sm">
-                <Link href="/editor" className="text-gray-400 hover:text-white">Editor</Link>
-                <Link href="/admin" className="text-gray-400 hover:text-white">Admin</Link>
+              {/* GROUP 3: EVERYTHING ELSE (Third) */}
+              <div className="flex items-center space-x-4">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Hub</span>
+                <Link href="/" className="text-sm text-slate-300 hover:text-white transition">Dashboard</Link>
+                <Link href="/itf-open" className="text-sm text-slate-300 hover:text-white transition">ITF Open</Link>
+                <Link href="/form" className="text-sm text-slate-300 hover:text-white transition">Form Grid</Link>
               </div>
 
             </div>
@@ -64,12 +68,12 @@ export default function RootLayout({
         </nav>
 
         {/* PAGE CONTENT GOES HERE */}
-        <main className="flex-grow max-w-6xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+        <main className="flex-grow max-w-7xl mx-auto w-full p-4 sm:p-7 lg:p-8">
           {children}
         </main>
 
-        {/* GLOBAL FOOTER */}
-        <footer className="bg-slate-900 text-slate-500 text-center py-6 text-sm mt-auto">
+        {/* GLOBAL FOOTER (Added bottom padding so the live ticker doesn't overlap it) */}
+        <footer className="bg-slate-900 text-slate-500 text-center py-8 text-sm mt-auto pb-20 relative z-30">
           © 2026 ITF League. Data sourced from official FPL API.
         </footer>
       </body>

@@ -1,0 +1,137 @@
+import { createClient } from '@/utils/supabase/server';
+import Link from 'next/link';
+
+export default async function PremierLeaguePage() {
+  const supabase = await createClient();
+  const SEASON_ID = '2026-27';
+  
+  // Change these two variables when copying this file for the other divisions
+  const DIVISION_NAME = 'Premier League';
+  const CMS_SLUG = 'premier-league';
+
+  // 1. Fetch CMS Content for the write-up
+  const { data: contentData } = await supabase
+    .from('page_content')
+    .select('content')
+    .eq('id', CMS_SLUG)
+    .single();
+
+  // 2. Fetch Managers, their raw scores, and their H2H fixtures
+  const { data: managers, error } = await supabase
+    .from('season_managers')
+    .select(`
+      manager_fpl_id,
+      team_name,
+      managers!inner (real_name),
+      manager_gw_scores (classic_total_points),
+      h2h_fixtures (result)
+    `)
+    .eq('season_id', SEASON_ID)
+    .eq('division', DIVISION_NAME);
+
+  if (error) {
+    return <div className="p-10 text-red-500">Error loading division: {error.message}</div>;
+  }
+
+  // 3. Process the data to calculate W/D/L and Match Points
+  const tableData = managers?.map((mgr: any) => {
+    let w = 0, d = 0, l = 0;
+    
+    mgr.h2h_fixtures?.forEach((fix: any) => {
+      if (fix.result === 'W') w++;
+      else if (fix.result === 'D') d++;
+      else if (fix.result === 'L') l++;
+    });
+
+    // Find their highest total points across all saved gameweeks (for the tiebreaker)
+    const totalPoints = mgr.manager_gw_scores?.reduce((max: number, gw: any) => 
+      gw.classic_total_points > max ? gw.classic_total_points : max, 0) || 0;
+
+    const matchPoints = (w * 3) + (d * 1);
+    const matchesPlayed = w + d + l;
+
+    return {
+      id: mgr.manager_fpl_id,
+      teamName: mgr.team_name,
+      managerName: mgr.managers.real_name,
+      played: matchesPlayed,
+      won: w,
+      drawn: d,
+      lost: l,
+      matchPoints,
+      totalPoints
+    };
+  }) || [];
+
+  // 4. Sort the table: Match Points highest first. If tied, Total FPL Points highest first.
+  tableData.sort((a, b) => {
+    if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
+    return b.totalPoints - a.totalPoints;
+  });
+
+  return (
+    <div className="max-w-5xl mx-auto py-8 font-sans">
+      
+      {/* Page Header & Editor Snippet */}
+      <header className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">{DIVISION_NAME}</h1>
+          <Link href="/form" className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-semibold hover:bg-blue-100 transition">
+            View Form Grid &rarr;
+          </Link>
+        </div>
+        <div className="bg-white border-l-4 border-blue-500 p-6 rounded-r-xl shadow-sm text-slate-700 italic leading-relaxed">
+          "{contentData?.content || 'No editor summary available for this division yet.'}"
+        </div>
+      </header>
+
+      {/* The H2H League Table */}
+      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-slate-900 text-white">
+              <tr>
+                <th className="p-4 w-12 text-center">Pos</th>
+                <th className="p-4">Manager & Team</th>
+                <th className="p-4 text-center w-16">Pld</th>
+                <th className="p-4 text-center w-16">W</th>
+                <th className="p-4 text-center w-16">D</th>
+                <th className="p-4 text-center w-16">L</th>
+                <th className="p-4 text-right w-24">FPL Pts</th>
+                <th className="p-4 text-right w-24 text-blue-300 font-bold">H2H Pts</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {tableData.map((team, index) => (
+                <tr key={team.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="p-4 text-center font-bold text-slate-400">{index + 1}</td>
+                  <td className="p-4">
+                    <div className="font-bold text-slate-900 text-base">{team.teamName}</div>
+                    <div className="text-slate-500 text-xs">{team.managerName}</div>
+                  </td>
+                  <td className="p-4 text-center font-medium text-slate-600">{team.played}</td>
+                  <td className="p-4 text-center text-green-600 font-semibold">{team.won}</td>
+                  <td className="p-4 text-center text-slate-500 font-semibold">{team.drawn}</td>
+                  <td className="p-4 text-center text-red-500 font-semibold">{team.lost}</td>
+                  <td className="p-4 text-right text-slate-500">{team.totalPoints}</td>
+                  <td className="p-4 text-right font-black text-lg text-slate-800 bg-slate-50/50">
+                    {team.matchPoints}
+                  </td>
+                </tr>
+              ))}
+              
+              {tableData.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-slate-500">
+                    No teams found in this division.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+    </div>
+  );
+}
