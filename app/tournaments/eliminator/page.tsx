@@ -47,12 +47,11 @@ async function EliminatorContent() {
   };
 
   // 4. Split and Sort
-  const alive = managers?.filter(m => !m.is_eliminated).sort((a, b) => {
-    // Sort alive managers by this week's score (lowest at the bottom, closest to death)
+  const alive = managers?.filter((m: any) => !m.is_eliminated).sort((a: any, b: any) => {
     return getScore(b.manager_fpl_id, currentGw) - getScore(a.manager_fpl_id, currentGw);
   }) || [];
 
-  const dead = managers?.filter(m => m.is_eliminated).sort((a, b) => (b.eliminated_gw || 0) - (a.eliminated_gw || 0)) || [];
+  const dead = managers?.filter((m: any) => m.is_eliminated).sort((a: any, b: any) => (b.eliminated_gw || 0) - (a.eliminated_gw || 0)) || [];
 
   return (
     <>
@@ -82,7 +81,7 @@ async function EliminatorContent() {
         </h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {alive.map((mgr) => (
+          {alive.map((mgr: any) => (
             <div key={mgr.season_managers.team_name} className="bg-white border border-green-100 p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition">
               <div>
                 <div className="font-bold text-slate-900">{mgr.season_managers.team_name}</div>
@@ -113,7 +112,7 @@ async function EliminatorContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800 text-slate-300">
-              {dead.map((mgr) => {
+              {dead.map((mgr: any) => {
                 const justDied = mgr.eliminated_gw === currentGw;
                 
                 return (

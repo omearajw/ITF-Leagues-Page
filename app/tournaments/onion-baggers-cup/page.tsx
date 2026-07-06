@@ -25,7 +25,7 @@ async function OnionBaggersContent() {
   const { data: allManagers } = await supabase.from('season_managers').select(`manager_fpl_id, team_name, managers!inner(real_name)`).eq('season_id', SEASON_ID);
   
   const teamMap: Record<number, any> = {};
-  allManagers?.forEach(m => teamMap[m.manager_fpl_id] = { teamName: m.team_name, realName: m.managers.real_name });
+  allManagers?.forEach((m: any) => teamMap[m.manager_fpl_id] = { teamName: m.team_name, realName: m.managers.real_name });
 
   const qStart = config?.qualifiers_start_gw || 1;
   const kStart = config?.knockout_start_gw || 9;
