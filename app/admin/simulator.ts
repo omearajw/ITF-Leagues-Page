@@ -14,7 +14,6 @@ async function getStageStandings(supabase: any, stage: string, entrants: number[
   entrants.forEach(e => stats[e] = { pts: 0, totalScore: 0 });
 
   fixtures?.forEach((f: any) => {
-    // Break early if the fixture hasn't been played yet!
     if (f.manager_1_score === null) return;
 
     if (stats[f.manager_1_id]) {
@@ -36,14 +35,7 @@ async function getStageStandings(supabase: any, stage: string, entrants: number[
 export async function simulateNextGameweek() {
   const supabase = await createClient();
 
-  const { data: latestGw } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true) // <-- ADD THIS LINE
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
+  const { data: latestGw } = await supabase.from('gameweeks').select('gw_number').eq('season_id', SEASON_ID).eq('is_finished', true).order('gw_number', { ascending: false }).limit(1).single();
   const nextGw = latestGw ? latestGw.gw_number + 1 : 1;
   if (nextGw > 38) return { error: "Season is already at Gameweek 38." };
 
@@ -106,7 +98,7 @@ export async function simulateNextGameweek() {
   }
 
   // =========================================
-  // CHAMPIONS LEAGUE ENGINE (Schedule & Result)
+  // CHAMPIONS LEAGUE ENGINE
   // =========================================
   const { data: clConfig } = await supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single();
   const { data: clEntrantsData } = await supabase.from('champions_league_entrants').select('manager_fpl_id').eq('season_id', SEASON_ID);
@@ -118,7 +110,6 @@ export async function simulateNextGameweek() {
     let startGw = 0;
     let maxRounds = 0;
 
-    // A. SCHEDULING PHASE: Generate all blank fixtures exactly on the start date
     if (nextGw === clConfig.stage_1_start_gw) {
       stageToSchedule = 'Stage 1';
       activeManagers = [...clEntrants];
@@ -129,7 +120,7 @@ export async function simulateNextGameweek() {
     else if (nextGw === clConfig.stage_2_start_gw) {
       stageToSchedule = 'Stage 2';
       const stage1Standings = await getStageStandings(supabase, 'Stage 1', clEntrants);
-      activeManagers = stage1Standings.slice(0, -1).map(s => s.id); // Drop the eliminated team
+      activeManagers = stage1Standings.slice(0, -1).map(s => s.id);
       startGw = clConfig.stage_2_start_gw;
       const p = activeManagers.length % 2 === 0 ? activeManagers.length : activeManagers.length + 1;
       maxRounds = 3 * (p - 1);
@@ -139,33 +130,26 @@ export async function simulateNextGameweek() {
       const stage1Standings = await getStageStandings(supabase, 'Stage 1', clEntrants);
       const stage2Entrants = stage1Standings.slice(0, -1).map(s => s.id);
       const stage2Standings = await getStageStandings(supabase, 'Stage 2', stage2Entrants);
-      activeManagers = stage2Standings.slice(0, 2).map(s => s.id); // Top 2 to final
+      activeManagers = stage2Standings.slice(0, 2).map(s => s.id);
       startGw = clConfig.final_start_gw;
       maxRounds = 1;
     }
 
     if (stageToSchedule && activeManagers.length > 0) {
       const clFixtures = [];
-      const futureGws = []; // <--- THE FIX: Array to hold placeholder gameweeks
+      const futureGws = [];
       
       let players = [...activeManagers];
-      if (players.length % 2 !== 0) players.push(-1); // Bye week padding
+      if (players.length % 2 !== 0) players.push(-1);
 
       const numPlayers = players.length;
       const numUniqueRounds = numPlayers - 1;
 
-      // Ensure future Gameweeks exist in DB to prevent Foreign Key errors
       for (let roundIndex = 0; roundIndex < maxRounds; roundIndex++) {
-        futureGws.push({ 
-          season_id: SEASON_ID, 
-          gw_number: startGw + roundIndex,
-          is_finished: false // <-- ADD THIS LINE
-        });
+        futureGws.push({ season_id: SEASON_ID, gw_number: startGw + roundIndex, is_finished: false });
       }
-      // ignoreDuplicates ensures we don't overwrite any gameweeks that actually have finished=true
       await supabase.from('gameweeks').upsert(futureGws, { onConflict: 'season_id,gw_number', ignoreDuplicates: true });
 
-      // Loop through every future round for this stage and schedule it
       for (let roundIndex = 0; roundIndex < maxRounds; roundIndex++) {
         const actualRound = roundIndex % numUniqueRounds;
         const fixed = players[0];
@@ -182,70 +166,76 @@ export async function simulateNextGameweek() {
           clFixtures.push({
             season_id: SEASON_ID, gw_number: matchGw, tournament_type: 'CHAMPIONS_LEAGUE', stage: stageToSchedule,
             manager_1_id: mgr1, manager_2_id: mgr2,
-            manager_1_score: null, manager_2_score: null, winner_id: null // Blank scores
+            manager_1_score: null, manager_2_score: null, winner_id: null
           });
         }
       }
-      
-      // Insert the massive batch of future fixtures
-      const { error: fixtureError } = await supabase.from('tournament_fixtures').insert(clFixtures);
-      if (fixtureError) console.error("Fixture error:", fixtureError);
+      await supabase.from('tournament_fixtures').insert(clFixtures);
     }
 
-    // B. RESULTING PHASE: Update any scheduled blank fixtures for the CURRENT week
-    const { data: fixturesToResult } = await supabase
-      .from('tournament_fixtures')
-      .select('*')
-      .eq('season_id', SEASON_ID)
-      .eq('tournament_type', 'CHAMPIONS_LEAGUE')
-      .eq('gw_number', nextGw);
+    const { data: fixturesToResult } = await supabase.from('tournament_fixtures').select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'CHAMPIONS_LEAGUE').eq('gw_number', nextGw);
 
     if (fixturesToResult && fixturesToResult.length > 0) {
       for (const fix of fixturesToResult) {
         const score1 = managerPointsMap[fix.manager_1_id] || 0;
         const score2 = managerPointsMap[fix.manager_2_id] || 0;
         let winner = null;
-        if (score1 > score2) winner = fix.manager_1_id;
-        else if (score2 > score1) winner = fix.manager_2_id;
-
-        await supabase
-          .from('tournament_fixtures')
-          .update({ manager_1_score: score1, manager_2_score: score2, winner_id: winner })
-          .eq('id', fix.id);
+        if (score1 > score2) winner = fix.manager_1_id; else if (score2 > score1) winner = fix.manager_2_id;
+        await supabase.from('tournament_fixtures').update({ manager_1_score: score1, manager_2_score: score2, winner_id: winner }).eq('id', fix.id);
       }
     }
   }
 
   // =========================================
-  // ONION BAGGERS CUP ENGINE
+  // ONION BAGGERS CUP ENGINE (Stable Count & Lookback)
   // =========================================
   const { data: obConfig } = await supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single();
   
   if (obConfig) {
-    // PHASE 1: QUALIFIERS
+    // PHASE 1: QUALIFIERS (Exactly 2 qualified per week)
     if (nextGw >= obConfig.qualifiers_start_gw && nextGw < obConfig.knockout_start_gw) {
       const { data: currentEntrants } = await supabase.from('onion_baggers_entrants').select('*').eq('season_id', SEASON_ID);
       const qualifiedCount = currentEntrants?.length || 0;
       
       if (qualifiedCount < 16) {
         const qualifiedIds = currentEntrants?.map(e => e.manager_fpl_id) || [];
-        const remainingSlots = 16 - qualifiedCount;
-        const weeksLeft = obConfig.knockout_start_gw - nextGw;
+        const toQualifyCount = 2; // Hard execution target per gameweek
         
-        const toQualifyCount = Math.ceil(remainingSlots / weeksLeft);
-        
-        const availableScores = Object.entries(managerPointsMap)
-          .filter(([id, _]) => !qualifiedIds.includes(parseInt(id)))
-          .sort((a, b) => b[1] - a[1]); // Highest score gets first available seed
+        // Fetch all historical scores for resolving points draws
+        const { data: historicalScores } = await supabase
+          .from('manager_gw_scores')
+          .select('manager_fpl_id, gw_number, points')
+          .eq('season_id', SEASON_ID)
+          .lt('gw_number', nextGw);
+
+        // Sort unmatched candidates using incremental lookback tie-breaker
+        const sortedContenders = managers
+          .filter(m => !qualifiedIds.includes(m.manager_fpl_id))
+          .sort((a, b) => {
+            const scoreA = managerPointsMap[a.manager_fpl_id] || 0;
+            const scoreB = managerPointsMap[b.manager_fpl_id] || 0;
+            if (scoreB !== scoreA) return scoreB - scoreA;
+
+            // Tie-Breaker Loop: Scan sequentially backward from previous week down to GW1
+            for (let lookbackGw = nextGw - 1; lookbackGw >= 1; lookbackGw--) {
+              const histA = historicalScores?.find(s => s.manager_fpl_id === a.manager_fpl_id && s.gw_number === lookbackGw)?.points || 0;
+              const histB = historicalScores?.find(s => s.manager_fpl_id === b.manager_fpl_id && s.gw_number === lookbackGw)?.points || 0;
+              if (histB !== histA) return histB - histA;
+            }
+
+            return a.manager_fpl_id - b.manager_fpl_id; // Final deterministic fallback
+          });
           
-        const winners = availableScores.slice(0, toQualifyCount);
+        const winners = sortedContenders.slice(0, toQualifyCount);
         
         const inserts = winners.map((w, idx) => ({
-          season_id: SEASON_ID, manager_fpl_id: parseInt(w[0]),
+          season_id: SEASON_ID, manager_fpl_id: w.manager_fpl_id,
           seed: qualifiedCount + idx + 1, qualified_in_gw: nextGw
         }));
         
-        await supabase.from('onion_baggers_entrants').insert(inserts);
+        if (inserts.length > 0) {
+          await supabase.from('onion_baggers_entrants').insert(inserts);
+        }
       }
     }
 
@@ -256,13 +246,12 @@ export async function simulateNextGameweek() {
         const seedMap: Record<number, number> = {};
         entrants.forEach(e => seedMap[e.seed] = e.manager_fpl_id);
         
-        // Mathematically perfect 16-team bracket matchups
         const r16Matchups = [[1, 16], [8, 9], [4, 13], [5, 12], [2, 15], [7, 10], [3, 14], [6, 11]];
         const r16Fixtures = r16Matchups.map((m, idx) => ({
           season_id: SEASON_ID, gw_number: nextGw, tournament_type: 'ONION_BAGGERS_CUP', stage: 'Round of 16',
           manager_1_id: seedMap[m[0]], manager_2_id: seedMap[m[1]],
           manager_1_score: null, manager_2_score: null, winner_id: null,
-          match_order: idx // <--- Locks the bracket progression in place
+          match_order: idx
         }));
         await supabase.from('tournament_fixtures').insert(r16Fixtures);
       }
@@ -270,7 +259,6 @@ export async function simulateNextGameweek() {
 
     // PHASE 2B: PLAY KNOCKOUTS & PROGRESS WINNERS
     if (nextGw >= obConfig.knockout_start_gw) {
-      // Must sort by match_order so winner of Match 1 plays winner of Match 2
       const { data: activeFixtures } = await supabase.from('tournament_fixtures')
         .select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'ONION_BAGGERS_CUP').eq('gw_number', nextGw)
         .order('match_order', { ascending: true });
@@ -280,8 +268,6 @@ export async function simulateNextGameweek() {
         for (const fix of activeFixtures) {
           const score1 = managerPointsMap[fix.manager_1_id] || 0;
           const score2 = managerPointsMap[fix.manager_2_id] || 0;
-          
-          // Tiebreaker: Higher Seed (Manager 1) goes through if points are drawn
           const winner = score1 >= score2 ? fix.manager_1_id : fix.manager_2_id;
           
           await supabase.from('tournament_fixtures').update({ manager_1_score: score1, manager_2_score: score2, winner_id: winner }).eq('id', fix.id);
@@ -301,7 +287,7 @@ export async function simulateNextGameweek() {
               season_id: SEASON_ID, gw_number: nextGw + 1, tournament_type: 'ONION_BAGGERS_CUP', stage: nextStage,
               manager_1_id: resolvedFixtures[i].winner_id, manager_2_id: resolvedFixtures[i+1].winner_id,
               manager_1_score: null, manager_2_score: null, winner_id: null,
-              match_order: i / 2 // <--- Calculate the new match_order to maintain the bracket
+              match_order: i / 2
             });
           }
           await supabase.from('gameweeks').upsert([{ season_id: SEASON_ID, gw_number: nextGw + 1, is_finished: false }], { onConflict: 'season_id,gw_number', ignoreDuplicates: true });
@@ -310,16 +296,17 @@ export async function simulateNextGameweek() {
       }
     }
   }
+
   revalidatePath('/', 'layout');
 }
 
 export async function resetSeason() {
   const supabase = await createClient();
+  await supabase.from('onion_baggers_entrants').delete().eq('season_id', SEASON_ID);
   await supabase.from('tournament_fixtures').delete().eq('season_id', SEASON_ID);
   await supabase.from('h2h_fixtures').delete().eq('season_id', SEASON_ID);
   await supabase.from('manager_gw_scores').delete().eq('season_id', SEASON_ID);
   await supabase.from('gameweeks').delete().eq('season_id', SEASON_ID);
   await supabase.from('eliminator_status').update({ is_eliminated: false, eliminated_gw: null }).eq('season_id', SEASON_ID);
-  await supabase.from('onion_baggers_entrants').delete().eq('season_id', SEASON_ID);
   revalidatePath('/', 'layout');
 }
