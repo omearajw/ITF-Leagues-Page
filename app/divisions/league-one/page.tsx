@@ -1,22 +1,30 @@
 import { createClient } from '@/utils/supabase/server';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
-export default async function LeagueOnePage() {
+export default function LeagueOnePage() {
+  return (
+    <div className="max-w-5xl mx-auto py-8 font-sans">
+      <Suspense fallback={<div className="p-10 text-center text-slate-500 font-bold animate-pulse">Loading Division...</div>}>
+        <DivisionContent />
+      </Suspense>
+    </div>
+  );
+}
+
+async function DivisionContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
   
-  // Change these two variables when copying this file for the other divisions
   const DIVISION_NAME = 'League One';
   const CMS_SLUG = 'league-one';
 
-  // 1. Fetch CMS Content for the write-up
   const { data: contentData } = await supabase
     .from('page_content')
     .select('content')
     .eq('id', CMS_SLUG)
     .single();
 
-  // 2. Fetch Managers, their raw scores, and their H2H fixtures
   const { data: managers, error } = await supabase
     .from('season_managers')
     .select(`
@@ -33,7 +41,6 @@ export default async function LeagueOnePage() {
     return <div className="p-10 text-red-500">Error loading division: {error.message}</div>;
   }
 
-  // 3. Process the data to calculate W/D/L and Match Points
   const tableData = managers?.map((mgr: any) => {
     let w = 0, d = 0, l = 0;
     
@@ -43,7 +50,6 @@ export default async function LeagueOnePage() {
       else if (fix.result === 'L') l++;
     });
 
-    // Find their highest total points across all saved gameweeks (for the tiebreaker)
     const totalPoints = mgr.manager_gw_scores?.reduce((max: number, gw: any) => 
       gw.classic_total_points > max ? gw.classic_total_points : max, 0) || 0;
 
@@ -63,16 +69,13 @@ export default async function LeagueOnePage() {
     };
   }) || [];
 
-  // 4. Sort the table: Match Points highest first. If tied, Total FPL Points highest first.
   tableData.sort((a, b) => {
     if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
     return b.totalPoints - a.totalPoints;
   });
 
   return (
-    <div className="max-w-5xl mx-auto py-8 font-sans">
-      
-      {/* Page Header & Editor Snippet */}
+    <>
       <header className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">{DIVISION_NAME}</h1>
@@ -85,7 +88,6 @@ export default async function LeagueOnePage() {
         </div>
       </header>
 
-      {/* The H2H League Table */}
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -131,7 +133,6 @@ export default async function LeagueOnePage() {
           </table>
         </div>
       </div>
-      
-    </div>
+    </>
   );
 }

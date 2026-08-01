@@ -71,9 +71,9 @@ async function DashboardContent() {
     return b.classic_total_points - a.classic_total_points;
   }) || [];
 
-  const premierLeagueTeams = processedTeams.filter(s => s.season_managers.division === 'Premier League');
-  const championshipTeams = processedTeams.filter(s => s.season_managers.division === 'Championship');
-  const leagueOneTeams = processedTeams.filter(s => s.season_managers.division === 'League One');
+  const premierLeagueTeams = processedTeams.filter((s: any) => s.season_managers.division === 'Premier League');
+  const championshipTeams = processedTeams.filter((s: any) => s.season_managers.division === 'Championship');
+  const leagueOneTeams = processedTeams.filter((s: any) => s.season_managers.division === 'League One');
   
   // ITF Open still uses raw total points
   const topTenITF = [...processedTeams].sort((a, b) => b.classic_total_points - a.classic_total_points).slice(0, 10);
@@ -206,7 +206,7 @@ function TournamentWidget({ name, stage, status, link, snippet }: { name: string
 }
 
 function TickerContent({ scores }: { scores: any[] }) {
-  const filterTopThree = (div: string) => scores.filter(s => s.season_managers.division === div).slice(0, 3);
+  const filterTopThree = (div: string) => scores.filter((s: any) => s.season_managers.division === div).slice(0, 3);
   const formatPodium = (list: any[]) => list.map((s, i) => `${i + 1}. ${s.season_managers.managers.real_name} (${s.classic_total_points})`).join(' | ');
 
   return (

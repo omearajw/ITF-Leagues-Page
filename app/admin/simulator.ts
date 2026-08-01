@@ -37,12 +37,12 @@ export async function simulateNextGameweek() {
 
   const { data: latestGw } = await supabase.from('gameweeks').select('gw_number').eq('season_id', SEASON_ID).eq('is_finished', true).order('gw_number', { ascending: false }).limit(1).single();
   const nextGw = latestGw ? latestGw.gw_number + 1 : 1;
-  if (nextGw > 38) return { error: "Season is already at Gameweek 38." };
+  if (nextGw > 38) throw new Error("Season is already at Gameweek 38.");
 
   await supabase.from('gameweeks').upsert({ season_id: SEASON_ID, gw_number: nextGw, is_finished: true, data_checked: true });
 
   const { data: managers } = await supabase.from('season_managers').select('*').eq('season_id', SEASON_ID);
-  if (!managers) return { error: "No managers found." };
+  if (!managers) throw new Error("No managers found.");
 
   const scoresToInsert = [];
   const managerPointsMap: Record<number, number> = {};

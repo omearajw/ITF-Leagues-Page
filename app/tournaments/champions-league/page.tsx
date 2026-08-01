@@ -32,7 +32,7 @@ async function ChampionsLeagueContent() {
   const { data: fixtures } = await supabase.from('tournament_fixtures').select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'CHAMPIONS_LEAGUE').order('gw_number', { ascending: false });
 
   const entrants: Record<number, any> = {};
-  entrantsData?.forEach(e => { entrants[e.manager_fpl_id] = { id: e.manager_fpl_id, teamName: e.season_managers.team_name, managerName: e.season_managers.managers.real_name }; });
+  entrantsData?.forEach((e: any) => { entrants[e.manager_fpl_id] = { id: e.manager_fpl_id, teamName: e.season_managers.team_name, managerName: e.season_managers.managers.real_name }; });
 
   // Math to determine exact Phase length
   const numEntrants = Object.keys(entrants).length;
