@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import TeamName from '@/components/TeamName';
 
 export default function PremierLeaguePage() {
   return (
@@ -108,7 +109,7 @@ async function DivisionContent() {
                 <tr key={team.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4 text-center font-bold text-slate-400">{index + 1}</td>
                   <td className="p-4">
-                    <div className="font-bold text-slate-900 text-base">{team.teamName}</div>
+                    <TeamName name={team.teamName} />
                     <div className="text-slate-500 text-xs">{team.managerName}</div>
                   </td>
                   <td className="p-4 text-center font-medium text-slate-600">{team.played}</td>

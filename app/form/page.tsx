@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import { Suspense } from 'react';
 
 export default function FormGrid() {
@@ -88,9 +89,7 @@ async function FormGridContent() {
                     return (
                       <tr key={manager.manager_fpl_id} className="border-b last:border-0 hover:bg-slate-50">
                         <td className="p-3 text-left sticky left-0 bg-white group-hover:bg-slate-50 border-r z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                          <div className="font-bold text-slate-800 truncate max-w-[180px]">
-                            {manager.team_name}
-                          </div>
+                          <TeamName name={manager.team_name} inline className="text-slate-800 truncate max-w-[180px]" />
                           <div className="text-xs text-slate-500">{manager.managers.real_name}</div>
                         </td>
                         
@@ -102,7 +101,7 @@ async function FormGridContent() {
                             <td key={gw} className="p-1 border-r border-slate-100">
                               <div 
                                 className={`w-8 h-8 mx-auto flex items-center justify-center rounded text-xs cursor-default ${getResultColor(match?.result)}`}
-                                title={match ? `${manager.team_name} ${match.manager_score} - ${match.opponent_score}` : `Gameweek ${gw} unplayed`}
+                                title={match ? `${getTeamNameDisplayText(manager.team_name)} ${match.manager_score} - ${match.opponent_score}` : `Gameweek ${gw} unplayed`}
                               >
                                 {match?.result || '-'}
                               </div>

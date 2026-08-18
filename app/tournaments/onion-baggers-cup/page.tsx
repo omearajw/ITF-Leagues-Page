@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 
 export default function OnionBaggersPage() {
@@ -124,7 +125,7 @@ async function OnionBaggersContent() {
                       <td className="p-4 text-center font-black text-green-700 border-r border-green-100/50">#{entrant.seed}</td>
                       <td className={`p-4 border-r border-green-100/50 sticky left-0 z-10 transition-colors ${isNewlyQualified ? 'bg-green-50/50 group-hover:bg-green-100' : 'bg-white group-hover:bg-green-50'}`}>
                         <div className="font-bold text-slate-900 flex items-center gap-2">
-                          {teamMap[entrant.manager_fpl_id]?.teamName}
+                          <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} inline />
                           {isNewlyQualified && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">Newly Qualified</span>}
                         </div>
                         <div className="text-xs text-slate-500">{teamMap[entrant.manager_fpl_id]?.realName}</div>
@@ -154,7 +155,7 @@ async function OnionBaggersContent() {
                     <td className="p-4 text-center text-slate-300 font-bold border-r border-slate-100">-</td>
                     <td className="p-4 border-r border-slate-100 sticky left-0 z-10 bg-white group-hover:bg-slate-50 transition-colors">
                       <div className="font-bold text-slate-900 flex items-center gap-2">
-                        {teamMap[manager.manager_fpl_id]?.teamName}
+                        <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} inline />
                       </div>
                       <div className="text-xs text-slate-500">{teamMap[manager.manager_fpl_id]?.realName}</div>
                     </td>
@@ -247,9 +248,11 @@ function MatchRow({ managerId, score, isWinner, isPlayed, teamMap }: { managerId
 
   return (
     <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isWinner ? 'opacity-40 bg-slate-50' : ''} ${isWinner ? 'bg-green-50/50' : 'bg-white'}`}>
-      <span className={`text-sm font-bold truncate max-w-[140px] ${isWinner ? 'text-green-700' : 'text-slate-700'}`}>
-        {teamMap[managerId]?.teamName}
-      </span>
+      <TeamName
+        name={teamMap[managerId]?.teamName}
+        inline
+        className={`text-sm truncate max-w-[140px] ${isWinner ? 'text-green-700' : 'text-slate-700'}`}
+      />
       {isPlayed && (
         <span className={`font-mono text-sm font-black ${isWinner ? 'text-green-600' : 'text-slate-700'}`}>
           {score}

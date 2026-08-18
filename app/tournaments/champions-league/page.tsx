@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 
 export default function ChampionsLeaguePage() {
@@ -123,18 +124,20 @@ async function ChampionsLeagueContent() {
               </div>
               <div className="p-10 flex justify-between items-center text-center">
                 <div className="flex-1">
-                  <div className="text-3xl font-black mb-2">{entrants[finalFix.manager_1_id]?.teamName}</div>
+                  <TeamName name={entrants[finalFix.manager_1_id]?.teamName} className="text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_1_score} pts</div>
                 </div>
                 <div className="px-8"><span className="text-4xl font-black text-slate-500">VS</span></div>
                 <div className="flex-1">
-                  <div className="text-3xl font-black mb-2">{entrants[finalFix.manager_2_id]?.teamName}</div>
+                  <TeamName name={entrants[finalFix.manager_2_id]?.teamName} className="text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_2_score} pts</div>
                 </div>
               </div>
               {finalFix.winner_id && (
                 <div className="bg-indigo-600 p-6 text-center shadow-inner">
-                  <span className="text-white font-black text-2xl tracking-widest uppercase drop-shadow-md">🏆 {entrants[finalFix.winner_id]?.teamName} is the Champion 🏆</span>
+                  <span className="text-white font-black text-2xl tracking-widest uppercase drop-shadow-md">
+                    🏆 <TeamName name={entrants[finalFix.winner_id]?.teamName} inline className="align-middle" /> <span className="align-middle">is the Champion 🏆</span>
+                  </span>
                 </div>
               )}
             </div>
@@ -146,12 +149,12 @@ async function ChampionsLeagueContent() {
               </div>
               <div className="p-10 flex justify-between items-center text-center opacity-90">
                 <div className="flex-1">
-                  <div className="text-3xl font-black mb-2">{stage2Table[0].teamName}</div>
+                  <TeamName name={stage2Table[0].teamName} className="text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
                 <div className="px-8"><span className="text-4xl font-black text-slate-600">VS</span></div>
                 <div className="flex-1">
-                  <div className="text-3xl font-black mb-2">{stage2Table[1].teamName}</div>
+                  <TeamName name={stage2Table[1].teamName} className="text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
               </div>
@@ -213,7 +216,7 @@ async function ChampionsLeagueContent() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className={`truncate w-2/5 font-semibold ${!isPlayed ? 'text-slate-400' : fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-slate-300'}`}>
-                        {entrants[fix.manager_1_id]?.teamName}
+                        <TeamName name={entrants[fix.manager_1_id]?.teamName} inline className="truncate" />
                       </span>
                       
                       {isPlayed ? (
@@ -227,7 +230,7 @@ async function ChampionsLeagueContent() {
                       )}
 
                       <span className={`truncate w-2/5 text-right font-semibold ${!isPlayed ? 'text-slate-400' : fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-slate-300'}`}>
-                        {entrants[fix.manager_2_id]?.teamName}
+                        <TeamName name={entrants[fix.manager_2_id]?.teamName} inline className="truncate" />
                       </span>
                     </div>
                   </div>
@@ -288,7 +291,9 @@ function StageTable({ data, isLive, eliminateCount, highlightTop }: { data: any[
                 <tr key={team.id} className={rowClass}>
                   <td className="p-4 text-center font-bold">{index + 1}</td>
                   <td className="p-4">
-                    <div className="font-bold flex items-center gap-2">{team.teamName} {badge}</div>
+                    <div className="font-bold flex items-center gap-2">
+                      <TeamName name={team.teamName} inline /> {badge}
+                    </div>
                     <div className={`text-xs ${isLive && isBottom ? 'text-red-600/70' : 'text-slate-500'}`}>{team.managerName}</div>
                   </td>
                   <td className="p-4 text-center font-medium">{team.played}</td>

@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 
 export default function Index() {
@@ -56,7 +57,7 @@ async function ITFOpenContent() {
             <tr key={manager.manager_fpl_id} className="border-b border-gray-100 hover:bg-gray-50">
               <td className="p-3 font-bold text-gray-700">{index + 1}</td>
               <td className="p-3">
-                <div className="font-semibold">{manager.season_managers.team_name}</div>
+                <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
                 <div className="text-sm text-gray-500">{manager.season_managers.managers.real_name}</div>
               </td>
               <td className="p-3">

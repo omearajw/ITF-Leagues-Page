@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import TeamName from '@/components/TeamName';
 import Link from 'next/link';
 import { Suspense } from 'react';
 
@@ -84,7 +85,7 @@ async function EliminatorContent() {
           {alive.map((mgr: any) => (
             <div key={mgr.season_managers.team_name} className="bg-white border border-green-100 p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition">
               <div>
-                <div className="font-bold text-slate-900">{mgr.season_managers.team_name}</div>
+                <TeamName name={mgr.season_managers.team_name} inline className="text-slate-900" />
                 <div className="text-xs text-slate-500">{mgr.season_managers.managers.real_name}</div>
               </div>
               <div className="flex flex-col items-end">
@@ -124,7 +125,7 @@ async function EliminatorContent() {
                       {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
                     </td>
                     <td className="p-4">
-                      <div className="font-bold text-slate-200 line-through opacity-75">{mgr.season_managers.team_name}</div>
+                      <TeamName name={mgr.season_managers.team_name} inline className="text-slate-200 line-through opacity-75" />
                       <div className="text-xs text-slate-500">{mgr.season_managers.managers.real_name}</div>
                     </td>
                     <td className="p-4 text-right">

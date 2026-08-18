@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import TeamName from '@/components/TeamName';
 import { revalidatePath } from 'next/cache';
 import { Suspense } from 'react';
 import { simulateNextGameweek, resetSeason } from './simulator';
@@ -160,7 +161,7 @@ async function AdminContent() {
                     defaultChecked={currentEntrantIds.includes(mgr.manager_fpl_id)}
                     className="w-4 h-4 text-blue-600 rounded mr-3"
                   />
-                  <span className="text-sm font-medium text-slate-700">{mgr.team_name}</span>
+                  <TeamName name={mgr.team_name} inline className="text-sm font-medium text-slate-700" />
                 </label>
               ))}
             </div>

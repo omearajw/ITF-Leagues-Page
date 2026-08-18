@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import TeamName from '@/components/TeamName';
 import Link from 'next/link';
 import { Suspense } from 'react';
 
@@ -122,7 +123,7 @@ async function DashboardContent() {
                   <tr key={manager.manager_fpl_id} className="border-b last:border-0 hover:bg-slate-50">
                     <td className="p-3 font-bold text-slate-500">{index + 1}</td>
                     <td className="p-3">
-                      <div className="font-semibold">{manager.season_managers.team_name}</div>
+                      <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
                       <div className="text-xs text-slate-400">{manager.season_managers.managers.real_name}</div>
                     </td>
                     <td className="p-3">
@@ -170,7 +171,9 @@ function DivisionWidget({ name, link, snippet, teams }: { name: string, link: st
               {teams.map((team, index) => (
                 <tr key={team.manager_fpl_id} className="border-b last:border-0 bg-white hover:bg-slate-50">
                   <td className="p-1.5 pl-2 font-bold text-slate-400 w-6">{index + 1}</td>
-                  <td className="p-1.5 font-medium truncate max-w-[140px]">{team.season_managers.team_name}</td>
+                  <td className="p-1.5 font-medium max-w-[140px]">
+                    <TeamName name={team.season_managers.team_name} inline className="truncate" />
+                  </td>
                   <td className="p-1.5 text-right font-bold pr-2 text-slate-800">{team.h2h_points} Pts</td>
                 </tr>
               ))}
