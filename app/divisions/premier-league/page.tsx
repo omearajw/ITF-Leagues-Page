@@ -20,10 +20,12 @@ async function DivisionContent() {
   const DIVISION_NAME = 'Premier League';
   const CMS_SLUG = 'premier-league';
 
-  const { data: contentData } = await supabase
+    const { data: contentData } = await supabase
     .from('page_content')
     .select('content')
-    .eq('id', CMS_SLUG)
+    .eq('id', CMS_SLUG) // or respective slug
+    .order('gw_number', { ascending: false })
+    .limit(1)
     .single();
 
   const { data: managers, error } = await supabase

@@ -19,7 +19,13 @@ async function OnionBaggersContent() {
   const { data: latestGwData } = await supabase.from('gameweeks').select('gw_number').eq('season_id', SEASON_ID).eq('is_finished', true).order('gw_number', { ascending: false }).limit(1).single();
   const currentGw = latestGwData ? latestGwData.gw_number : 0;
 
-  const { data: contentData } = await supabase.from('page_content').select('content').eq('id', 'onion-baggers-cup').single();
+    const { data: contentData } = await supabase
+    .from('page_content')
+    .select('content')
+    .eq('id', 'onion-baggers-cup') // or respective slug
+    .order('gw_number', { ascending: false })
+    .limit(1)
+    .single();
   const { data: config } = await supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single();
   
   const { data: entrantsData } = await supabase.from('onion_baggers_entrants').select('*').eq('season_id', SEASON_ID);

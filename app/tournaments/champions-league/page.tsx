@@ -26,7 +26,13 @@ async function ChampionsLeagueContent() {
     .single();
   const currentGw = latestGwData ? latestGwData.gw_number : 1;
 
-  const { data: contentData } = await supabase.from('page_content').select('content').eq('id', 'champions-league').single();
+  const { data: contentData } = await supabase
+    .from('page_content')
+    .select('content')
+    .eq('id', 'champions-league') // or respective slug
+    .order('gw_number', { ascending: false })
+    .limit(1)
+    .single();
   const { data: config } = await supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single();
   const { data: entrantsData } = await supabase.from('champions_league_entrants').select(`manager_fpl_id, season_managers!inner (team_name, managers!inner (real_name))`).eq('season_id', SEASON_ID);
   

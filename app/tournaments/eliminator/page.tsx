@@ -29,7 +29,13 @@ async function EliminatorContent() {
   const currentGw = latestGwData ? latestGwData.gw_number : 1;
 
   // 2. Fetch Config & Content
-  const { data: contentData } = await supabase.from('page_content').select('content').eq('id', 'eliminator').single();
+    const { data: contentData } = await supabase
+    .from('page_content')
+    .select('content')
+    .eq('id', 'eliminator') // or respective slug
+    .order('gw_number', { ascending: false })
+    .limit(1)
+    .single();
   const { data: config } = await supabase.from('eliminator_config').select('start_gw').eq('season_id', SEASON_ID).single();
 
   // 3. Fetch Eliminator Status and all GW Scores
