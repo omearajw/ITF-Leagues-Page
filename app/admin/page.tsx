@@ -7,6 +7,8 @@ import { Suspense } from 'react';
 import { simulateNextGameweek, resetSeason } from './simulator';
 
 
+export const dynamic = 'force-dynamic';
+
 // 1. FAST-LOADING SHELL
 export default async function AdminPage() {
   const cookieStore = await cookies();

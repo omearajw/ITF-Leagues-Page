@@ -4,6 +4,8 @@ import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export default async function EditorPage() {
   const cookieStore = await cookies();
   const role = cookieStore.get('itf_role')?.value;
