@@ -4,16 +4,7 @@ import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
 export default async function EditorPage() {
-  const cookieStore = await cookies();
-  const role = cookieStore.get('itf_role')?.value;
-
-  // Both admins and editors can see this page if they have the right tokens
-  if (role !== process.env.ADMIN_SECRET_TOKEN && role !== process.env.EDITOR_SECRET_TOKEN) {
-    redirect('/');
-  }
 
   return (
     <div className="max-w-5xl mx-auto py-8">

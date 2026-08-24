@@ -7,17 +7,8 @@ import { Suspense } from 'react';
 import { simulateNextGameweek, resetSeason } from './simulator';
 
 
-export const dynamic = 'force-dynamic';
-
 // 1. FAST-LOADING SHELL
 export default async function AdminPage() {
-  const cookieStore = await cookies();
-  const role = cookieStore.get('itf_role')?.value;
-
-  // Only admins with the exact secret token can see this page
-  if (role !== process.env.ADMIN_SECRET_TOKEN) {
-    redirect('/');
-  }
   
   return (
     <div className="max-w-5xl mx-auto py-8">
