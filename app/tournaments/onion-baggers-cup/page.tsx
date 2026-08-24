@@ -16,8 +16,15 @@ async function OnionBaggersContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  const { data: latestGwData } = await supabase.from('gameweeks').select('gw_number').eq('season_id', SEASON_ID).eq('is_finished', true).order('gw_number', { ascending: false }).limit(1).single();
-  const currentGw = latestGwData ? latestGwData.gw_number : 0;
+  const { data: latestGwData } = await supabase
+    .from('gameweeks')
+    .select('gw_number')
+    .eq('season_id', SEASON_ID)
+    .eq('is_finished', true)
+    .order('gw_number', { ascending: false })
+    .limit(1)
+    .single();
+  const currentGw = latestGwData ? latestGwData.gw_number : 1;
 
     const { data: contentData } = await supabase
     .from('page_content')
@@ -194,6 +201,12 @@ async function OnionBaggersContent() {
           </div>
         </section>
       )}
+      {/* The Tribute Footer */}
+      <div className="mt-16 text-center pb-8">
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-400">
+          Dedicated to the original Onion Bagger.
+        </p>
+      </div>
     </>
   );
 }

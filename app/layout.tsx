@@ -1,16 +1,26 @@
 import './globals.css';
 import Link from 'next/link';
+import { cookies } from 'next/headers'; // <-- ADDED THIS
 
 export const metadata = {
   title: 'ITF League Hub',
   description: 'Custom Fantasy Premier League Dashboard',
 };
 
-export default function RootLayout({
+// <-- ADDED 'async' HERE so we can await the cookies
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  
+  // <-- ADDED THIS BLOCK to grab the role silently
+  const cookieStore = await cookies();
+  const role = cookieStore.get('itf_role')?.value;
+  
+  const isAdmin = role === process.env.ADMIN_SECRET_TOKEN;
+  const isEditor = role === process.env.EDITOR_SECRET_TOKEN;
+
   return (
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
@@ -27,10 +37,20 @@ export default function RootLayout({
                     ITF<span className="text-blue-400">LEAGUE</span>
                   </Link>
                 </div>
+                
+                {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
                 <div className="flex space-x-6 text-xs font-medium uppercase tracking-wider">
-                  <Link href="/editor" className="text-slate-400 hover:text-white transition">Editor</Link>
-                  <Link href="/admin" className="text-slate-400 hover:text-white transition">Admin</Link>
+                  {/* Shows for BOTH Admin and Editor */}
+                  {(isAdmin || isEditor) && (
+                    <Link href="/editor" className="text-slate-400 hover:text-white transition">Editor</Link>
+                  )}
+                  
+                  {/* Shows for Admin ONLY */}
+                  {isAdmin && (
+                    <Link href="/admin" className="text-slate-400 hover:text-white transition">Admin</Link>
+                  )}
                 </div>
+
               </div>
             </div>
           </div>
@@ -72,8 +92,8 @@ export default function RootLayout({
           {children}
         </main>
 
-        {/* GLOBAL FOOTER (Added bottom padding so the live ticker doesn't overlap it) */}
-        <footer className="bg-slate-900 text-slate-500 text-center py-8 text-sm mt-auto pb-20 relative z-30">
+        {/* GLOBAL FOOTER */}
+        <footer className="bg-slate-900 text-slate-500 text-center py-8 text-sm mt-auto pb-10 relative z-30">
           © 2026 ITF League. Data sourced from official FPL API.
         </footer>
       </body>

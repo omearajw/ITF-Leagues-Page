@@ -1,11 +1,22 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { revalidatePath } from 'next/cache';
 import { Suspense } from 'react';
 import { simulateNextGameweek, resetSeason } from './simulator';
 
+
 // 1. FAST-LOADING SHELL
-export default function AdminPage() {
+export default async function AdminPage() {
+  const cookieStore = await cookies();
+  const role = cookieStore.get('itf_role')?.value;
+
+  // Only admins with the exact secret token can see this page
+  if (role !== process.env.ADMIN_SECRET_TOKEN) {
+    redirect('/');
+  }
+  
   return (
     <div className="max-w-5xl mx-auto py-8">
       <header className="mb-8 border-b pb-4 flex justify-between items-end">

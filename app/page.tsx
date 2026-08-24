@@ -142,9 +142,13 @@ async function DashboardContent() {
 
       {/* FOOTER: TICKER */}
       <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-white shadow-inner overflow-hidden border-t-4 border-blue-500 z-40">
-        <div className="whitespace-nowrap animate-marquee py-3 text-sm font-semibold flex gap-12">
-          <TickerContent scores={scores || []} />
-          <TickerContent scores={scores || []} />
+        <div className="marquee-track py-3 text-sm font-semibold" role="presentation">
+          <div className="marquee-group" role="presentation">
+            <TickerContent scores={scores || []} />
+          </div>
+          <div className="marquee-group" aria-hidden="true">
+            <TickerContent scores={scores || []} />
+          </div>
         </div>
       </div>
     </>
@@ -214,7 +218,8 @@ function TickerContent({ scores }: { scores: any[] }) {
 
   return (
     <>
-      <span className="text-blue-400 font-bold">🔥 LIVE TRACKER 🔥</span>
+      <span className="text-blue-400 font-bold">LIVE</span>
+      <span>•</span>
       <span>PREMIER LEAGUE: {filterTopThree('Premier League').length ? formatPodium(filterTopThree('Premier League')) : 'Awaiting Data'}</span>
       <span>•</span>
       <span>CHAMPIONSHIP: {filterTopThree('Championship').length ? formatPodium(filterTopThree('Championship')) : 'Awaiting Data'}</span>
