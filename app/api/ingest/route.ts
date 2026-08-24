@@ -8,9 +8,9 @@ const supabase = createClient(
 
 const SEASON_ID = '2026-27';
 const DIVISIONS = [
-  { name: 'Premier League', fplId: '839233' }, 
-  { name: 'Championship', fplId: '839090' },
-  { name: 'League One', fplId: '1054394' }
+  { name: 'Premier League', fplId: '894360' }, 
+  { name: 'Championship', fplId: '868856' },
+  { name: 'League One', fplId: '1089643' }
 ];
 
 // Helper: Champions League Stage Standings

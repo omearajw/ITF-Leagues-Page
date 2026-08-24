@@ -116,7 +116,7 @@ async function runIngestion() {
           transfers_cost: gwStats.event_transfers_cost, classic_total_points: gwStats.total_points
         });
       }
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     // 4. Save Scores and H2H Matches
