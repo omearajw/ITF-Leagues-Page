@@ -5,6 +5,7 @@ import TeamName from '@/components/TeamName';
 import { revalidatePath } from 'next/cache';
 import { Suspense } from 'react';
 import { simulateNextGameweek, resetSeason } from './simulator';
+import { AdminSkeleton } from '@/components/Skeletons';
 
 
 // 1. FAST-LOADING SHELL
@@ -19,7 +20,7 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <Suspense fallback={<div className="p-10 text-center text-slate-500 font-bold animate-pulse">Loading Admin Config...</div>}>
+      <Suspense fallback={<AdminSkeleton />}>
         <AdminContent />
       </Suspense>
     </div>

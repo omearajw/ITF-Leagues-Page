@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import { Suspense } from 'react';
+import { FormGridSkeleton } from '@/components/Skeletons';
 
 export default function FormGrid() {
   return (
@@ -10,7 +11,7 @@ export default function FormGrid() {
         <p className="text-slate-500">The season-long Win/Draw/Loss record for every division.</p>
       </header>
 
-      <Suspense fallback={<div className="p-10 text-center text-slate-500 font-bold animate-pulse">Loading Form Grid...</div>}>
+      <Suspense fallback={<FormGridSkeleton />}>
         <FormGridContent />
       </Suspense>
     </div>

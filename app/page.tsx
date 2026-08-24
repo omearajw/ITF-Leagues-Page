@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { DashboardSkeleton } from '@/components/Skeletons';
 
 // =========================================
 // 1. THE FAST-LOADING PAGE SHELL
@@ -15,7 +16,7 @@ export default function Dashboard() {
       </header>
 
       {/* The Suspense boundary stops Next.js from throwing the Blocking Navigation error */}
-      <Suspense fallback={<div className="p-10 text-center text-slate-500 font-bold animate-pulse">Loading Live Data...</div>}>
+      <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>
     </div>

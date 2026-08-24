@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { EditorSkeleton } from '@/components/Skeletons';
 
 export default async function EditorPage() {
 
@@ -13,7 +14,7 @@ export default async function EditorPage() {
         <p className="text-slate-500">Update weekly write-ups and snippets displayed across the ITF Hub.</p>
       </header>
 
-      <Suspense fallback={<div className="p-10 text-center text-slate-500 font-bold animate-pulse">Loading Editor...</div>}>
+      <Suspense fallback={<EditorSkeleton />}>
         <EditorContent />
       </Suspense>
     </div>

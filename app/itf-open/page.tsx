@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
+import { ITFOpenSkeleton } from '@/components/Skeletons';
 
 export default function Index() {
   return (
@@ -10,7 +11,7 @@ export default function Index() {
         <p className="text-gray-500">The master leaderboard across all divisions.</p>
       </header>
       
-      <Suspense fallback={<div className="p-10 text-center text-gray-500 font-bold animate-pulse">Loading Leaderboard...</div>}>
+      <Suspense fallback={<ITFOpenSkeleton />}>
         <ITFOpenContent />
       </Suspense>
     </main>

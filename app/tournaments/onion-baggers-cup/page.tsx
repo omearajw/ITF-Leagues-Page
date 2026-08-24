@@ -1,11 +1,37 @@
 import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
+import { OnionBaggersSkeleton } from '@/components/Skeletons';
 
-export default function OnionBaggersPage() {
+export default async function OnionBaggersPage() {
+  const supabase = await createClient();
+  const SEASON_ID = '2026-27';
+
+  const { data: latestGwData } = await supabase
+    .from('gameweeks')
+    .select('gw_number')
+    .eq('season_id', SEASON_ID)
+    .eq('is_finished', true)
+    .order('gw_number', { ascending: false })
+    .limit(1)
+    .single();
+  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+
+  const { data: config } = await supabase
+    .from('onion_baggers_config')
+    .select('*')
+    .eq('season_id', SEASON_ID)
+    .single();
+
+  const qStart = config?.qualifiers_start_gw || 1;
+  const kStart = config?.knockout_start_gw || 9;
+  const isPreTournament = currentGw < qStart;
+  const isQualifying = currentGw >= qStart && currentGw < kStart;
+  const fallbackPhase = isPreTournament ? 'pre' : isQualifying ? 'qualifying' : 'knockouts';
+
   return (
     <div className="max-w-7xl mx-auto py-8 font-sans">
-      <Suspense fallback={<div className="p-10 text-center font-bold text-slate-500 animate-pulse">Loading Onion Baggers Cup...</div>}>
+      <Suspense fallback={<OnionBaggersSkeleton phase={fallbackPhase} />}>
         <OnionBaggersContent />
       </Suspense>
     </div>

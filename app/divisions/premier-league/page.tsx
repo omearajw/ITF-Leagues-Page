@@ -2,11 +2,12 @@ import { createClient } from '@/utils/supabase/server';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import TeamName from '@/components/TeamName';
+import { DivisionSkeleton } from '@/components/Skeletons';
 
 export default function PremierLeaguePage() {
   return (
     <div className="max-w-5xl mx-auto py-8 font-sans">
-      <Suspense fallback={<div className="p-10 text-center text-slate-500 font-bold animate-pulse">Loading Division...</div>}>
+      <Suspense fallback={<DivisionSkeleton />}>
         <DivisionContent />
       </Suspense>
     </div>

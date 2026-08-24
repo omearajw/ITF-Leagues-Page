@@ -1,11 +1,12 @@
 import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
+import { ChampionsLeagueSkeleton } from '@/components/Skeletons';
 
 export default function ChampionsLeaguePage() {
   return (
     <div className="max-w-7xl mx-auto py-8 font-sans">
-      <Suspense fallback={<div className="p-10 text-center font-bold text-slate-500 animate-pulse">Loading Champions League...</div>}>
+      <Suspense fallback={<ChampionsLeagueSkeleton />}>
         <ChampionsLeagueContent />
       </Suspense>
     </div>

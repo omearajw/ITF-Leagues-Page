@@ -1,11 +1,34 @@
 import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
+import { EliminatorSkeleton } from '@/components/Skeletons';
 
-export default function EliminatorPage() {
+export default async function EliminatorPage() {
+  const supabase = await createClient();
+  const SEASON_ID = '2026-27';
+
+  const { data: latestGwData } = await supabase
+    .from('gameweeks')
+    .select('gw_number')
+    .eq('season_id', SEASON_ID)
+    .eq('is_finished', true)
+    .order('gw_number', { ascending: false })
+    .limit(1)
+    .single();
+  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+
+  const { data: config } = await supabase
+    .from('eliminator_config')
+    .select('start_gw')
+    .eq('season_id', SEASON_ID)
+    .single();
+
+  const startGw = config?.start_gw || 1;
+  const isPreTournament = currentGw < startGw;
+
   return (
     <div className="max-w-5xl mx-auto py-8 font-sans">
-      <Suspense fallback={<div className="p-10 text-center font-bold text-slate-500 animate-pulse">Loading Eliminator Data...</div>}>
+      <Suspense fallback={<EliminatorSkeleton phase={isPreTournament ? 'pre' : 'active'} />}>
         <EliminatorContent />
       </Suspense>
     </div>
