@@ -4,9 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { revalidatePath } from 'next/cache';
 import { Suspense } from 'react';
-import { simulateNextGameweek, resetSeason } from './simulator';
 import { AdminSkeleton } from '@/components/Skeletons';
-
 
 // 1. FAST-LOADING SHELL
 export default async function AdminPage() {
@@ -17,6 +15,9 @@ export default async function AdminPage() {
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Tournament Administration</h1>
           <p className="text-slate-500">Configure start dates and manual entrants for the custom cups.</p>
+        </div>
+        <div className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded-full">
+          Live Production
         </div>
       </header>
 
@@ -50,22 +51,37 @@ async function AdminContent() {
   const { data: clEntrants } = await supabase.from('champions_league_entrants').select('manager_fpl_id').eq('season_id', SEASON_ID);
   const currentEntrantIds = clEntrants?.map((e: any) => e.manager_fpl_id) || [];
 
+  // LOCK LOGIC: If the current gameweek is greater than or equal to the start week, it locks.
+  const isObQualifiersLocked = currentGw >= (obConfig?.qualifiers_start_gw || 99);
+  const isObKnockoutLocked = currentGw >= (obConfig?.knockout_start_gw || 99);
+  const isClStage1Locked = currentGw >= (clConfig?.stage_1_start_gw || 99);
+  const isClStage2Locked = currentGw >= (clConfig?.stage_2_start_gw || 99);
+  const isClFinalLocked = currentGw >= (clConfig?.final_start_gw || 99);
+  const isEliminatorLocked = currentGw >= (elConfig?.start_gw || 99);
+
   // SERVER ACTIONS
   async function updateTimelines(formData: FormData) {
     'use server';
     const supabaseClient = await createClient();
-    await supabaseClient.from('champions_league_config').update({
-      stage_1_start_gw: parseInt(formData.get('cl_stage_1') as string),
-      stage_2_start_gw: parseInt(formData.get('cl_stage_2') as string),
-      final_start_gw: parseInt(formData.get('cl_final') as string)
-    }).eq('season_id', SEASON_ID);
-    await supabaseClient.from('onion_baggers_config').update({
-      qualifiers_start_gw: parseInt(formData.get('ob_qualifiers') as string),
-      knockout_start_gw: parseInt(formData.get('ob_knockout') as string)
-    }).eq('season_id', SEASON_ID);
-    await supabaseClient.from('eliminator_config').update({
-      start_gw: parseInt(formData.get('el_start') as string)
-    }).eq('season_id', SEASON_ID);
+    
+    // We conditionally update to prevent bad data from being submitted if a user bypasses HTML disabled state
+    const clUpdates: any = {};
+    if (formData.get('cl_stage_1')) clUpdates.stage_1_start_gw = parseInt(formData.get('cl_stage_1') as string);
+    if (formData.get('cl_stage_2')) clUpdates.stage_2_start_gw = parseInt(formData.get('cl_stage_2') as string);
+    if (formData.get('cl_final')) clUpdates.final_start_gw = parseInt(formData.get('cl_final') as string);
+    if (Object.keys(clUpdates).length > 0) await supabaseClient.from('champions_league_config').update(clUpdates).eq('season_id', SEASON_ID);
+
+    const obUpdates: any = {};
+    if (formData.get('ob_qualifiers')) obUpdates.qualifiers_start_gw = parseInt(formData.get('ob_qualifiers') as string);
+    if (formData.get('ob_knockout')) obUpdates.knockout_start_gw = parseInt(formData.get('ob_knockout') as string);
+    if (Object.keys(obUpdates).length > 0) await supabaseClient.from('onion_baggers_config').update(obUpdates).eq('season_id', SEASON_ID);
+
+    if (formData.get('el_start')) {
+      await supabaseClient.from('eliminator_config').update({
+        start_gw: parseInt(formData.get('el_start') as string)
+      }).eq('season_id', SEASON_ID);
+    }
+    
     revalidatePath('/admin');
   }
 
@@ -83,38 +99,31 @@ async function AdminContent() {
 
   return (
     <>
-      <div className="bg-slate-900 text-white p-4 rounded-lg shadow flex flex-col items-end mb-8">
-        <div className="text-sm font-bold text-blue-400 mb-2">DEVELOPER SIMULATOR</div>
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-lg mr-2">Current GW: {currentGw}</span>
-          <form action={simulateNextGameweek}>
-            <button type="submit" className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold text-sm transition">
-              +1 Gameweek
-            </button>
-          </form>
-          <form action={resetSeason}>
-            <button type="submit" className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-bold text-sm transition">
-              Reset
-            </button>
-          </form>
-        </div>
-      </div>
+      {/* SIMULATOR REMOVED */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* TIMELINES COLUMN */}
         <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <h2 className="text-xl font-bold text-slate-800 mb-6 border-b pb-2">Tournament Timelines</h2>
+          <div className="flex justify-between items-center mb-6 border-b pb-2">
+            <h2 className="text-xl font-bold text-slate-800">Tournament Timelines</h2>
+            <span className="text-sm font-bold text-slate-500">Current: GW{currentGw}</span>
+          </div>
           <form action={updateTimelines} className="space-y-6">
+            
             <div className="bg-slate-50 p-4 rounded-lg border">
               <h3 className="font-bold text-slate-700 mb-3">Onion Baggers Cup</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Qualifiers Start</label>
-                  <input type="number" name="ob_qualifiers" defaultValue={obConfig?.qualifiers_start_gw} className="w-full p-2 border rounded" min="1" max="38" />
+                  <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    Qualifiers Start {isObQualifiersLocked && <span>🔒</span>}
+                  </label>
+                  <input type="number" name="ob_qualifiers" defaultValue={obConfig?.qualifiers_start_gw} disabled={isObQualifiersLocked} className="w-full p-2 border rounded disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed" min="1" max="38" />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Knockouts Start</label>
-                  <input type="number" name="ob_knockout" defaultValue={obConfig?.knockout_start_gw} className="w-full p-2 border rounded" min="1" max="38" />
+                  <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    Knockouts Start {isObKnockoutLocked && <span>🔒</span>}
+                  </label>
+                  <input type="number" name="ob_knockout" defaultValue={obConfig?.knockout_start_gw} disabled={isObKnockoutLocked} className="w-full p-2 border rounded disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed" min="1" max="38" />
                 </div>
               </div>
             </div>
@@ -123,16 +132,22 @@ async function AdminContent() {
               <h3 className="font-bold text-slate-700 mb-3">Champions League</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Stage 1</label>
-                  <input type="number" name="cl_stage_1" defaultValue={clConfig?.stage_1_start_gw} className="w-full p-2 border rounded" min="1" max="38" />
+                  <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    Stage 1 {isClStage1Locked && <span>🔒</span>}
+                  </label>
+                  <input type="number" name="cl_stage_1" defaultValue={clConfig?.stage_1_start_gw} disabled={isClStage1Locked} className="w-full p-2 border rounded disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed" min="1" max="38" />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Stage 2</label>
-                  <input type="number" name="cl_stage_2" defaultValue={clConfig?.stage_2_start_gw} className="w-full p-2 border rounded" min="1" max="38" />
+                  <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    Stage 2 {isClStage2Locked && <span>🔒</span>}
+                  </label>
+                  <input type="number" name="cl_stage_2" defaultValue={clConfig?.stage_2_start_gw} disabled={isClStage2Locked} className="w-full p-2 border rounded disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed" min="1" max="38" />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">Final</label>
-                  <input type="number" name="cl_final" defaultValue={clConfig?.final_start_gw} className="w-full p-2 border rounded" min="1" max="38" />
+                  <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    Final {isClFinalLocked && <span>🔒</span>}
+                  </label>
+                  <input type="number" name="cl_final" defaultValue={clConfig?.final_start_gw} disabled={isClFinalLocked} className="w-full p-2 border rounded disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed" min="1" max="38" />
                 </div>
               </div>
             </div>
@@ -140,13 +155,15 @@ async function AdminContent() {
             <div className="bg-slate-50 p-4 rounded-lg border">
               <h3 className="font-bold text-slate-700 mb-3">The Eliminator</h3>
               <div>
-                <label className="block text-xs text-slate-500 mb-1">Start Gameweek</label>
-                <input type="number" name="el_start" defaultValue={elConfig?.start_gw} className="w-full p-2 border rounded" min="1" max="38" />
+                <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                  Start Gameweek {isEliminatorLocked && <span>🔒</span>}
+                </label>
+                <input type="number" name="el_start" defaultValue={elConfig?.start_gw} disabled={isEliminatorLocked} className="w-full p-2 border rounded disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed" min="1" max="38" />
               </div>
             </div>
 
             <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
-              Save All Timelines
+              Save Active Timelines
             </button>
           </form>
         </div>

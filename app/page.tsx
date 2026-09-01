@@ -3,6 +3,7 @@ import TeamName from '@/components/TeamName';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
+import Snippet from '@/components/snippet';
 
 // =========================================
 // 1. THE FAST-LOADING PAGE SHELL
@@ -46,6 +47,18 @@ async function DashboardContent() {
   const { data: contentData } = await supabase.from('page_content').select('id, content');
   const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = item.content; return acc; }, {}) || {};
 
+  // F. Fetch tournament configs to display status/stage
+  const [{ data: elConfig }, { data: clConfig }, { data: obConfig }] = await Promise.all([
+    supabase.from('eliminator_config').select('*').eq('season_id', SEASON_ID),
+    supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID),
+    supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID)
+  ]);
+
+  const elStart = elConfig?.[0]?.start_gw || elConfig?.start_gw || 1;
+  const clS1 = clConfig?.[0]?.stage_1_start_gw || clConfig?.stage_1_start_gw || 1;
+  const obQual = obConfig?.[0]?.qualifiers_start_gw || obConfig?.qualifiers_start_gw || 1;
+  const obKnock = obConfig?.[0]?.knockout_start_gw || obConfig?.knockout_start_gw || 9;
+
   // C. Fetch Manager Scores for the current GW
   const { data: scores, error } = await supabase
     .from('manager_gw_scores')
@@ -85,11 +98,14 @@ async function DashboardContent() {
       <div className="flex flex-col gap-10">
         {/* ROW 1: THE DIVISIONS */}
         <section>
-          <h2 className="text-xl font-bold mb-4 border-b pb-2">Official Divisions (GW{currentGw})</h2>
+          <div className="flex items-center justify-between mb-4 border-b pb-2">
+            <h2 className="text-xl font-bold">Official Divisions</h2>
+            <span className="text-lg font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded">GW{currentGw}</span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} teams={premierLeagueTeams} />
-            <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} teams={championshipTeams} />
-            <DivisionWidget name="League One" link="/divisions/league-one" snippet={snippets['league-one']} teams={leagueOneTeams} />
+            <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} />
+            <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} fullSnippet={snippets['championship']} teams={championshipTeams} />
+            <DivisionWidget name="League One" link="/divisions/league-one" snippet={snippets['league-one']} fullSnippet={snippets['league-one']} teams={leagueOneTeams} />
           </div>
         </section>
 
@@ -97,9 +113,33 @@ async function DashboardContent() {
         <section>
           <h2 className="text-xl font-bold mb-4 border-b pb-2">Custom Tournaments</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <TournamentWidget name="Onion Baggers Cup" stage="Round of 16" status="Active" link="/tournaments/onion-baggers-cup" snippet={snippets['onion-baggers-cup']} />
-            <TournamentWidget name="Champions League" stage="Group Stage" status="Active" link="/tournaments/champions-league" snippet={snippets['champions-league']} />
-            <TournamentWidget name="Eliminator" stage={`Gameweek ${currentGw}`} status="Active" link="/tournaments/eliminator" snippet={snippets['eliminator']} />
+            <TournamentWidget 
+              name="Onion Baggers Cup" 
+              stage={`Qualifiers GW${obQual}`} 
+              status={currentGw < obQual ? 'Pending' : currentGw < obKnock ? 'Qualifying' : 'Knockouts'} 
+              link="/tournaments/onion-baggers-cup" 
+              snippet={snippets['onion-baggers-cup']} 
+              fullSnippet={snippets['onion-baggers-cup']}
+              startGw={`GW${obQual}`} 
+            />
+            <TournamentWidget 
+              name="Champions League" 
+              stage={`Stage 1 GW${clS1}`} 
+              status={currentGw < clS1 ? 'Pending' : 'Active'} 
+              link="/tournaments/champions-league" 
+              snippet={snippets['champions-league']} 
+              fullSnippet={snippets['champions-league']}
+              startGw={`GW${clS1}`} 
+            />
+            <TournamentWidget 
+              name="Eliminator" 
+              stage={`Gameweek ${elStart}`} 
+              status={currentGw < elStart ? 'Pending' : 'Active'} 
+              link="/tournaments/eliminator" 
+              snippet={snippets['eliminator']} 
+              fullSnippet={snippets['eliminator']}
+              startGw={`GW${elStart}`} 
+            />
           </div>
         </section>
 
@@ -160,16 +200,14 @@ async function DashboardContent() {
 // 3. HELPER COMPONENTS
 // =========================================
 
-function DivisionWidget({ name, link, snippet, teams }: { name: string, link: string, snippet: string, teams: any[] }) {
+function DivisionWidget({ name, link, snippet, fullSnippet, teams }: { name: string, link: string, snippet: string, fullSnippet?: string, teams: any[] }) {
   return (
     <div className="bg-white border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition">
       <Link href={link} className="p-4 border-b bg-slate-50 rounded-t-xl hover:bg-slate-100 transition group cursor-pointer">
         <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors">{name} &rarr;</h3>
       </Link>
       <div className="p-4 flex-grow text-sm text-slate-600 flex flex-col justify-between">
-        <p className="italic mb-4 text-xs text-slate-500 line-clamp-2">
-          "{snippet || 'No snippet.'}" <Link href={link} className="text-blue-500 font-semibold hover:underline inline-block ml-1">Read more</Link>
-        </p>
+        <Snippet preview={snippet?.slice(0, 180)} full={fullSnippet} link={link} />
         <div className="border rounded overflow-hidden bg-slate-50 max-h-48 overflow-y-auto">
           <table className="w-full text-xs text-left border-collapse">
             <tbody>
@@ -193,22 +231,55 @@ function DivisionWidget({ name, link, snippet, teams }: { name: string, link: st
   );
 }
 
-function TournamentWidget({ name, stage, status, link, snippet }: { name: string, stage: string, status: string, link: string, snippet: string }) {
+function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string }) {
+  const isPending = status === 'Pending';
+
   return (
-    <div className="bg-white border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition relative overflow-hidden">
-      <div className="absolute top-0 right-0 bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-bl-lg z-10">
+    <div className={`bg-white border rounded-xl flex flex-col h-full relative overflow-hidden ${isPending ? 'border-slate-200 bg-slate-50 shadow-none' : 'shadow-sm hover:shadow-md transition'}`}>
+      
+      {/* 1. THE STATUS BADGE */}
+      <div className={`absolute top-0 right-0 text-xs font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm ${isPending ? 'bg-slate-200 text-slate-500' : 'bg-blue-100 text-blue-800'}`}>
         {status}
       </div>
-      <Link href={link} className="p-4 border-b bg-slate-50 rounded-t-xl hover:bg-slate-100 transition group cursor-pointer">
-        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors">{name} &rarr;</h3>
+
+      {/* 2. THE HEADER (Always completely visible) */}
+      <Link href={link} className={`p-4 border-b rounded-t-xl transition ${isPending ? 'bg-slate-50/50' : 'bg-slate-50 hover:bg-slate-100 group'}`}>
+        <h3 className={`font-bold text-lg transition-colors ${isPending ? 'text-slate-600' : 'group-hover:text-blue-600'}`}>
+          {name} {!isPending && <span>&rarr;</span>}
+        </h3>
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{stage}</p>
       </Link>
-      <div className="p-4 flex-grow text-sm text-slate-600 flex flex-col justify-between">
-        <p className="italic mb-4 text-xs text-slate-500 line-clamp-3">"{snippet}"</p>
-        <Link href={link} className="block text-center w-full bg-slate-900 text-white rounded py-2 font-medium hover:bg-slate-800 transition text-xs">
-          View Bracket
-        </Link>
+
+      {/* 3. THE BODY (With the overlay applied ONLY here if pending) */}
+      <div className="relative flex-grow flex flex-col">
+        
+        {/* THE NEW OVERLAY DESIGN */}
+        {isPending && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-[1.5px] z-20 flex flex-col items-center justify-center text-center">
+            {/* Simple text label, no button background */}
+            <span className="text-slate-500 font-bold tracking-widest uppercase text-sm mb-1 flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              Pending Start
+            </span>
+            <span className="text-slate-600 font-medium">
+              Starts in {startGw}
+            </span>
+          </div>
+        )}
+
+        {/* THE WIDGET CONTENT (Greyed out if pending) */}
+        <div className={`p-4 flex-grow text-sm text-slate-600 flex flex-col justify-between ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
+          <Snippet preview={snippet?.slice(0, 160)} full={fullSnippet} link={link} />
+          <div className="block text-center w-full bg-slate-900 text-white rounded py-2 font-medium transition text-xs mt-4">
+            View Bracket
+          </div>
+        </div>
       </div>
+      
+      {/* Invisible link overlay so users can still click the whole pending card */}
+      {isPending && (
+        <Link href={link} className="absolute inset-0 z-30" aria-label={`View ${name}`} />
+      )}
     </div>
   );
 }

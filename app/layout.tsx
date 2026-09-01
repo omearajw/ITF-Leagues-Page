@@ -56,9 +56,9 @@ async function Navbar() {
           {/* GROUP 2: TOURNAMENTS */}
           <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
             <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Cups</span>
-            <Link href="/tournaments/eliminator" className="text-sm text-slate-300 hover:text-white transition">Eliminator</Link>
-            <Link href="/tournaments/champions-league" className="text-sm text-slate-300 hover:text-white transition">Champions League</Link>
             <Link href="/tournaments/onion-baggers-cup" className="text-sm text-slate-300 hover:text-white transition">Onion Baggers</Link>
+            <Link href="/tournaments/champions-league" className="text-sm text-slate-300 hover:text-white transition">Champions League</Link>
+            <Link href="/tournaments/eliminator" className="text-sm text-slate-300 hover:text-white transition">Eliminator</Link>
           </div>
 
           {/* GROUP 3: EVERYTHING ELSE */}

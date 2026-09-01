@@ -17,6 +17,15 @@ export default function LeagueOnePage() {
 async function DivisionContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
+  const { data: latestGwData } = await supabase
+    .from('gameweeks')
+    .select('gw_number')
+    .eq('season_id', SEASON_ID)
+    .eq('is_finished', true)
+    .order('gw_number', { ascending: false })
+    .limit(1)
+    .single();
+  const currentGw = latestGwData ? latestGwData.gw_number : 1;
   
   const DIVISION_NAME = 'League One';
   const CMS_SLUG = 'league-one';
@@ -83,9 +92,12 @@ async function DivisionContent() {
       <header className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">{DIVISION_NAME}</h1>
-          <Link href="/form" className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-semibold hover:bg-blue-100 transition">
-            View Form Grid &rarr;
-          </Link>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded">Current GW: {currentGw}</span>
+            <Link href="/form" className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-semibold hover:bg-blue-100 transition">
+              View Form Grid &rarr;
+            </Link>
+          </div>
         </div>
         <div className="bg-white border-l-4 border-blue-500 p-6 rounded-r-xl shadow-sm text-slate-700 italic leading-relaxed">
           "{contentData?.content || 'No editor summary available for this division yet.'}"
