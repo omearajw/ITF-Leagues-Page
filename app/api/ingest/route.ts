@@ -59,7 +59,10 @@ export async function GET(request: Request) {
     // 2. Fetch Active Gameweek Status from FPL
     const bootstrapRes = await fetch('https://fantasy.premierleague.com/api/bootstrap-static/');
     const bootstrapData = await bootstrapRes.json();
-    const currentGwData = bootstrapData.events.find((event: any) => event.is_current || event.is_next === false);
+    
+    // Find the actual current gameweek. (Fallback to the next one if between seasons)
+    const currentGwData = bootstrapData.events.find((event: any) => event.is_current === true) 
+                       || bootstrapData.events.find((event: any) => event.is_next === true);
     
     if (!currentGwData) throw new Error('Could not determine active Gameweek.');
     const activeApiGw = currentGwData.id;
@@ -84,7 +87,7 @@ export async function GET(request: Request) {
       console.log(`⏳ Processing GW${currentProcessingGw}...`);
       
       // If we are processing a past week, it is definitely finished. Otherwise, check live status.
-      const isGwFinished = currentProcessingGw < activeApiGw ? true : currentGwData.finished;
+      const isGwFinished = currentProcessingGw < activeApiGw ? true : (currentGwData.finished && currentGwData.data_checked);
 
       await supabase.from('gameweeks').upsert({ 
         season_id: SEASON_ID, gw_number: currentProcessingGw, is_finished: isGwFinished, data_checked: currentGwData.data_checked 
