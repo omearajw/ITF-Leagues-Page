@@ -49,15 +49,15 @@ async function DashboardContent() {
 
   // F. Fetch tournament configs to display status/stage
   const [{ data: elConfig }, { data: clConfig }, { data: obConfig }] = await Promise.all([
-    supabase.from('eliminator_config').select('*').eq('season_id', SEASON_ID),
-    supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID),
-    supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID)
+    supabase.from('eliminator_config').select('*').eq('season_id', SEASON_ID).single(),
+    supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single(),
+    supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single()
   ]);
 
-  const elStart = elConfig?.[0]?.start_gw || elConfig?.start_gw || 1;
-  const clS1 = clConfig?.[0]?.stage_1_start_gw || clConfig?.stage_1_start_gw || 1;
-  const obQual = obConfig?.[0]?.qualifiers_start_gw || obConfig?.qualifiers_start_gw || 1;
-  const obKnock = obConfig?.[0]?.knockout_start_gw || obConfig?.knockout_start_gw || 9;
+  const elStart = elConfig?.start_gw || 1;
+  const clS1 = clConfig?.stage_1_start_gw || 1;
+  const obQual = obConfig?.qualifiers_start_gw || 1;
+  const obKnock = obConfig?.knockout_start_gw || 9;
 
   // C. Fetch Manager Scores for the current GW
   const { data: scores, error } = await supabase
