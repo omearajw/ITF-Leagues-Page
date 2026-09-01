@@ -105,7 +105,7 @@ async function DivisionContent() {
       </header>
 
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-900 text-white">
               <tr>
@@ -147,6 +147,23 @@ async function DivisionContent() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden p-4 space-y-3">
+          {tableData.map((team, index) => (
+            <div key={team.id} className="bg-white border rounded-lg p-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-700">{index + 1}. <span className="ml-2"><TeamName name={team.teamName} inline className="font-semibold" /></span></div>
+                  <div className="text-xs text-slate-500">{team.managerName}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-black text-slate-800">{team.totalPoints}</div>
+                  <div className="text-xs mt-1"><span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">H2H {team.matchPoints}</span></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </>

@@ -180,7 +180,24 @@ async function ChampionsLeagueContent() {
                 Stage 2 Standings 
                 {isStage2Active && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
               </h2>
-              <StageTable data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} />
+                  <StageTable data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} />
+                  {/* Mobile stacked view */}
+                  <div className="md:hidden mt-4 space-y-3">
+                    {stage2Table.map((team, idx) => (
+                      <div key={team.id} className="bg-white border rounded-lg p-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-slate-700">{idx + 1}. <span className="ml-2">{team.teamName}</span></div>
+                            <div className="text-xs text-slate-500">{team.managerName}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-black text-slate-800">{team.points}</div>
+                            <div className="text-xs mt-1"><span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">{team.totalScore} pts</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
             </section>
           )}
 

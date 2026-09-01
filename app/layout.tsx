@@ -2,6 +2,7 @@ import './globals.css';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
+import MobileNav from '@/components/mobile-nav';
 
 export const metadata = {
   title: 'ITF League Hub',
@@ -31,10 +32,10 @@ async function Navbar() {
             {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
             <div className="flex space-x-6 text-xs font-medium uppercase tracking-wider">
               {(isAdmin || isEditor) && (
-                <Link href="/editor" className="text-slate-400 hover:text-white transition">Editor</Link>
+                <Link href="/editor" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
               )}
               {isAdmin && (
-                <Link href="/admin" className="text-slate-400 hover:text-white transition">Admin</Link>
+                <Link href="/admin" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
               )}
             </div>
           </div>
@@ -43,32 +44,40 @@ async function Navbar() {
 
       {/* BOTTOM TIER: Grouped Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center py-3 overflow-x-auto no-scrollbar">
-          
-          {/* GROUP 1: DIVISIONS */}
-          <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
-            <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Divisions</span>
-            <Link href="/divisions/premier-league" className="text-sm text-slate-300 hover:text-white transition">Premier League</Link>
-            <Link href="/divisions/championship" className="text-sm text-slate-300 hover:text-white transition">Championship</Link>
-            <Link href="/divisions/league-one" className="text-sm text-slate-300 hover:text-white transition">League One</Link>
+        <div className="flex items-center py-3">
+          <div className="flex-1">
+            {/* Desktop nav groups */}
+            <div className="hidden md:flex flex-wrap items-center overflow-x-auto no-scrollbar">
+              {/* GROUP 1: DIVISIONS */}
+              <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Divisions</span>
+                <Link href="/divisions/premier-league" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Premier League</Link>
+                <Link href="/divisions/championship" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Championship</Link>
+                <Link href="/divisions/league-one" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">League One</Link>
+              </div>
+
+              {/* GROUP 2: TOURNAMENTS */}
+              <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Cups</span>
+                <Link href="/tournaments/onion-baggers-cup" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Onion Baggers</Link>
+                <Link href="/tournaments/champions-league" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Champions League</Link>
+                <Link href="/tournaments/eliminator" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Eliminator</Link>
+              </div>
+
+              {/* GROUP 3: EVERYTHING ELSE */}
+              <div className="flex items-center space-x-4">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Hub</span>
+                <Link href="/" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Dashboard</Link>
+                <Link href="/itf-open" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">ITF Open</Link>
+                <Link href="/form" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Form Grid</Link>
+              </div>
+            </div>
           </div>
 
-          {/* GROUP 2: TOURNAMENTS */}
-          <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
-            <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Cups</span>
-            <Link href="/tournaments/onion-baggers-cup" className="text-sm text-slate-300 hover:text-white transition">Onion Baggers</Link>
-            <Link href="/tournaments/champions-league" className="text-sm text-slate-300 hover:text-white transition">Champions League</Link>
-            <Link href="/tournaments/eliminator" className="text-sm text-slate-300 hover:text-white transition">Eliminator</Link>
+          {/* Mobile hamburger */}
+          <div className="md:hidden">
+            <MobileNav isAdmin={isAdmin} isEditor={isEditor} />
           </div>
-
-          {/* GROUP 3: EVERYTHING ELSE */}
-          <div className="flex items-center space-x-4">
-            <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Hub</span>
-            <Link href="/" className="text-sm text-slate-300 hover:text-white transition">Dashboard</Link>
-            <Link href="/itf-open" className="text-sm text-slate-300 hover:text-white transition">ITF Open</Link>
-            <Link href="/form" className="text-sm text-slate-300 hover:text-white transition">Form Grid</Link>
-          </div>
-
         </div>
       </div>
     </nav>
@@ -83,6 +92,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body className="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
         
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
