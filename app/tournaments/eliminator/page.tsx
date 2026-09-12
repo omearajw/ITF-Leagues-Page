@@ -60,11 +60,19 @@ async function EliminatorContent() {
     .single();
   const { data: config } = await supabase.from('eliminator_config').select('start_gw').eq('season_id', SEASON_ID).single();
 
-  // 3. Fetch Eliminator Status and all GW Scores
+  // 3. Fetch Eliminator Status, the full league roster, and all GW Scores
   const { data: managers, error } = await supabase
     .from('eliminator_status')
     .select(`manager_fpl_id, is_eliminated, eliminated_gw, season_managers!inner (team_name, division, managers!inner (real_name))`)
     .eq('season_id', SEASON_ID);
+
+  // Every manager in the league takes part. The status table is only seeded by the
+  // ingest once the tournament starts, so the roster is what we list before then.
+  const { data: roster } = await supabase
+    .from('season_managers')
+    .select(`manager_fpl_id, team_name, division, managers!inner (real_name)`)
+    .eq('season_id', SEASON_ID)
+    .order('team_name');
 
   const { data: allScores } = await supabase.from('manager_gw_scores').select('manager_fpl_id, gw_number, points').eq('season_id', SEASON_ID);
 
@@ -82,9 +90,17 @@ async function EliminatorContent() {
 
   const dead = managers?.filter((m: any) => m.is_eliminated).sort((a: any, b: any) => (b.eliminated_gw || 0) - (a.eliminated_gw || 0)) || [];
 
-  // Determine if we are in the pre-tournament phase
+  // Determine which phase the tournament is in
   const startGw = config?.start_gw || 1;
   const isPreTournament = currentGw < startGw;
+  const hasEntrants = (managers?.length || 0) > 0;
+  const lastEliminationGw = dead.reduce((max: number, m: any) => Math.max(max, m.eliminated_gw || 0), 0);
+  // The ingest eliminates one manager per finished gameweek. If the latest finished
+  // week hasn't produced one yet, the cron simply hasn't run since it finished.
+  const awaitingElimination = !isPreTournament && hasEntrants && alive.length > 1 && lastEliminationGw < currentGw;
+
+  const statusLabel = isPreTournament ? 'Pending' : !hasEntrants ? 'Awaiting Entrants' : `${alive.length} Alive`;
+  const statusMuted = isPreTournament || !hasEntrants;
 
   return (
     <>
@@ -94,12 +110,12 @@ async function EliminatorContent() {
           <div>
             <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
               The Eliminator
-              <span className={`text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase ${isPreTournament ? 'bg-slate-200 text-slate-500' : 'bg-slate-900 text-white'}`}>
-                {isPreTournament ? 'Pending' : `${alive.length} Alive`}
+              <span className={`text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase ${statusMuted ? 'bg-slate-200 text-slate-500' : 'bg-slate-900 text-white'}`}>
+                {statusLabel}
               </span>
             </h1>
           </div>
-          <span className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded">Current GW: {currentGw}</span>
+          <span className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded">Last Completed GW: {currentGw}</span>
         </div>
         <div className="bg-white border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm text-slate-700 italic leading-relaxed">
           "{contentData?.content || 'No editor summary available.'}"
@@ -108,12 +124,58 @@ async function EliminatorContent() {
 
       {/* CONDITIONAL RENDER: PRE-TOURNAMENT VS ACTIVE TOURNAMENT */}
       {isPreTournament ? (
-        <section className="mb-12 text-center bg-white border border-slate-200 rounded-xl p-12 shadow-sm">
-          <h2 className="text-3xl font-black text-slate-800 mb-2">The Purge is Pending</h2>
-          <p className="text-slate-500">The battle for survival begins in <strong>Gameweek {startGw}</strong>. Until then, everyone is safe.</p>
+        <>
+          <section className="mb-12 text-center bg-white border border-slate-200 rounded-xl p-12 shadow-sm">
+            <h2 className="text-3xl font-black text-slate-800 mb-2">The Purge is Pending</h2>
+            <p className="text-slate-500">The battle for survival begins in <strong>Gameweek {startGw}</strong>. Until then, everyone is safe.</p>
+            <p className="text-slate-400 text-sm mt-2">The first elimination is applied once Gameweek {startGw} is finished and the scores are confirmed by FPL.</p>
+          </section>
+
+          <section className="mb-16">
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <div className="w-3 h-3 bg-slate-300 rounded-full"></div>
+              Entrants <span className="text-sm font-normal text-slate-400 ml-2">({roster?.length || 0} managers, all safe)</span>
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {roster?.map((mgr: any) => (
+                <div key={mgr.manager_fpl_id} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                  <div>
+                    <TeamName name={mgr.team_name} inline className="text-slate-900" />
+                    <div className="text-xs text-slate-500">{mgr.managers.real_name}</div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded">{mgr.division}</span>
+                </div>
+              ))}
+              {(!roster || roster.length === 0) && (
+                <div className="col-span-full text-center text-slate-400 italic py-8">No managers registered for this season yet.</div>
+              )}
+            </div>
+          </section>
+        </>
+      ) : !hasEntrants ? (
+        <section className="mb-12 text-center bg-amber-50 border border-amber-200 rounded-xl p-12 shadow-sm">
+          <h2 className="text-3xl font-black text-amber-900 mb-2">Waiting for Entrants</h2>
+          <p className="text-amber-800">
+            The Eliminator started in <strong>Gameweek {startGw}</strong>, but no managers have been registered yet.
+          </p>
+          <p className="text-amber-700/80 text-sm mt-2">
+            The next data sync will register all {roster?.length || 0} managers in the league and apply any outstanding eliminations.
+          </p>
         </section>
       ) : (
         <>
+          {awaitingElimination && (
+            <div className="mb-10 bg-amber-50 border border-amber-200 text-amber-900 p-5 rounded-xl shadow-sm flex items-start gap-3">
+              <div className="w-3 h-3 mt-1.5 bg-amber-400 rounded-full animate-pulse shrink-0"></div>
+              <div>
+                <div className="font-bold">Gameweek {currentGw} elimination pending</div>
+                <p className="text-sm text-amber-800/90">
+                  Gameweek {currentGw} is finished, but the lowest scorer has not been cut yet. The next data sync will send them to the Graveyard.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* SURVIVORS */}
           <section className="mb-16">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
@@ -153,6 +215,13 @@ async function EliminatorContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-300">
+                  {dead.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-slate-500 italic">
+                        No one has been eliminated yet. The first casualty falls once Gameweek {startGw} is processed.
+                      </td>
+                    </tr>
+                  )}
                   {dead.map((mgr: any) => {
                     const justDied = mgr.eliminated_gw === currentGw;
                     

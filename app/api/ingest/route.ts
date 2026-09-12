@@ -45,6 +45,60 @@ async function getStageStandings(stage: string, entrants: number[]) {
     .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : b.totalScore - a.totalScore);
 }
 
+// Helper: The Eliminator. Runs from DB state after the gameweek loop rather than
+// per-iteration, so a missed cron run or a late seed still applies every outstanding
+// elimination (one per finished gameweek from start_gw onwards).
+async function runEliminator() {
+  const { data: elConfig } = await supabase.from('eliminator_config').select('start_gw').eq('season_id', SEASON_ID).single();
+  if (!elConfig) return;
+
+  // Every manager in the league takes part; register anyone not yet in the table.
+  const { data: seasonManagers } = await supabase.from('season_managers').select('manager_fpl_id').eq('season_id', SEASON_ID);
+  const { data: existing } = await supabase.from('eliminator_status').select('manager_fpl_id').eq('season_id', SEASON_ID);
+  const existingIds = new Set((existing || []).map(e => Number(e.manager_fpl_id)));
+  const toSeed = (seasonManagers || [])
+    .filter(m => !existingIds.has(Number(m.manager_fpl_id)))
+    .map(m => ({ season_id: SEASON_ID, manager_fpl_id: m.manager_fpl_id, is_eliminated: false, eliminated_gw: null }));
+  if (toSeed.length > 0) {
+    const { error } = await supabase.from('eliminator_status').insert(toSeed);
+    if (error) console.error('Eliminator seed failed:', error.message);
+    else console.log(`🪓 Eliminator: registered ${toSeed.length} managers`);
+  }
+
+  const { data: finishedGws } = await supabase
+    .from('gameweeks')
+    .select('gw_number')
+    .eq('season_id', SEASON_ID)
+    .eq('is_finished', true)
+    .gte('gw_number', elConfig.start_gw)
+    .order('gw_number', { ascending: true });
+  if (!finishedGws || finishedGws.length === 0) return;
+
+  const { data: statuses } = await supabase.from('eliminator_status').select('manager_fpl_id, is_eliminated, eliminated_gw').eq('season_id', SEASON_ID);
+  const alive = new Set((statuses || []).filter(s => !s.is_eliminated).map(s => Number(s.manager_fpl_id)));
+  const processedGws = new Set((statuses || []).filter(s => s.eliminated_gw !== null).map(s => Number(s.eliminated_gw)));
+
+  for (const { gw_number } of finishedGws) {
+    if (processedGws.has(gw_number) || alive.size <= 1) continue;
+
+    const { data: scores } = await supabase.from('manager_gw_scores').select('manager_fpl_id, points').eq('season_id', SEASON_ID).eq('gw_number', gw_number);
+    let lowestScore = 999;
+    let managerToEliminate: number | null = null;
+    for (const s of scores || []) {
+      const id = Number(s.manager_fpl_id);
+      if (!alive.has(id)) continue;
+      if (s.points < lowestScore) { lowestScore = s.points; managerToEliminate = id; }
+    }
+    // No scores ingested for this week yet; leave it for the next run.
+    if (managerToEliminate === null) continue;
+
+    await supabase.from('eliminator_status').update({ is_eliminated: true, eliminated_gw: gw_number }).eq('season_id', SEASON_ID).eq('manager_fpl_id', managerToEliminate);
+    alive.delete(managerToEliminate);
+    processedGws.add(gw_number);
+    console.log(`💀 Eliminator: GW${gw_number} eliminated ${managerToEliminate} (${lowestScore} pts)`);
+  }
+}
+
 export async function GET(request: Request) {
   // 1. Verify Vercel Cron Authorization
   const authHeader = request.headers.get('authorization');
@@ -162,22 +216,7 @@ export async function GET(request: Request) {
       // 4. CUSTOM LEAGUES & CUPS ENGINE
       // =========================================
 
-      // A. THE ELIMINATOR
-      const { data: elConfig } = await supabase.from('eliminator_config').select('start_gw').eq('season_id', SEASON_ID).single();
-      if (elConfig && currentProcessingGw >= elConfig.start_gw && isGwFinished) {
-        const { data: aliveManagers } = await supabase.from('eliminator_status').select('manager_fpl_id').eq('season_id', SEASON_ID).eq('is_eliminated', false);
-        if (aliveManagers && aliveManagers.length > 1) {
-          let lowestScore = 999;
-          let managerToEliminate = null;
-          for (const alive of aliveManagers) {
-            const score = managerPointsMap[alive.manager_fpl_id] ?? 999;
-            if (score < lowestScore) { lowestScore = score; managerToEliminate = alive.manager_fpl_id; }
-          }
-          if (managerToEliminate) {
-            await supabase.from('eliminator_status').update({ is_eliminated: true, eliminated_gw: currentProcessingGw }).eq('season_id', SEASON_ID).eq('manager_fpl_id', managerToEliminate);
-          }
-        }
-      }
+      // A. THE ELIMINATOR runs once after the gameweek loop (see runEliminator)
 
       // B. CHAMPIONS LEAGUE ENGINE
       const { data: clConfig } = await supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single();
@@ -357,6 +396,8 @@ export async function GET(request: Request) {
         }
       }
     } // End of Gameweek Loop
+
+    await runEliminator();
 
     return NextResponse.json({ success: true, message: `Caught up to GW ${activeApiGw} successfully.` });
 
