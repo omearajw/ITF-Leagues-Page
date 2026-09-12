@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
 import Snippet from '@/components/snippet';
+import GameweekTimeline from '@/components/GameweekTimeline';
+import GameweekBadge from '@/components/GameweekBadge';
+import { GameweekTimelineSkeleton } from '@/components/Skeletons';
+import { getGameweekStatus } from '@/lib/gameweek-status';
+import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } from '@/lib/tournament-next';
 
 // =========================================
 // 1. THE FAST-LOADING PAGE SHELL
@@ -15,6 +20,12 @@ export default function Dashboard() {
         <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">ITF Hub</h1>
         <p className="text-slate-500">Live updates and standings for the 2026-27 Season.</p>
       </header>
+
+      <div className="mb-8">
+        <Suspense fallback={<GameweekTimelineSkeleton />}>
+          <GameweekTimeline />
+        </Suspense>
+      </div>
 
       {/* The Suspense boundary stops Next.js from throwing the Blocking Navigation error */}
       <Suspense fallback={<DashboardSkeleton />}>
@@ -31,27 +42,20 @@ async function DashboardContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  // A. Get the most recent Gameweek
-  // A. Get the most recent finished Gameweek
-  const { data: latestGw } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true) // <-- ADD THIS LINE
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGw ? latestGw.gw_number : 1;
+  // A. Gameweek status: the synced week, plus the live week when one is in progress
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
 
   // B. Fetch CMS content
   const { data: contentData } = await supabase.from('page_content').select('id, content');
   const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = item.content; return acc; }, {}) || {};
 
   // F. Fetch tournament configs to display status/stage
-  const [{ data: elConfig }, { data: clConfig }, { data: obConfig }] = await Promise.all([
+  const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }] = await Promise.all([
     supabase.from('eliminator_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single(),
-    supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single()
+    supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single(),
+    supabase.from('champions_league_entrants').select('manager_fpl_id', { count: 'exact', head: true }).eq('season_id', SEASON_ID)
   ]);
 
   const elStart = elConfig?.start_gw || 1;
@@ -59,17 +63,35 @@ async function DashboardContent() {
   const obQual = obConfig?.qualifiers_start_gw || 1;
   const obKnock = obConfig?.knockout_start_gw || 9;
 
-  // C. Fetch Manager Scores for the current GW
-  const { data: scores, error } = await supabase
+  const clEntrants = clEntrantCount || 0;
+  const clP1 = clEntrants % 2 === 0 ? clEntrants : clEntrants + 1;
+  const clP2 = Math.max(0, clEntrants - 1) % 2 === 0 ? Math.max(0, clEntrants - 1) : clEntrants;
+  const nextLines = {
+    ob: onionBaggersNextLine(gw, { qStart: obQual, kStart: obKnock }),
+    cl: championsLeagueNextLine(gw, { s1Start: clS1, s2Start: clConfig?.stage_2_start_gw || 10, finalStart: clConfig?.final_start_gw || 38, s1MaxRounds: 2 * (clP1 - 1), s2MaxRounds: 3 * (clP2 - 1) }),
+    el: eliminatorNextLine(gw, elStart),
+  };
+
+  // C. Fetch Manager Scores for the live GW when one is in progress, otherwise the synced GW.
+  // The ingest may not have written live rows yet, so fall back to the synced week.
+  const fetchScores = (gwNumber: number) => supabase
     .from('manager_gw_scores')
     .select(`manager_fpl_id, classic_total_points, season_managers!inner (team_name, division, managers!inner (real_name))`)
     .eq('season_id', SEASON_ID)
-    .eq('gw_number', currentGw);
+    .eq('gw_number', gwNumber);
+
+  let scoresGw = gw.displayGw;
+  let { data: scores, error } = await fetchScores(scoresGw);
+  if (!error && gw.liveGw && (scores?.length ?? 0) === 0) {
+    scoresGw = currentGw;
+    ({ data: scores, error } = await fetchScores(scoresGw));
+  }
+  const showingLive = scoresGw === gw.liveGw;
 
   if (error) return <div className="p-10 text-red-500">Error: {error.message}</div>;
 
   // D. NEW: Fetch H2H results and calculate League Points (3 for W, 1 for D)
-  const { data: h2hData } = await supabase.from('h2h_fixtures').select('manager_fpl_id, result').eq('season_id', SEASON_ID);
+  const { data: h2hData } = await supabase.from('h2h_fixtures').select('manager_fpl_id, result').eq('season_id', SEASON_ID).lte('gw_number', currentGw);
   const matchPointsMap: Record<number, number> = {};
   h2hData?.forEach(match => {
     if (!matchPointsMap[match.manager_fpl_id]) matchPointsMap[match.manager_fpl_id] = 0;
@@ -100,7 +122,9 @@ async function DashboardContent() {
         <section>
           <div className="flex items-center justify-between mb-4 border-b pb-2">
             <h2 className="text-xl font-bold">Official Divisions</h2>
-            <span className="text-lg font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded">GW{currentGw}</span>
+            <GameweekBadge provisional={!!gw.liveGw}>
+              {gw.liveGw ? `H2H through GW${currentGw} · FPL Pts live` : `Standings through GW${currentGw} · final`}
+            </GameweekBadge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} />
@@ -117,6 +141,7 @@ async function DashboardContent() {
               name="Onion Baggers Cup" 
               stage={`Qualifiers GW${obQual}`} 
               status={currentGw < obQual ? 'Pending' : currentGw < obKnock ? 'Qualifying' : 'Knockouts'} 
+              nextLine={nextLines.ob}
               link="/tournaments/onion-baggers-cup" 
               snippet={snippets['onion-baggers-cup']} 
               fullSnippet={snippets['onion-baggers-cup']}
@@ -126,6 +151,7 @@ async function DashboardContent() {
               name="Champions League" 
               stage={`Stage 1 GW${clS1}`} 
               status={currentGw < clS1 ? 'Pending' : 'Active'} 
+              nextLine={nextLines.cl}
               link="/tournaments/champions-league" 
               snippet={snippets['champions-league']} 
               fullSnippet={snippets['champions-league']}
@@ -135,6 +161,7 @@ async function DashboardContent() {
               name="Eliminator" 
               stage={`Gameweek ${elStart}`} 
               status={currentGw < elStart ? 'Pending' : 'Active'} 
+              nextLine={nextLines.el}
               link="/tournaments/eliminator" 
               snippet={snippets['eliminator']} 
               fullSnippet={snippets['eliminator']}
@@ -147,7 +174,10 @@ async function DashboardContent() {
         <section className="mb-12">
           <div className="flex justify-between items-end border-b pb-2 mb-4">
             <h2 className="text-xl font-bold">ITF Open - Top 10</h2>
-            <Link href="/itf-open" className="text-sm text-blue-600 hover:underline">View Full Table &rarr;</Link>
+            <div className="flex items-center gap-3">
+              <GameweekBadge provisional={showingLive}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
+              <Link href="/itf-open" className="text-sm text-blue-600 hover:underline">View Full Table &rarr;</Link>
+            </div>
           </div>
           <div className="bg-white shadow rounded-lg border overflow-hidden">
             <table className="w-full text-left text-sm">
@@ -185,10 +215,10 @@ async function DashboardContent() {
       <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-white shadow-inner overflow-hidden border-t-4 border-blue-500 z-40">
         <div className="marquee-track py-3 text-sm font-semibold" role="presentation">
           <div className="marquee-group" role="presentation">
-            <TickerContent scores={scores || []} />
+            <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
           </div>
           <div className="marquee-group" aria-hidden="true">
-            <TickerContent scores={scores || []} />
+            <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
           </div>
         </div>
       </div>
@@ -231,7 +261,7 @@ function DivisionWidget({ name, link, snippet, fullSnippet, teams }: { name: str
   );
 }
 
-function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string }) {
+function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw, nextLine }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string, nextLine?: string }) {
   const isPending = status === 'Pending';
 
   return (
@@ -248,6 +278,7 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
           {name} {!isPending && <span>&rarr;</span>}
         </h3>
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{stage}</p>
+        {nextLine && <p className="text-xs text-slate-500 mt-1">{nextLine}</p>}
       </Link>
 
       {/* 3. THE BODY (With the overlay applied ONLY here if pending) */}
@@ -284,13 +315,13 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
   );
 }
 
-function TickerContent({ scores }: { scores: any[] }) {
+function TickerContent({ scores, label }: { scores: any[], label: string }) {
   const filterTopThree = (div: string) => scores.filter((s: any) => s.season_managers.division === div).slice(0, 3);
   const formatPodium = (list: any[]) => list.map((s, i) => `${i + 1}. ${s.season_managers.managers.real_name} (${s.classic_total_points})`).join(' | ');
 
   return (
     <>
-      <span className="text-blue-400 font-bold">LIVE</span>
+      <span className="text-blue-400 font-bold">{label}</span>
       <span>•</span>
       <span>PREMIER LEAGUE: {filterTopThree('Premier League').length ? formatPodium(filterTopThree('Premier League')) : 'Awaiting Data'}</span>
       <span>•</span>

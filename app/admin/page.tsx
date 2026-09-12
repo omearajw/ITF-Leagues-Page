@@ -5,6 +5,8 @@ import TeamName from '@/components/TeamName';
 import { revalidatePath } from 'next/cache';
 import { Suspense } from 'react';
 import { AdminSkeleton } from '@/components/Skeletons';
+import GameweekBadge from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
 
 // 1. FAST-LOADING SHELL
 export default async function AdminPage() {
@@ -33,16 +35,10 @@ async function AdminContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true)
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  
-  const currentGw = latestGwData ? latestGwData.gw_number : 0;
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
+  // Lock against the live week too: once the ingest writes a GW, its start settings must not move.
+  const lockGw = gw.displayGw;
 
   const { data: clConfig } = await supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single();
   const { data: obConfig } = await supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single();
@@ -52,12 +48,12 @@ async function AdminContent() {
   const currentEntrantIds = clEntrants?.map((e: any) => e.manager_fpl_id) || [];
 
   // LOCK LOGIC: If the current gameweek is greater than or equal to the start week, it locks.
-  const isObQualifiersLocked = currentGw >= (obConfig?.qualifiers_start_gw || 99);
-  const isObKnockoutLocked = currentGw >= (obConfig?.knockout_start_gw || 99);
-  const isClStage1Locked = currentGw >= (clConfig?.stage_1_start_gw || 99);
-  const isClStage2Locked = currentGw >= (clConfig?.stage_2_start_gw || 99);
-  const isClFinalLocked = currentGw >= (clConfig?.final_start_gw || 99);
-  const isEliminatorLocked = currentGw >= (elConfig?.start_gw || 99);
+  const isObQualifiersLocked = lockGw >= (obConfig?.qualifiers_start_gw || 99);
+  const isObKnockoutLocked = lockGw >= (obConfig?.knockout_start_gw || 99);
+  const isClStage1Locked = lockGw >= (clConfig?.stage_1_start_gw || 99);
+  const isClStage2Locked = lockGw >= (clConfig?.stage_2_start_gw || 99);
+  const isClFinalLocked = lockGw >= (clConfig?.final_start_gw || 99);
+  const isEliminatorLocked = lockGw >= (elConfig?.start_gw || 99);
 
   // SERVER ACTIONS
   async function updateTimelines(formData: FormData) {
@@ -106,7 +102,9 @@ async function AdminContent() {
         <div className="bg-white p-6 rounded-xl border shadow-sm">
           <div className="flex justify-between items-center mb-6 border-b pb-2">
             <h2 className="text-xl font-bold text-slate-800">Tournament Timelines</h2>
-            <span className="text-sm font-bold text-slate-500">Current: GW{currentGw}</span>
+            <GameweekBadge provisional={!!gw.liveGw}>
+              {gw.liveGw ? `GW${gw.liveGw} in progress · locks use GW${gw.liveGw}` : `Synced through GW${currentGw}`}
+            </GameweekBadge>
           </div>
           <form action={updateTimelines} className="space-y-6">
             

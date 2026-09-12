@@ -2,6 +2,8 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import { Suspense } from 'react';
 import { FormGridSkeleton } from '@/components/Skeletons';
+import GameweekBadge from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function FormGrid() {
   return (
@@ -22,6 +24,7 @@ async function FormGridContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
   const TOTAL_GW = 38;
+  const gw = await getGameweekStatus();
 
   const { data: managers, error } = await supabase
     .from('season_managers')
@@ -46,7 +49,14 @@ async function FormGridContent() {
 
   const divisions = ['Premier League', 'Championship', 'League One'];
   
-  const getResultColor = (result?: string) => {
+  const LIVE_STRIPES = 'bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(0,0,0,0.06)_3px,rgba(0,0,0,0.06)_6px)]';
+
+  const getResultColor = (result?: string, isLive = false) => {
+    if (isLive) {
+      if (result === 'W') return `border-2 border-dashed border-green-500 text-green-700 font-bold bg-green-50 ${LIVE_STRIPES}`;
+      if (result === 'L') return `border-2 border-dashed border-red-500 text-red-700 font-bold bg-red-50 ${LIVE_STRIPES}`;
+      if (result === 'D') return `border-2 border-dashed border-slate-400 text-slate-600 font-bold bg-slate-50 ${LIVE_STRIPES}`;
+    }
     if (result === 'W') return 'bg-green-500 text-white font-bold';
     if (result === 'L') return 'bg-red-500 text-white font-bold';
     if (result === 'D') return 'bg-slate-400 text-white font-bold';
@@ -55,6 +65,17 @@ async function FormGridContent() {
 
   return (
     <div className="space-y-12">
+      <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-slate-500">
+        {gw.liveGw && (
+          <span className="flex items-center gap-2">
+            <span className={`w-4 h-4 rounded border-2 border-dashed border-slate-400 bg-slate-50 ${LIVE_STRIPES}`} />
+            dashed = live result, may change
+          </span>
+        )}
+        <GameweekBadge provisional={!!gw.liveGw}>
+          {gw.liveGw ? `GW${gw.liveGw} in progress · provisional` : `Results through GW${gw.syncedThroughGw} · final`}
+        </GameweekBadge>
+      </div>
       {divisions.map((divisionName) => {
         const divManagers = managers?.filter(m => m.division === divisionName) || [];
         
@@ -74,7 +95,7 @@ async function FormGridContent() {
                       Manager
                     </th>
                     {Array.from({ length: TOTAL_GW }, (_, i) => (
-                      <th key={i} className="p-2 min-w-[40px] text-xs text-slate-500 font-semibold border-r">
+                      <th key={i} className={`p-2 min-w-[40px] text-xs font-semibold border-r ${i + 1 === gw.liveGw ? 'text-amber-600' : 'text-slate-500'}`} title={i + 1 === gw.liveGw ? 'In progress' : undefined}>
                         {i + 1}
                       </th>
                     ))}
@@ -95,14 +116,15 @@ async function FormGridContent() {
                         </td>
                         
                         {Array.from({ length: TOTAL_GW }, (_, i) => {
-                          const gw = i + 1;
-                          const match = formRecord[gw];
+                          const gwNumber = i + 1;
+                          const match = formRecord[gwNumber];
+                          const isLive = gwNumber === gw.liveGw;
                           
                           return (
-                            <td key={gw} className="p-1 border-r border-slate-100">
+                            <td key={gwNumber} className="p-1 border-r border-slate-100">
                               <div 
-                                className={`w-8 h-8 mx-auto flex items-center justify-center rounded text-xs cursor-default ${getResultColor(match?.result)}`}
-                                title={match ? `${getTeamNameDisplayText(manager.team_name)} ${match.manager_score} - ${match.opponent_score}` : `Gameweek ${gw} unplayed`}
+                                className={`w-8 h-8 mx-auto flex items-center justify-center rounded text-xs cursor-default ${getResultColor(match?.result, isLive)}`}
+                                title={match ? `${getTeamNameDisplayText(manager.team_name)} ${match.manager_score} - ${match.opponent_score}${isLive ? ' (live)' : ''}` : `Gameweek ${gwNumber} unplayed`}
                               >
                                 {match?.result || '-'}
                               </div>

@@ -2,20 +2,15 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ITFOpenSkeleton } from '@/components/Skeletons';
+import GameweekBadge from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function Index() {
   return (
     <main className="max-w-4xl mx-auto p-8 font-sans">
       <header className="mb-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">ITF Open</h1>
-            <p className="text-gray-500">The master leaderboard across all divisions.</p>
-          </div>
-          <div className="mt-1">
-            <span className="text-sm font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded">GW{/* placeholder, filled in content component */}</span>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold mb-2">ITF Open</h1>
+        <p className="text-gray-500">The master leaderboard across all divisions.</p>
       </header>
       
       <Suspense fallback={<ITFOpenSkeleton />}>
@@ -29,18 +24,12 @@ async function ITFOpenContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  // Find the most recent finished gameweek
-  const { data: latestGw } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true)
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGw ? latestGw.gw_number : 1;
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
 
-  const { data: managers, error } = await supabase
+  // Show the live week's totals when one is in progress; fall back to the synced week
+  // if the ingest has not written live rows yet.
+  const fetchScores = (gwNumber: number) => supabase
     .from('manager_gw_scores')
     .select(`
       manager_fpl_id,
@@ -54,8 +43,16 @@ async function ITFOpenContent() {
       )
     `)
     .eq('season_id', SEASON_ID)
-    .eq('gw_number', currentGw)
+    .eq('gw_number', gwNumber)
     .order('classic_total_points', { ascending: false });
+
+  let scoresGw = gw.displayGw;
+  let { data: managers, error } = await fetchScores(scoresGw);
+  if (!error && gw.liveGw && (managers?.length ?? 0) === 0) {
+    scoresGw = currentGw;
+    ({ data: managers, error } = await fetchScores(scoresGw));
+  }
+  const showingLive = scoresGw === gw.liveGw;
 
   if (error) {
     return <div className="p-10 text-red-500">Error loading league: {error.message}</div>;
@@ -63,7 +60,10 @@ async function ITFOpenContent() {
 
   return (
     <div>
-      <div className="mb-4 text-sm text-slate-600">Showing scores for <strong>GW{currentGw}</strong></div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+        <span>Showing scores for <strong>GW{scoresGw}</strong></span>
+        <GameweekBadge provisional={showingLive}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
+      </div>
       <div className="overflow-x-auto hidden md:block">
       <table className="w-full text-left border-collapse">
         <thead>

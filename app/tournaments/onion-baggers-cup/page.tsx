@@ -2,20 +2,16 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { OnionBaggersSkeleton } from '@/components/Skeletons';
+import GameweekBadge, { LiveChip } from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
+import { onionBaggersNextLine } from '@/lib/tournament-next';
 
 export default async function OnionBaggersPage() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true)
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
 
   const { data: config } = await supabase
     .from('onion_baggers_config')
@@ -42,15 +38,9 @@ async function OnionBaggersContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true)
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
+  const displayGw = gw.displayGw;
 
   const { data: contentData } = await supabase
     .from('page_content')
@@ -79,7 +69,7 @@ async function OnionBaggersContent() {
     .select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'ONION_BAGGERS_CUP').order('match_order', { ascending: true });
 
   // Fetch ALL Scores up to the current week to populate the matrix grid
-  const lastGwToDisplay = isKnockouts ? kStart - 1 : currentGw;
+  const lastGwToDisplay = isKnockouts ? kStart - 1 : Math.min(displayGw, kStart - 1);
   const { data: allScores } = await supabase.from('manager_gw_scores')
     .select('manager_fpl_id, gw_number, points')
     .eq('season_id', SEASON_ID)
@@ -97,9 +87,12 @@ async function OnionBaggersContent() {
   const qualifiedManagers = entrantsData?.sort((a, b) => a.seed - b.seed) || [];
   const qualifiedIds = qualifiedManagers.map(q => q.manager_fpl_id);
   
-  // Unqualified managers are strictly sorted by the CURRENT week's score
+  // Unqualified managers are strictly sorted by the latest week's score (live when in progress)
   const unqualifiedManagers = allManagers?.filter(m => !qualifiedIds.includes(m.manager_fpl_id))
-    .sort((a, b) => (getScore(b.manager_fpl_id, currentGw) as number || 0) - (getScore(a.manager_fpl_id, currentGw) as number || 0)) || [];
+    .sort((a, b) => (getScore(b.manager_fpl_id, displayGw) as number || 0) - (getScore(a.manager_fpl_id, displayGw) as number || 0)) || [];
+
+  const latestFixture = fixtures && fixtures.length > 0 ? fixtures.reduce((a, b) => (b.gw_number > a.gw_number ? b : a)) : null;
+  const nextLine = onionBaggersNextLine(gw, { qStart, kStart }, { qualifiedCount: qualifiedManagers.length, currentStage: latestFixture?.stage ?? null });
 
   return (
     <>
@@ -108,12 +101,19 @@ async function OnionBaggersContent() {
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight flex items-baseline gap-2">
             Onion Baggers Cup
           </h1>
-          <span className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded">Current GW: {currentGw}</span>
+          <GameweekBadge provisional={!!gw.liveGw && !isPreTournament}>
+            {isPreTournament
+              ? `Starts GW${qStart}`
+              : gw.liveGw
+                ? (isKnockouts ? `GW${gw.liveGw} ties live · provisional` : `GW${gw.liveGw} live scores · provisional`)
+                : (isKnockouts ? `Bracket through GW${currentGw} · final` : `Qualifiers through GW${currentGw} · final`)}
+          </GameweekBadge>
         </div>
         <div className="flex gap-4 mb-4 text-sm font-medium text-slate-500">
           <span className={`px-3 py-1 rounded border ${(isQualifying || isPreTournament) ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-slate-50'}`}>Qualifiers: GW{qStart}-GW{kStart - 1}</span>
           <span className={`px-3 py-1 rounded border ${isKnockouts ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-slate-50'}`}>Knockouts: GW{kStart}+</span>
         </div>
+        <p className="text-sm text-slate-500 mb-4">{nextLine}</p>
         <div className="bg-white border-l-4 border-orange-500 p-6 rounded-r-xl shadow-sm text-slate-700 italic">
           "{contentData?.content || 'No editor summary available.'}"
         </div>
@@ -143,9 +143,9 @@ async function OnionBaggersContent() {
                   <tr>
                     <th className="p-4 w-16 text-center border-r border-slate-800">Seed</th>
                     <th className="p-4 border-r border-slate-800 sticky left-0 bg-slate-900 z-10">Manager & Team</th>
-                    {gwColumns.map(gw => (
-                      <th key={gw} className={`p-4 text-center w-16 ${gw === currentGw ? 'bg-slate-800 text-orange-400' : ''}`}>
-                        GW{gw}
+                    {gwColumns.map(col => (
+                      <th key={col} className={`p-4 text-center w-16 ${col === displayGw ? (col === gw.liveGw ? 'bg-slate-800 text-amber-400' : 'bg-slate-800 text-orange-400') : ''}`}>
+                        <span className="inline-flex items-center gap-2">GW{col} {col === gw.liveGw && <LiveChip />}</span>
                       </th>
                     ))}
                   </tr>
@@ -190,7 +190,7 @@ async function OnionBaggersContent() {
                 <tbody className="divide-y divide-slate-100">
                   <tr>
                     <td colSpan={gwColumns.length + 2} className="bg-slate-100 text-slate-500 font-bold uppercase tracking-widest text-xs px-4 py-2 border-y border-slate-200">
-                      Live Contenders (Ordered by GW{currentGw} Score)
+                      Live Contenders (Ordered by GW{displayGw} Score{displayGw === gw.liveGw ? ' · live' : ''})
                     </td>
                   </tr>
                   {unqualifiedManagers.map((manager) => (
@@ -202,9 +202,9 @@ async function OnionBaggersContent() {
                         </div>
                         <div className="text-xs text-slate-500">{teamMap[manager.manager_fpl_id]?.realName}</div>
                       </td>
-                      {gwColumns.map(gw => (
-                        <td key={gw} className={`p-4 text-center font-mono ${gw === currentGw ? 'bg-slate-50 font-black text-slate-800' : 'text-slate-400 font-medium'}`}>
-                          {getScore(manager.manager_fpl_id, gw)}
+                      {gwColumns.map(col => (
+                        <td key={col} className={`p-4 text-center font-mono ${col === displayGw ? 'bg-slate-50 font-black text-slate-800' : 'text-slate-400 font-medium'}`}>
+                          {getScore(manager.manager_fpl_id, col)}
                         </td>
                       ))}
                     </tr>
@@ -237,7 +237,7 @@ async function OnionBaggersContent() {
                     <div className="text-xs text-slate-500">{teamMap[m.manager_fpl_id]?.realName}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-black">{getScore(m.manager_fpl_id, currentGw)}</div>
+                    <div className="text-sm font-black">{getScore(m.manager_fpl_id, displayGw)}</div>
                   </div>
                 </div>
               </div>
@@ -253,10 +253,10 @@ async function OnionBaggersContent() {
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-x-auto">
             <div className="flex gap-8 md:min-w-[1000px]">
               
-              <BracketColumn title="Round of 16" fixtures={fixtures?.filter(f => f.stage === 'Round of 16')} teamMap={teamMap} isFinal={false} />
-              <BracketColumn title="Quarter-Finals" fixtures={fixtures?.filter(f => f.stage === 'Quarter-Final')} teamMap={teamMap} isFinal={false} />
-              <BracketColumn title="Semi-Finals" fixtures={fixtures?.filter(f => f.stage === 'Semi-Final')} teamMap={teamMap} isFinal={false} />
-              <BracketColumn title="The Final" fixtures={fixtures?.filter(f => f.stage === 'Final')} teamMap={teamMap} isFinal={true} />
+              <BracketColumn title="Round of 16" fixtures={fixtures?.filter(f => f.stage === 'Round of 16')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} />
+              <BracketColumn title="Quarter-Finals" fixtures={fixtures?.filter(f => f.stage === 'Quarter-Final')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} />
+              <BracketColumn title="Semi-Finals" fixtures={fixtures?.filter(f => f.stage === 'Semi-Final')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} />
+              <BracketColumn title="The Final" fixtures={fixtures?.filter(f => f.stage === 'Final')} teamMap={teamMap} isFinal={true} liveGw={gw.liveGw} />
               
             </div>
           </div>
@@ -276,7 +276,7 @@ async function OnionBaggersContent() {
 // ==========================================
 // BRACKET UI COMPONENT (LIGHT THEME)
 // ==========================================
-function BracketColumn({ title, fixtures, teamMap, isFinal }: { title: string, fixtures: any[] | undefined, teamMap: any, isFinal: boolean }) {
+function BracketColumn({ title, fixtures, teamMap, isFinal, liveGw }: { title: string, fixtures: any[] | undefined, teamMap: any, isFinal: boolean, liveGw: number | null }) {
   if (!fixtures || fixtures.length === 0) {
     return (
       <div className="flex-1 flex flex-col gap-4">
@@ -294,20 +294,21 @@ function BracketColumn({ title, fixtures, teamMap, isFinal }: { title: string, f
       <div className="flex flex-col justify-around h-full gap-4">
         {fixtures.map(fix => {
           const isPlayed = fix.manager_1_score !== null;
+          const isLiveFix = isPlayed && fix.gw_number === liveGw;
           return (
             <div key={fix.id} className={`flex flex-col rounded-lg border bg-white shadow-sm overflow-hidden ${isFinal ? 'border-orange-300 shadow-orange-100 ring-2 ring-orange-50' : 'border-slate-200'}`}>
               
               {/* Header */}
               <div className="bg-slate-50 px-3 py-1.5 flex justify-between items-center border-b border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">GW {fix.gw_number}</span>
-                {fix.winner_id && isFinal && <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded font-black uppercase tracking-widest">Champion</span>}
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
+                {fix.winner_id && isFinal && !isLiveFix && <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded font-black uppercase tracking-widest">Champion</span>}
               </div>
 
               {/* Matchup Data */}
               <div className="flex flex-col">
-                <MatchRow managerId={fix.manager_1_id} score={fix.manager_1_score} isWinner={fix.winner_id === fix.manager_1_id} isPlayed={isPlayed} teamMap={teamMap} />
+                <MatchRow managerId={fix.manager_1_id} score={fix.manager_1_score} isWinner={!isLiveFix && fix.winner_id === fix.manager_1_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
                 <div className="border-t border-slate-100"></div>
-                <MatchRow managerId={fix.manager_2_id} score={fix.manager_2_score} isWinner={fix.winner_id === fix.manager_2_id} isPlayed={isPlayed} teamMap={teamMap} />
+                <MatchRow managerId={fix.manager_2_id} score={fix.manager_2_score} isWinner={!isLiveFix && fix.winner_id === fix.manager_2_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
               </div>
 
             </div>
@@ -318,7 +319,7 @@ function BracketColumn({ title, fixtures, teamMap, isFinal }: { title: string, f
   );
 }
 
-function MatchRow({ managerId, score, isWinner, isPlayed, teamMap }: { managerId: number, score: number | null, isWinner: boolean, isPlayed: boolean, teamMap: any }) {
+function MatchRow({ managerId, score, isWinner, isPlayed, isLive, teamMap }: { managerId: number, score: number | null, isWinner: boolean, isPlayed: boolean, isLive: boolean, teamMap: any }) {
   if (!managerId) {
     return (
       <div className="px-3 py-2 flex justify-between items-center opacity-50 bg-slate-50">
@@ -328,7 +329,7 @@ function MatchRow({ managerId, score, isWinner, isPlayed, teamMap }: { managerId
   }
 
   return (
-    <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isWinner ? 'opacity-40 bg-slate-50' : ''} ${isWinner ? 'bg-green-50/50' : 'bg-white'}`}>
+    <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isLive && !isWinner ? 'opacity-40 bg-slate-50' : ''} ${isWinner ? 'bg-green-50/50' : 'bg-white'}`}>
       <TeamName
         name={teamMap[managerId]?.teamName}
         inline

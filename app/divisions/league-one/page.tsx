@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import TeamName from '@/components/TeamName';
 import { DivisionSkeleton } from '@/components/Skeletons';
+import GameweekBadge from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function LeagueOnePage() {
   return (
@@ -17,15 +19,8 @@ export default function LeagueOnePage() {
 async function DivisionContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true)
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
   
   const DIVISION_NAME = 'League One';
   const CMS_SLUG = 'league-one';
@@ -45,7 +40,7 @@ async function DivisionContent() {
       team_name,
       managers!inner (real_name),
       manager_gw_scores (classic_total_points),
-      h2h_fixtures (result)
+      h2h_fixtures (gw_number, result)
     `)
     .eq('season_id', SEASON_ID)
     .eq('division', DIVISION_NAME);
@@ -58,6 +53,7 @@ async function DivisionContent() {
     let w = 0, d = 0, l = 0;
     
     mgr.h2h_fixtures?.forEach((fix: any) => {
+      if (fix.gw_number > currentGw) return;
       if (fix.result === 'W') w++;
       else if (fix.result === 'D') d++;
       else if (fix.result === 'L') l++;
@@ -93,7 +89,9 @@ async function DivisionContent() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">{DIVISION_NAME}</h1>
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded">Current GW: {currentGw}</span>
+            <GameweekBadge provisional={!!gw.liveGw}>
+              {gw.liveGw ? `Results through GW${currentGw} · FPL Pts live` : `Table through GW${currentGw} · final`}
+            </GameweekBadge>
             <Link href="/form" className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-semibold hover:bg-blue-100 transition">
               View Form Grid &rarr;
             </Link>
@@ -103,6 +101,10 @@ async function DivisionContent() {
           "{contentData?.content || 'No editor summary available for this division yet.'}"
         </div>
       </header>
+
+      {gw.liveGw && (
+        <p className="text-xs text-slate-500 mb-2">FPL Pts include GW{gw.liveGw} live scores. Wins, draws, losses and H2H Pts update once GW{gw.liveGw} is confirmed.</p>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="overflow-x-auto hidden md:block">

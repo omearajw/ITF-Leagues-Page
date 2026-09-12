@@ -149,6 +149,7 @@ export async function GET(request: Request) {
 
       // 3. Process Live FPL Data & Build Points Maps
       let allDiscoveredManagers: any[] = [];
+      const h2hMatches: { m1: number, m2: number, p1: number, p2: number }[] = [];
       const h2hToInsert: any[] = [];
       const scoresToInsert: any[] = [];
       const managerPointsMap: Record<number, number> = {};
@@ -174,30 +175,36 @@ export async function GET(request: Request) {
           const matchData = await matchRes.json();
           for (const match of matchData.results) {
             if (!match.entry_1_entry || !match.entry_2_entry) continue;
-            
-            let res1 = 'D', res2 = 'D';
-            if (match.entry_1_points > match.entry_2_points) { res1 = 'W'; res2 = 'L'; }
-            else if (match.entry_1_points < match.entry_2_points) { res1 = 'L'; res2 = 'W'; }
-
-            const m1 = Number(match.entry_1_entry);
-            const m2 = Number(match.entry_2_entry);
-
-            h2hToInsert.push({ season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: m1, opponent_fpl_id: m2, manager_score: match.entry_1_points, opponent_score: match.entry_2_points, result: res1 });
-            h2hToInsert.push({ season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: m2, opponent_fpl_id: m1, manager_score: match.entry_2_points, opponent_score: match.entry_1_points, result: res2 });
+            h2hMatches.push({ m1: Number(match.entry_1_entry), m2: Number(match.entry_2_entry), p1: match.entry_1_points, p2: match.entry_2_points });
           }
         }
       }
 
-      // Fetch Individual Points Histories
+      // Fetch Individual Points. FPL's history (and picks) endpoints only update once the
+      // gameweek is processed, so for the in-progress week the live total comes from the
+      // entry summary instead; bench and hit data are provisional zeros until then.
       for (const manager of allDiscoveredManagers) {
         await supabase.from('managers').upsert({ fpl_id: manager.fpl_id, real_name: manager.real_name });
         await supabase.from('season_managers').upsert({ season_id: SEASON_ID, manager_fpl_id: manager.fpl_id, team_name: manager.team_name, division: manager.division });
 
-        const historyRes = await fetch(`https://fantasy.premierleague.com/api/entry/${manager.fpl_id}/history/`);
-        if (!historyRes.ok) continue;
+        let gwStats: { points: number, points_on_bench: number, event_transfers_cost: number, total_points: number } | null = null;
 
-        const historyData = await historyRes.json();
-        const gwStats = historyData.current.find((h: any) => h.event === currentProcessingGw);
+        if (!isGwFinished) {
+          const entryRes = await fetch(`https://fantasy.premierleague.com/api/entry/${manager.fpl_id}/`);
+          if (entryRes.ok) {
+            const entry = await entryRes.json();
+            if (entry.current_event === currentProcessingGw) {
+              gwStats = { points: entry.summary_event_points ?? 0, points_on_bench: 0, event_transfers_cost: 0, total_points: entry.summary_overall_points ?? 0 };
+            }
+          }
+        }
+
+        if (!gwStats) {
+          const historyRes = await fetch(`https://fantasy.premierleague.com/api/entry/${manager.fpl_id}/history/`);
+          if (!historyRes.ok) continue;
+          const historyData = await historyRes.json();
+          gwStats = historyData.current.find((h: any) => h.event === currentProcessingGw) || null;
+        }
 
         if (gwStats) {
           managerPointsMap[manager.fpl_id] = gwStats.points;
@@ -209,8 +216,24 @@ export async function GET(request: Request) {
         }
       }
 
-      if (scoresToInsert.length > 0) await supabase.from('manager_gw_scores').upsert(scoresToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
-      if (h2hToInsert.length > 0) await supabase.from('h2h_fixtures').upsert(h2hToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
+      // Before the first kickoff every live total is 0, which would record a phantom 0-0 draw
+      // for every H2H tie. Write nothing for the live week until some points exist.
+      const hasLiveData = isGwFinished || Object.values(managerPointsMap).some(p => p > 0);
+
+      for (const match of h2hMatches) {
+        // FPL's H2H match points stay 0-0 until the week is processed; use our live totals meanwhile.
+        const p1 = isGwFinished ? match.p1 : (managerPointsMap[match.m1] ?? 0);
+        const p2 = isGwFinished ? match.p2 : (managerPointsMap[match.m2] ?? 0);
+        let res1 = 'D', res2 = 'D';
+        if (p1 > p2) { res1 = 'W'; res2 = 'L'; }
+        else if (p1 < p2) { res1 = 'L'; res2 = 'W'; }
+
+        h2hToInsert.push({ season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: match.m1, opponent_fpl_id: match.m2, manager_score: p1, opponent_score: p2, result: res1 });
+        h2hToInsert.push({ season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: match.m2, opponent_fpl_id: match.m1, manager_score: p2, opponent_score: p1, result: res2 });
+      }
+
+      if (hasLiveData && scoresToInsert.length > 0) await supabase.from('manager_gw_scores').upsert(scoresToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
+      if (hasLiveData && h2hToInsert.length > 0) await supabase.from('h2h_fixtures').upsert(h2hToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
 
       // =========================================
       // 4. CUSTOM LEAGUES & CUPS ENGINE

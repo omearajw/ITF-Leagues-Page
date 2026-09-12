@@ -4,6 +4,8 @@ import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { EditorSkeleton } from '@/components/Skeletons';
+import GameweekBadge from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default async function EditorPage() {
 
@@ -23,19 +25,10 @@ export default async function EditorPage() {
 
 async function EditorContent() {
   const supabase = await createClient();
-  const SEASON_ID = '2026-27';
 
-  // 1. Get the current active Gameweek
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true) // <-- ADD THIS LINE
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-
-  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+  // 1. Write-ups are keyed to the last synced (completed) gameweek
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
 
   // 2. Define the pages/leagues managed by the CMS
   const managedPages = [
@@ -89,8 +82,11 @@ async function EditorContent() {
 
   return (
     <div>
-      <div className="mb-6 bg-blue-50 border border-blue-200 p-4 rounded-xl flex justify-between items-center">
+      <div className="mb-6 bg-blue-50 border border-blue-200 p-4 rounded-xl flex flex-wrap gap-3 justify-between items-center">
         <span className="font-bold text-blue-900">Editing Write-ups for Gameweek {currentGw}</span>
+        <GameweekBadge provisional={!!gw.liveGw}>
+          {gw.liveGw ? `GW${gw.liveGw} in progress · write-ups keyed to GW${currentGw}` : `Write-ups keyed to GW${currentGw} (last completed)`}
+        </GameweekBadge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

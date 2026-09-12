@@ -2,6 +2,9 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ChampionsLeagueSkeleton } from '@/components/Skeletons';
+import GameweekBadge, { LiveChip } from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
+import { championsLeagueNextLine } from '@/lib/tournament-next';
 
 export default function ChampionsLeaguePage() {
   return (
@@ -17,15 +20,9 @@ async function ChampionsLeagueContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true) // <-- ADD THIS LINE
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
+  const displayGw = gw.displayGw;
 
   const { data: contentData } = await supabase
     .from('page_content')
@@ -55,8 +52,8 @@ async function ChampionsLeagueContent() {
   const s2Start = config?.stage_2_start_gw || 10;
   const finalStart = config?.final_start_gw || 38;
 
-  const isPreTournament = currentGw < s1Start;
-  const isStage1Active = currentGw >= s1Start && currentGw < s1Start + s1MaxRounds;
+  const isPreTournament = displayGw < s1Start;
+  const isStage1Active = displayGw >= s1Start && currentGw < s1Start + s1MaxRounds;
   const isWaitingForStage2 = currentGw >= s1Start + s1MaxRounds && currentGw < s2Start;
   
   const isStage2Active = currentGw >= s2Start && currentGw < s2Start + s2MaxRounds;
@@ -72,6 +69,8 @@ async function ChampionsLeagueContent() {
     stageFixtures.forEach(fix => {
       // PREVENT FUTURE MATCHES FROM AFFECTING THE LIVE TABLE
       if (fix.manager_1_score === null) return;
+      // Live-week ties show in the fixture log but only count once the gameweek is confirmed
+      if (fix.gw_number > currentGw) return;
 
       const m1 = fix.manager_1_id; const m2 = fix.manager_2_id;
       if (stats[m1]) {
@@ -99,13 +98,16 @@ async function ChampionsLeagueContent() {
       <header className="mb-10">
         <div className="flex items-end justify-between mb-2">
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Champions League</h1>
-          <span className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded">Current GW: {currentGw}</span>
+          <GameweekBadge provisional={!!gw.liveGw && !isPreTournament}>
+            {isPreTournament ? `Starts GW${s1Start}` : gw.liveGw ? `Standings through GW${currentGw} · GW${gw.liveGw} ties live` : `Standings through GW${currentGw} · final`}
+          </GameweekBadge>
         </div>
         <div className="flex gap-4 mb-4 text-sm font-medium text-slate-500">
           <span className={`px-3 py-1 rounded border ${isStage1Active || isWaitingForStage2 ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Stage 1: GW{s1Start}</span>
           <span className={`px-3 py-1 rounded border ${isStage2Active || isWaitingForFinal ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Stage 2: GW{s2Start}</span>
           <span className={`px-3 py-1 rounded border ${isFinalLive ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Final: GW{finalStart}</span>
         </div>
+        <p className="text-sm text-slate-500 mb-4">{championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}</p>
       </header>
 
       {/* TWO COLUMN LAYOUT */}
@@ -127,7 +129,7 @@ async function ChampionsLeagueContent() {
           {(isFinalLive && finalFix) ? (
             <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden border border-indigo-900/50 mb-12">
               <div className="p-4 text-center border-b border-indigo-800/50 bg-black/20">
-                <span className="text-indigo-400 font-bold tracking-[0.2em] uppercase text-xs">The Final Showdown • Live GW {currentGw}</span>
+                <span className="text-indigo-400 font-bold tracking-[0.2em] uppercase text-xs">The Final Showdown • Live GW {displayGw}</span>
               </div>
               <div className="p-10 flex justify-between items-center text-center">
                 <div className="flex-1">
@@ -140,7 +142,7 @@ async function ChampionsLeagueContent() {
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_2_score} pts</div>
                 </div>
               </div>
-              {finalFix.winner_id && (
+              {finalFix.winner_id && finalFix.gw_number <= currentGw && (
                 <div className="bg-indigo-600 p-6 text-center shadow-inner">
                   <span className="text-white font-black text-2xl tracking-widest uppercase drop-shadow-md">
                     🏆 <TeamName name={entrants[finalFix.winner_id]?.teamName} inline className="align-middle" /> <span className="align-middle">is the Champion 🏆</span>
@@ -231,15 +233,16 @@ async function ChampionsLeagueContent() {
             <div className="p-4 space-y-3 max-h-[800px] overflow-y-auto custom-scrollbar">
               {fixtures?.filter(f => f.stage !== 'Final').map((fix) => {
                 const isPlayed = fix.manager_1_score !== null;
+                const isLiveFix = isPlayed && fix.gw_number === gw.liveGw;
                 
                 return (
                   <div key={fix.id} className={`rounded p-3 text-sm flex flex-col gap-2 border ${isPlayed ? 'bg-slate-800 border-slate-700' : 'bg-slate-800/40 border-slate-700/50 border-dashed'}`}>
                     <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex justify-between">
-                      <span>GW {fix.gw_number}</span>
+                      <span className="flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
                       <span className={isPlayed ? 'text-indigo-400' : 'text-slate-500'}>{fix.stage}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className={`truncate w-2/5 font-semibold ${!isPlayed ? 'text-slate-400' : fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-slate-300'}`}>
+                      <span className={`truncate w-2/5 font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-slate-300'}`}>
                         <TeamName name={entrants[fix.manager_1_id]?.teamName} inline className="truncate" />
                       </span>
                       
@@ -253,7 +256,7 @@ async function ChampionsLeagueContent() {
                         </span>
                       )}
 
-                      <span className={`truncate w-2/5 text-right font-semibold ${!isPlayed ? 'text-slate-400' : fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-slate-300'}`}>
+                      <span className={`truncate w-2/5 text-right font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-slate-300'}`}>
                         <TeamName name={entrants[fix.manager_2_id]?.teamName} inline className="truncate" />
                       </span>
                     </div>

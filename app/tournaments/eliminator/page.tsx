@@ -2,20 +2,16 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { EliminatorSkeleton } from '@/components/Skeletons';
+import GameweekBadge from '@/components/GameweekBadge';
+import { getGameweekStatus } from '@/lib/gameweek-status';
+import { eliminatorNextLine } from '@/lib/tournament-next';
 
 export default async function EliminatorPage() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true)
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
 
   const { data: config } = await supabase
     .from('eliminator_config')
@@ -39,16 +35,10 @@ async function EliminatorContent() {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
 
-  // 1. Fetch Current Gameweek
-  const { data: latestGwData } = await supabase
-    .from('gameweeks')
-    .select('gw_number')
-    .eq('season_id', SEASON_ID)
-    .eq('is_finished', true) 
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
-  const currentGw = latestGwData ? latestGwData.gw_number : 1;
+  // 1. Gameweek status: eliminations are decided on the synced week, survivors show the live week
+  const gw = await getGameweekStatus();
+  const currentGw = gw.syncedThroughGw;
+  const displayGw = gw.displayGw;
 
   // 2. Fetch Config & Content
   const { data: contentData } = await supabase
@@ -85,7 +75,7 @@ async function EliminatorContent() {
 
   // 4. Split, Sort, and Check Status
   const alive = managers?.filter((m: any) => !m.is_eliminated).sort((a: any, b: any) => {
-    return getScore(b.manager_fpl_id, currentGw) - getScore(a.manager_fpl_id, currentGw);
+    return getScore(b.manager_fpl_id, displayGw) - getScore(a.manager_fpl_id, displayGw);
   }) || [];
 
   const dead = managers?.filter((m: any) => m.is_eliminated).sort((a: any, b: any) => (b.eliminated_gw || 0) - (a.eliminated_gw || 0)) || [];
@@ -101,6 +91,7 @@ async function EliminatorContent() {
 
   const statusLabel = isPreTournament ? 'Pending' : !hasEntrants ? 'Awaiting Entrants' : `${alive.length} Alive`;
   const statusMuted = isPreTournament || !hasEntrants;
+  const nextLine = eliminatorNextLine(gw, startGw, { aliveCount: hasEntrants ? alive.length : undefined, awaitingElimination });
 
   return (
     <>
@@ -115,11 +106,14 @@ async function EliminatorContent() {
               </span>
             </h1>
           </div>
-          <span className="text-sm font-bold text-slate-500 bg-slate-200 px-3 py-1 rounded">Last Completed GW: {currentGw}</span>
+          <GameweekBadge provisional={!!gw.liveGw && !isPreTournament}>
+            {isPreTournament ? `Starts GW${startGw}` : gw.liveGw ? `Survivors show GW${gw.liveGw} live scores · provisional` : `Eliminations through GW${currentGw} · final`}
+          </GameweekBadge>
         </div>
         <div className="bg-white border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm text-slate-700 italic leading-relaxed">
           "{contentData?.content || 'No editor summary available.'}"
         </div>
+        <p className="text-sm text-slate-500 mt-3">{nextLine}</p>
       </header>
 
       {/* CONDITIONAL RENDER: PRE-TOURNAMENT VS ACTIVE TOURNAMENT */}
@@ -180,18 +174,23 @@ async function EliminatorContent() {
           <section className="mb-16">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              Active Survivors <span className="text-sm font-normal text-slate-400 ml-2">(GW{currentGw} Scores)</span>
+              Active Survivors <span className="text-sm font-normal text-slate-400 ml-2">(GW{displayGw} {displayGw === gw.liveGw ? 'live scores · provisional' : 'Scores'})</span>
             </h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {alive.map((mgr: any) => (
+              {alive.map((mgr: any, idx: number) => (
                 <div key={mgr.season_managers.team_name} className="bg-white border border-green-100 p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition">
                   <div>
-                    <TeamName name={mgr.season_managers.team_name} inline className="text-slate-900" />
+                    <div className="flex items-center gap-2">
+                      <TeamName name={mgr.season_managers.team_name} inline className="text-slate-900" />
+                      {displayGw === gw.liveGw && alive.length > 1 && idx === alive.length - 1 && (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-bold uppercase">Lowest</span>
+                      )}
+                    </div>
                     <div className="text-xs text-slate-500">{mgr.season_managers.managers.real_name}</div>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-xl font-black text-slate-800">{getScore(mgr.manager_fpl_id, currentGw)}</span>
+                    <span className="text-xl font-black text-slate-800">{getScore(mgr.manager_fpl_id, displayGw)}</span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-green-700">Pts</span>
                   </div>
                 </div>

@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import MobileNav from '@/components/mobile-nav';
+import GameweekStrip from '@/components/GameweekStrip';
+import { GameweekStripSkeleton } from '@/components/Skeletons';
 
 export const metadata = {
   title: 'ITF League Hub',
@@ -100,6 +102,10 @@ export default function RootLayout({
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
         <Suspense fallback={<div className="h-[104px] bg-slate-900 w-full animate-pulse" />}>
           <Navbar />
+        </Suspense>
+
+        <Suspense fallback={<GameweekStripSkeleton />}>
+          <GameweekStrip />
         </Suspense>
 
         {/* PAGE CONTENT GOES HERE */}

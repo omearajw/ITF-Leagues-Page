@@ -15,6 +15,21 @@ function SkeletonBox({ className }: { className?: string }) {
 // PAGE-SPECIFIC LAYOUTS
 // ==========================================
 
+// 0. Gameweek status strip (layout) and dashboard timeline
+export function GameweekStripSkeleton() {
+  return (
+    <div className="bg-white border-b border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 flex items-center">
+        <SkeletonBox className="h-4 w-72 rounded" />
+      </div>
+    </div>
+  );
+}
+
+export function GameweekTimelineSkeleton() {
+  return <SkeletonBox className="h-44 w-full" />;
+}
+
 // 1. Eliminator Skeleton
 export function EliminatorSkeleton({ phase = 'active' }: { phase?: 'pre' | 'active' }) {
   return (
@@ -22,7 +37,7 @@ export function EliminatorSkeleton({ phase = 'active' }: { phase?: 'pre' | 'acti
       <div>
         <div className="flex items-center justify-between mb-4 gap-4">
           <SkeletonBox className="h-10 w-72" />
-          <SkeletonBox className="h-8 w-36 rounded-md" />
+          <SkeletonBox className="h-8 w-64 rounded" />
         </div>
         <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
       </div>
@@ -69,7 +84,7 @@ export function OnionBaggersSkeleton({ phase = 'qualifying' }: { phase?: 'pre' |
     <div className="space-y-10">
       <div className="flex justify-between items-end mb-2 gap-4">
         <SkeletonBox className="h-10 w-80" />
-        <SkeletonBox className="h-8 w-36 rounded-md" />
+        <SkeletonBox className="h-8 w-64 rounded" />
       </div>
       <div className="flex gap-4 mb-4">
         <SkeletonBox className="h-8 w-52 rounded-md" />
@@ -117,7 +132,7 @@ export function DivisionSkeleton() {
       <div>
         <div className="flex items-center justify-between mb-4 gap-4">
           <SkeletonBox className="h-10 w-64" />
-          <SkeletonBox className="h-8 w-40 rounded-full" />
+          <SkeletonBox className="h-8 w-64 rounded" />
         </div>
         <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
       </div>
@@ -229,6 +244,9 @@ export function EditorSkeleton() {
 export function FormGridSkeleton() {
   return (
     <div className="space-y-12">
+      <div className="flex justify-end">
+        <SkeletonBox className="h-8 w-64 rounded" />
+      </div>
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <SkeletonBox className="h-12 w-full rounded-none" />
         <SkeletonBox className="h-80 w-full rounded-none" />
@@ -263,7 +281,7 @@ export function ChampionsLeagueSkeleton() {
       <div>
         <div className="flex items-end justify-between mb-3 gap-4">
           <SkeletonBox className="h-10 w-72" />
-          <SkeletonBox className="h-8 w-36 rounded-md" />
+          <SkeletonBox className="h-8 w-64 rounded" />
         </div>
         <div className="flex gap-3">
           <SkeletonBox className="h-8 w-28 rounded-md" />
