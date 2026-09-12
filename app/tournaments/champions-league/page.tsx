@@ -3,6 +3,8 @@ import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ChampionsLeagueSkeleton } from '@/components/Skeletons';
 import GameweekBadge, { LiveChip } from '@/components/GameweekBadge';
+import MovementArrow from '@/components/MovementArrow';
+import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { championsLeagueNextLine } from '@/lib/tournament-next';
 
@@ -62,7 +64,7 @@ async function ChampionsLeagueContent() {
   const isFinalLive = currentGw >= finalStart;
 
 // Table Generator
-  const generateTable = (stageFixtures: any[], activeManagerIds: number[]) => {
+  const generateTable = (stageFixtures: any[], activeManagerIds: number[], throughGw: number = currentGw) => {
     const stats: Record<number, any> = {};
     activeManagerIds.forEach(id => { stats[id] = { ...entrants[id], played: 0, won: 0, drawn: 0, lost: 0, points: 0, totalScore: 0 }; });
 
@@ -70,7 +72,7 @@ async function ChampionsLeagueContent() {
       // PREVENT FUTURE MATCHES FROM AFFECTING THE LIVE TABLE
       if (fix.manager_1_score === null) return;
       // Live-week ties show in the fixture log but only count once the gameweek is confirmed
-      if (fix.gw_number > currentGw) return;
+      if (fix.gw_number > throughGw) return;
 
       const m1 = fix.manager_1_id; const m2 = fix.manager_2_id;
       if (stats[m1]) {
@@ -92,6 +94,17 @@ async function ChampionsLeagueContent() {
   const stage1Table = generateTable(stage1Fix, Object.keys(entrants).map(Number));
   const stage2EntrantIds = stage1Table.length > 0 ? stage1Table.slice(0, -1).map((t: any) => t.id) : [];
   const stage2Table = generateTable(stage2Fix, stage2EntrantIds);
+
+  // Movement compares the latest counted round with the round before it within the stage.
+  const stageMovement = (stageFixtures: any[], ids: number[], table: any[]) => {
+    const playedGws = stageFixtures.filter(f => f.manager_1_score !== null && f.gw_number <= currentGw).map(f => f.gw_number);
+    if (playedGws.length === 0) return {};
+    const latest = Math.max(...playedGws);
+    if (!playedGws.some(g => g < latest)) return {};
+    return positionDeltas(table.map((t: any) => t.id), generateTable(stageFixtures, ids, latest - 1).map((t: any) => t.id));
+  };
+  const stage1Movement = stageMovement(stage1Fix, Object.keys(entrants).map(Number), stage1Table);
+  const stage2Movement = stageMovement(stage2Fix, stage2EntrantIds, stage2Table);
 
   return (
     <>
@@ -182,7 +195,7 @@ async function ChampionsLeagueContent() {
                 Stage 2 Standings 
                 {isStage2Active && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
               </h2>
-                  <StageTable data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} />
+                  <StageTable data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} movement={stage2Movement} />
                   {/* Mobile stacked view */}
                   <div className="md:hidden mt-4 space-y-3">
                     {stage2Table.map((team, idx) => (
@@ -217,7 +230,7 @@ async function ChampionsLeagueContent() {
                 {isStage1Active && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
                 {!isStage1Active && <span className="bg-slate-200 text-slate-500 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider">Completed</span>}
               </h2>
-              <StageTable data={stage1Table} isLive={isStage1Active} eliminateCount={1} />
+              <StageTable data={stage1Table} isLive={isStage1Active} eliminateCount={1} movement={stage1Movement} />
             </section>
           )}
         </div>
@@ -278,7 +291,7 @@ async function ChampionsLeagueContent() {
 // ==========================================
 // DYNAMIC TABLE COMPONENT
 // ==========================================
-function StageTable({ data, isLive, eliminateCount, highlightTop }: { data: any[], isLive: boolean, eliminateCount: number, highlightTop?: number }) {
+function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} }: { data: any[], isLive: boolean, eliminateCount: number, highlightTop?: number, movement?: Record<number, number | null> }) {
   return (
     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
       <div className="overflow-x-auto">
@@ -319,7 +332,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop }: { data: any[
                   <td className="p-4 text-center font-bold">{index + 1}</td>
                   <td className="p-4">
                     <div className="font-bold flex items-center gap-2">
-                      <TeamName name={team.teamName} inline /> {badge}
+                      <TeamName name={team.teamName} inline /> <MovementArrow delta={movement[team.id]} /> {badge}
                     </div>
                     <div className={`text-xs ${isLive && isBottom ? 'text-red-600/70' : 'text-slate-500'}`}>{team.managerName}</div>
                   </td>

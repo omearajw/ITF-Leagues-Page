@@ -4,6 +4,8 @@ import { Suspense } from 'react';
 import TeamName from '@/components/TeamName';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
+import MovementArrow from '@/components/MovementArrow';
+import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function ChampionshipPage() {
@@ -39,7 +41,7 @@ async function DivisionContent() {
       manager_fpl_id,
       team_name,
       managers!inner (real_name),
-      manager_gw_scores (classic_total_points),
+      manager_gw_scores (gw_number, classic_total_points),
       h2h_fixtures (gw_number, result)
     `)
     .eq('season_id', SEASON_ID)
@@ -49,39 +51,48 @@ async function DivisionContent() {
     return <div className="p-10 text-red-500">Error loading division: {error.message}</div>;
   }
 
-  const tableData = managers?.map((mgr: any) => {
-    let w = 0, d = 0, l = 0;
-    
-    mgr.h2h_fixtures?.forEach((fix: any) => {
-      if (fix.gw_number > currentGw) return;
-      if (fix.result === 'W') w++;
-      else if (fix.result === 'D') d++;
-      else if (fix.result === 'L') l++;
+  // Results count only confirmed gameweeks; FPL Pts stay live unless a limit is given.
+  const buildTable = (resultsThroughGw: number, totalsThroughGw: number | null) => {
+    const rows = managers?.map((mgr: any) => {
+      let w = 0, d = 0, l = 0;
+
+      mgr.h2h_fixtures?.forEach((fix: any) => {
+        if (fix.gw_number > resultsThroughGw) return;
+        if (fix.result === 'W') w++;
+        else if (fix.result === 'D') d++;
+        else if (fix.result === 'L') l++;
+      });
+
+      const totalPoints = mgr.manager_gw_scores?.reduce((max: number, gw: any) =>
+        (totalsThroughGw === null || gw.gw_number <= totalsThroughGw) && gw.classic_total_points > max ? gw.classic_total_points : max, 0) || 0;
+
+      const matchPoints = (w * 3) + (d * 1);
+      const matchesPlayed = w + d + l;
+
+      return {
+        id: mgr.manager_fpl_id,
+        teamName: mgr.team_name,
+        managerName: mgr.managers.real_name,
+        played: matchesPlayed,
+        won: w,
+        drawn: d,
+        lost: l,
+        matchPoints,
+        totalPoints
+      };
+    }) || [];
+
+    rows.sort((a, b) => {
+      if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
+      return b.totalPoints - a.totalPoints;
     });
+    return rows;
+  };
 
-    const totalPoints = mgr.manager_gw_scores?.reduce((max: number, gw: any) => 
-      gw.classic_total_points > max ? gw.classic_total_points : max, 0) || 0;
-
-    const matchPoints = (w * 3) + (d * 1);
-    const matchesPlayed = w + d + l;
-
-    return {
-      id: mgr.manager_fpl_id,
-      teamName: mgr.team_name,
-      managerName: mgr.managers.real_name,
-      played: matchesPlayed,
-      won: w,
-      drawn: d,
-      lost: l,
-      matchPoints,
-      totalPoints
-    };
-  }) || [];
-
-  tableData.sort((a, b) => {
-    if (b.matchPoints !== a.matchPoints) return b.matchPoints - a.matchPoints;
-    return b.totalPoints - a.totalPoints;
-  });
+  const tableData = buildTable(currentGw, null);
+  const movement = currentGw > 1
+    ? positionDeltas(tableData.map(t => t.id), buildTable(currentGw - 1, currentGw - 1).map(t => t.id))
+    : {};
 
   return (
     <>
@@ -126,7 +137,10 @@ async function DivisionContent() {
                 <tr key={team.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4 text-center font-bold text-slate-400">{index + 1}</td>
                   <td className="p-4">
-                    <TeamName name={team.teamName} />
+                    <div className="flex items-center gap-2">
+                      <TeamName name={team.teamName} />
+                      <MovementArrow delta={movement[team.id]} />
+                    </div>
                     <div className="text-slate-500 text-xs">{team.managerName}</div>
                   </td>
                   <td className="p-4 text-center font-medium text-slate-600">{team.played}</td>
@@ -156,7 +170,7 @@ async function DivisionContent() {
             <div key={team.id} className="bg-white border rounded-lg p-3 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-slate-700">{index + 1}. <span className="ml-2"><TeamName name={team.teamName} inline className="font-semibold" /></span></div>
+                  <div className="font-bold text-slate-700">{index + 1}. <span className="ml-2"><TeamName name={team.teamName} inline className="font-semibold" /></span> <MovementArrow delta={movement[team.id]} className="ml-1" /></div>
                   <div className="text-xs text-slate-500">{team.managerName}</div>
                 </div>
                 <div className="text-right">

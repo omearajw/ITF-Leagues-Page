@@ -66,22 +66,6 @@
     @apply bg-background text-foreground;
   }
 
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(-50%);
-    }
-  }
-
-  .marquee-track {
-    display: flex;
-    width: max-content;
-    will-change: transform;
-    animation: marquee 28s linear infinite;
-  }
-
   .marquee-group {
     flex: 0 0 auto;
     min-width: max-content;

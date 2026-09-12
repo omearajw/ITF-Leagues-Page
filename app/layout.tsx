@@ -11,6 +11,8 @@ export const metadata = {
   description: 'Custom Fantasy Premier League Dashboard',
 };
 
+const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-slate-300 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
+
 // 1. We extract the Navbar into its own async component
 async function Navbar() {
   const cookieStore = await cookies();
@@ -47,31 +49,32 @@ async function Navbar() {
       {/* BOTTOM TIER: Grouped Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center py-3">
-          <div className="flex-1">
-            {/* Desktop nav groups */}
-            <div className="hidden md:flex flex-wrap items-center overflow-x-auto no-scrollbar">
+          <div className="flex-1 min-w-0">
+            {/* Desktop nav groups: never wrap; spacing tightens at narrower widths and the
+                group labels only appear when there is room, so the row stays on one line. */}
+            <div className="hidden md:flex flex-nowrap items-center overflow-x-auto no-scrollbar">
               {/* GROUP 1: DIVISIONS */}
-              <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
-                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Divisions</span>
-                <Link href="/divisions/premier-league" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Premier League</Link>
-                <Link href="/divisions/championship" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Championship</Link>
-                <Link href="/divisions/league-one" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">League One</Link>
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-slate-700 pr-3 xl:pr-5">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block">Divisions</span>
+                <Link href="/divisions/premier-league" className={navLink}>Premier League</Link>
+                <Link href="/divisions/championship" className={navLink}>Championship</Link>
+                <Link href="/divisions/league-one" className={navLink}>League One</Link>
               </div>
 
               {/* GROUP 2: TOURNAMENTS */}
-              <div className="flex items-center space-x-4 mr-6 border-r border-slate-700 pr-6">
-                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Cups</span>
-                <Link href="/tournaments/onion-baggers-cup" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Onion Baggers</Link>
-                <Link href="/tournaments/champions-league" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Champions League</Link>
-                <Link href="/tournaments/eliminator" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Eliminator</Link>
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-slate-700 pr-3 xl:pr-5">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block">Cups</span>
+                <Link href="/tournaments/onion-baggers-cup" className={navLink}>Onion Baggers</Link>
+                <Link href="/tournaments/champions-league" className={navLink}>Champions League</Link>
+                <Link href="/tournaments/eliminator" className={navLink}>Eliminator</Link>
               </div>
 
               {/* GROUP 3: EVERYTHING ELSE */}
-              <div className="flex items-center space-x-4">
-                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden md:block">Hub</span>
-                <Link href="/" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Dashboard</Link>
-                <Link href="/itf-open" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">ITF Open</Link>
-                <Link href="/form" className="text-sm text-slate-300 hover:text-white transition py-2 px-2 rounded-md">Form Grid</Link>
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2">
+                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block">Hub</span>
+                <Link href="/" className={navLink}>Dashboard</Link>
+                <Link href="/itf-open" className={navLink}>ITF Open</Link>
+                <Link href="/form" className={navLink}>Form Grid</Link>
               </div>
             </div>
           </div>

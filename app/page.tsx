@@ -4,8 +4,11 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
 import Snippet from '@/components/snippet';
+import Marquee from '@/components/Marquee';
 import GameweekTimeline from '@/components/GameweekTimeline';
 import GameweekBadge from '@/components/GameweekBadge';
+import MovementArrow from '@/components/MovementArrow';
+import { positionDeltas } from '@/lib/movement';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } from '@/lib/tournament-next';
@@ -91,13 +94,18 @@ async function DashboardContent() {
   if (error) return <div className="p-10 text-red-500">Error: {error.message}</div>;
 
   // D. NEW: Fetch H2H results and calculate League Points (3 for W, 1 for D)
-  const { data: h2hData } = await supabase.from('h2h_fixtures').select('manager_fpl_id, result').eq('season_id', SEASON_ID).lte('gw_number', currentGw);
-  const matchPointsMap: Record<number, number> = {};
-  h2hData?.forEach(match => {
-    if (!matchPointsMap[match.manager_fpl_id]) matchPointsMap[match.manager_fpl_id] = 0;
-    if (match.result === 'W') matchPointsMap[match.manager_fpl_id] += 3;
-    if (match.result === 'D') matchPointsMap[match.manager_fpl_id] += 1;
-  });
+  const { data: h2hData } = await supabase.from('h2h_fixtures').select('manager_fpl_id, gw_number, result').eq('season_id', SEASON_ID).lte('gw_number', currentGw);
+  const buildMatchPoints = (throughGw: number) => {
+    const map: Record<number, number> = {};
+    h2hData?.forEach(match => {
+      if (match.gw_number > throughGw) return;
+      if (!map[match.manager_fpl_id]) map[match.manager_fpl_id] = 0;
+      if (match.result === 'W') map[match.manager_fpl_id] += 3;
+      if (match.result === 'D') map[match.manager_fpl_id] += 1;
+    });
+    return map;
+  };
+  const matchPointsMap = buildMatchPoints(currentGw);
 
   // E. Map H2H points to teams and sort (H2H points first, then Total FPL points)
   const processedTeams = scores?.map(team => ({
@@ -115,6 +123,35 @@ async function DashboardContent() {
   // ITF Open still uses raw total points
   const topTenITF = [...processedTeams].sort((a, b) => b.classic_total_points - a.classic_total_points).slice(0, 10);
 
+  // Movement: divisions compare with last week's confirmed standings; the ITF Open
+  // compares live totals with the last confirmed week (or last week when nothing is live).
+  const itfPreviousGw = showingLive ? currentGw : currentGw - 1;
+  const { data: previousScores } = currentGw > 1 || showingLive
+    ? await supabase.from('manager_gw_scores').select('manager_fpl_id, classic_total_points, season_managers!inner (division)').eq('season_id', SEASON_ID).eq('gw_number', currentGw - 1)
+    : { data: null };
+  const { data: itfPreviousScores } = itfPreviousGw === currentGw - 1
+    ? { data: previousScores }
+    : await supabase.from('manager_gw_scores').select('manager_fpl_id, classic_total_points, season_managers!inner (division)').eq('season_id', SEASON_ID).eq('gw_number', itfPreviousGw);
+
+  const previousMatchPoints = buildMatchPoints(currentGw - 1);
+  const previousDivisionOrder = (division: string) => (previousScores || [])
+    .filter((s: any) => s.season_managers.division === division)
+    .sort((a: any, b: any) => {
+      const ha = previousMatchPoints[a.manager_fpl_id] || 0, hb = previousMatchPoints[b.manager_fpl_id] || 0;
+      if (hb !== ha) return hb - ha;
+      return b.classic_total_points - a.classic_total_points;
+    })
+    .map((s: any) => s.manager_fpl_id);
+  const divisionMovement = (teams: any[], division: string) =>
+    currentGw > 1 ? positionDeltas(teams.map(t => t.manager_fpl_id), previousDivisionOrder(division)) : {};
+
+  const itfMovement = itfPreviousScores
+    ? positionDeltas(
+        [...processedTeams].sort((a, b) => b.classic_total_points - a.classic_total_points).map(t => t.manager_fpl_id),
+        [...itfPreviousScores].sort((a: any, b: any) => b.classic_total_points - a.classic_total_points).map((s: any) => s.manager_fpl_id)
+      )
+    : {};
+
   return (
     <>
       <div className="flex flex-col gap-10">
@@ -127,9 +164,9 @@ async function DashboardContent() {
             </GameweekBadge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} />
-            <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} fullSnippet={snippets['championship']} teams={championshipTeams} />
-            <DivisionWidget name="League One" link="/divisions/league-one" snippet={snippets['league-one']} fullSnippet={snippets['league-one']} teams={leagueOneTeams} />
+            <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
+            <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} fullSnippet={snippets['championship']} teams={championshipTeams} movement={divisionMovement(championshipTeams, 'Championship')} />
+            <DivisionWidget name="League One" link="/divisions/league-one" snippet={snippets['league-one']} fullSnippet={snippets['league-one']} teams={leagueOneTeams} movement={divisionMovement(leagueOneTeams, 'League One')} />
           </div>
         </section>
 
@@ -194,7 +231,10 @@ async function DashboardContent() {
                   <tr key={manager.manager_fpl_id} className="border-b last:border-0 hover:bg-slate-50">
                     <td className="p-3 font-bold text-slate-500">{index + 1}</td>
                     <td className="p-3">
-                      <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
+                      <div className="flex items-center gap-2">
+                        <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
+                        <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
+                      </div>
                       <div className="text-xs text-slate-400">{manager.season_managers.managers.real_name}</div>
                     </td>
                     <td className="p-3">
@@ -213,14 +253,9 @@ async function DashboardContent() {
 
       {/* FOOTER: TICKER */}
       <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-white shadow-inner overflow-hidden border-t-4 border-blue-500 z-40">
-        <div className="marquee-track py-3 text-sm font-semibold" role="presentation">
-          <div className="marquee-group" role="presentation">
-            <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
-          </div>
-          <div className="marquee-group" aria-hidden="true">
-            <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
-          </div>
-        </div>
+        <Marquee>
+          <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
+        </Marquee>
       </div>
     </>
   );
@@ -230,7 +265,7 @@ async function DashboardContent() {
 // 3. HELPER COMPONENTS
 // =========================================
 
-function DivisionWidget({ name, link, snippet, fullSnippet, teams }: { name: string, link: string, snippet: string, fullSnippet?: string, teams: any[] }) {
+function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: { name: string, link: string, snippet: string, fullSnippet?: string, teams: any[], movement: Record<number, number | null> }) {
   return (
     <div className="bg-white border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition">
       <Link href={link} className="p-4 border-b bg-slate-50 rounded-t-xl hover:bg-slate-100 transition group cursor-pointer">
@@ -244,8 +279,11 @@ function DivisionWidget({ name, link, snippet, fullSnippet, teams }: { name: str
               {teams.map((team, index) => (
                 <tr key={team.manager_fpl_id} className="border-b last:border-0 bg-white hover:bg-slate-50">
                   <td className="p-1.5 pl-2 font-bold text-slate-400 w-6">{index + 1}</td>
-                  <td className="p-1.5 font-medium max-w-[140px]">
-                    <TeamName name={team.season_managers.team_name} inline className="truncate" />
+                  <td className="p-1.5 font-medium max-w-[160px]">
+                    <span className="flex items-center gap-1.5">
+                      <TeamName name={team.season_managers.team_name} inline className="truncate" />
+                      <MovementArrow delta={movement[team.manager_fpl_id]} />
+                    </span>
                   </td>
                   <td className="p-1.5 text-right font-bold pr-2 text-slate-800">{team.h2h_points} Pts</td>
                 </tr>

@@ -3,6 +3,8 @@ import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ITFOpenSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
+import MovementArrow from '@/components/MovementArrow';
+import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function Index() {
@@ -54,6 +56,15 @@ async function ITFOpenContent() {
   }
   const showingLive = scoresGw === gw.liveGw;
 
+  // Live totals move against the last confirmed week; a confirmed week moves against the one before.
+  const previousGw = showingLive ? currentGw : currentGw - 1;
+  const { data: previousScores } = previousGw >= 1
+    ? await supabase.from('manager_gw_scores').select('manager_fpl_id, classic_total_points').eq('season_id', SEASON_ID).eq('gw_number', previousGw).order('classic_total_points', { ascending: false })
+    : { data: null };
+  const movement = previousScores
+    ? positionDeltas((managers || []).map((m: any) => m.manager_fpl_id), previousScores.map((m: any) => m.manager_fpl_id))
+    : {};
+
   if (error) {
     return <div className="p-10 text-red-500">Error loading league: {error.message}</div>;
   }
@@ -79,7 +90,10 @@ async function ITFOpenContent() {
             <tr key={manager.manager_fpl_id} className="border-b border-gray-100 hover:bg-gray-50">
               <td className="p-3 font-bold text-gray-700">{index + 1}</td>
               <td className="p-3">
-                <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
+                <div className="flex items-center gap-2">
+                  <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
+                  <MovementArrow delta={movement[manager.manager_fpl_id]} />
+                </div>
                 <div className="text-sm text-gray-500">{manager.season_managers.managers.real_name}</div>
               </td>
               <td className="p-3">
@@ -102,7 +116,7 @@ async function ITFOpenContent() {
           <div key={manager.manager_fpl_id} className="bg-white border rounded-lg p-3 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-bold text-slate-700">{index + 1}. <span className="ml-2"><TeamName name={manager.season_managers.team_name} inline className="font-semibold" /></span></div>
+                <div className="font-bold text-slate-700">{index + 1}. <span className="ml-2"><TeamName name={manager.season_managers.team_name} inline className="font-semibold" /></span> <MovementArrow delta={movement[manager.manager_fpl_id]} className="ml-1" /></div>
                 <div className="text-xs text-slate-500">{manager.season_managers.managers.real_name}</div>
               </div>
               <div className="text-right">
