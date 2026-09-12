@@ -9,16 +9,16 @@ import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function Index() {
   return (
-    <main className="max-w-4xl mx-auto p-8 font-sans">
+    <div className="max-w-4xl mx-auto py-2 sm:py-8 font-sans">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">ITF Open</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">ITF Open</h1>
         <p className="text-gray-500">The master leaderboard across all divisions.</p>
       </header>
       
       <Suspense fallback={<ITFOpenSkeleton />}>
         <ITFOpenContent />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

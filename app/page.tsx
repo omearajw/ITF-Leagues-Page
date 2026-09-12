@@ -18,9 +18,9 @@ import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } fro
 // =========================================
 export default function Dashboard() {
   return (
-    <div className="relative min-h-screen pb-20">
-      <header className="mb-8">
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">ITF Hub</h1>
+    <div className="relative pb-4 md:pb-20">
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">ITF Hub</h1>
         <p className="text-slate-500">Live updates and standings for the 2026-27 Season.</p>
       </header>
 
@@ -157,9 +157,9 @@ async function DashboardContent() {
       <div className="flex flex-col gap-10">
         {/* ROW 1: THE DIVISIONS */}
         <section>
-          <div className="flex items-center justify-between mb-4 border-b pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b pb-2">
             <h2 className="text-xl font-bold">Official Divisions</h2>
-            <GameweekBadge provisional={!!gw.liveGw}>
+            <GameweekBadge provisional={!!gw.liveGw} short={gw.liveGw ? `H2H to GW${currentGw} · FPL live` : `Final to GW${currentGw}`}>
               {gw.liveGw ? `H2H through GW${currentGw} · FPL Pts live` : `Standings through GW${currentGw} · final`}
             </GameweekBadge>
           </div>
@@ -209,15 +209,33 @@ async function DashboardContent() {
 
         {/* ROW 3: LIVE ITF OPEN */}
         <section className="mb-12">
-          <div className="flex justify-between items-end border-b pb-2 mb-4">
+          <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-4">
             <h2 className="text-xl font-bold">ITF Open - Top 10</h2>
-            <div className="flex items-center gap-3">
-              <GameweekBadge provisional={showingLive}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
+            <div className="flex flex-wrap items-center gap-3">
+              <GameweekBadge provisional={showingLive} short={showingLive ? `GW${scoresGw} live` : `GW${scoresGw} final`}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
               <Link href="/itf-open" className="text-sm text-blue-600 hover:underline">View Full Table &rarr;</Link>
             </div>
           </div>
           <div className="bg-white shadow rounded-lg border overflow-hidden">
-            <table className="w-full text-left text-sm">
+            {/* Mobile list */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {topTenITF.map((manager: any, index: number) => (
+                <div key={manager.manager_fpl_id} className="p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-6 shrink-0 text-sm font-black text-slate-400">{index + 1}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <TeamName name={manager.season_managers.team_name} inline className="font-semibold min-w-0" />
+                        <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
+                      </div>
+                      <div className="text-xs text-slate-400">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-bold text-blue-600">{manager.classic_total_points}</span>
+                </div>
+              ))}
+            </div>
+            <table className="hidden md:table w-full text-left text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
                   <th className="p-3">Rank</th>
@@ -252,7 +270,7 @@ async function DashboardContent() {
       </div>
 
       {/* FOOTER: TICKER */}
-      <div className="fixed bottom-0 left-0 w-full bg-slate-900 text-white shadow-inner overflow-hidden border-t-4 border-blue-500 z-40">
+      <div className="hidden md:block fixed bottom-0 left-0 w-full bg-slate-900 text-white shadow-inner overflow-hidden border-t-4 border-blue-500 z-40">
         <Marquee>
           <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
         </Marquee>
@@ -273,15 +291,15 @@ function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: {
       </Link>
       <div className="p-4 flex-grow text-sm text-slate-600 flex flex-col justify-between">
         <Snippet preview={snippet?.slice(0, 180)} full={fullSnippet} link={link} />
-        <div className="border rounded overflow-hidden bg-slate-50 max-h-48 overflow-y-auto">
+        <div className="border rounded overflow-hidden bg-slate-50 md:max-h-48 md:overflow-y-auto">
           <table className="w-full text-xs text-left border-collapse">
             <tbody>
               {teams.map((team, index) => (
                 <tr key={team.manager_fpl_id} className="border-b last:border-0 bg-white hover:bg-slate-50">
                   <td className="p-1.5 pl-2 font-bold text-slate-400 w-6">{index + 1}</td>
-                  <td className="p-1.5 font-medium max-w-[160px]">
-                    <span className="flex items-center gap-1.5">
-                      <TeamName name={team.season_managers.team_name} inline className="truncate" />
+                  <td className="p-1.5 font-medium min-w-0 max-w-[1px] w-full">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <TeamName name={team.season_managers.team_name} inline className="min-w-0" />
                       <MovementArrow delta={movement[team.manager_fpl_id]} />
                     </span>
                   </td>
@@ -312,7 +330,7 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
 
       {/* 2. THE HEADER (Always completely visible) */}
       <Link href={link} className={`p-4 border-b rounded-t-xl transition ${isPending ? 'bg-slate-50/50' : 'bg-slate-50 hover:bg-slate-100 group'}`}>
-        <h3 className={`font-bold text-lg transition-colors ${isPending ? 'text-slate-600' : 'group-hover:text-blue-600'}`}>
+        <h3 className={`font-bold text-lg transition-colors pr-16 ${isPending ? 'text-slate-600' : 'group-hover:text-blue-600'}`}>
           {name} {!isPending && <span>&rarr;</span>}
         </h3>
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{stage}</p>
@@ -339,9 +357,9 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
         {/* THE WIDGET CONTENT (Greyed out if pending) */}
         <div className={`p-4 flex-grow text-sm text-slate-600 flex flex-col justify-between ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
           <Snippet preview={snippet?.slice(0, 160)} full={fullSnippet} link={link} />
-          <div className="block text-center w-full bg-slate-900 text-white rounded py-2 font-medium transition text-xs mt-4">
+          <Link href={link} className="block text-center w-full bg-slate-900 text-white rounded py-2.5 font-medium transition text-xs mt-4 hover:bg-slate-800">
             View Bracket
-          </div>
+          </Link>
         </div>
       </div>
       

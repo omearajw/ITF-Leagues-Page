@@ -3,6 +3,7 @@ import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ChampionsLeagueSkeleton } from '@/components/Skeletons';
 import GameweekBadge, { LiveChip } from '@/components/GameweekBadge';
+import PageHeader from '@/components/PageHeader';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
@@ -10,7 +11,7 @@ import { championsLeagueNextLine } from '@/lib/tournament-next';
 
 export default function ChampionsLeaguePage() {
   return (
-    <div className="max-w-7xl mx-auto py-8 font-sans">
+    <div className="max-w-7xl mx-auto py-2 sm:py-8 font-sans">
       <Suspense fallback={<ChampionsLeagueSkeleton />}>
         <ChampionsLeagueContent />
       </Suspense>
@@ -108,30 +109,34 @@ async function ChampionsLeagueContent() {
 
   return (
     <>
-      <header className="mb-10">
-        <div className="flex items-end justify-between mb-2">
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Champions League</h1>
-          <GameweekBadge provisional={!!gw.liveGw && !isPreTournament}>
+      <PageHeader
+        title="Champions League"
+        badge={(
+          <GameweekBadge
+            provisional={!!gw.liveGw && !isPreTournament}
+            short={isPreTournament ? `Starts GW${s1Start}` : gw.liveGw ? `Table to GW${currentGw} · GW${gw.liveGw} live` : `Final to GW${currentGw}`}
+          >
             {isPreTournament ? `Starts GW${s1Start}` : gw.liveGw ? `Standings through GW${currentGw} · GW${gw.liveGw} ties live` : `Standings through GW${currentGw} · final`}
           </GameweekBadge>
-        </div>
-        <div className="flex gap-4 mb-4 text-sm font-medium text-slate-500">
+        )}
+      >
+        <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 text-xs sm:text-sm font-medium text-slate-500">
           <span className={`px-3 py-1 rounded border ${isStage1Active || isWaitingForStage2 ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Stage 1: GW{s1Start}</span>
           <span className={`px-3 py-1 rounded border ${isStage2Active || isWaitingForFinal ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Stage 2: GW{s2Start}</span>
           <span className={`px-3 py-1 rounded border ${isFinalLive ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Final: GW{finalStart}</span>
         </div>
-        <p className="text-sm text-slate-500 mb-4">{championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}</p>
-      </header>
+        <p className="text-sm text-slate-500">{championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}</p>
+      </PageHeader>
 
       {/* TWO COLUMN LAYOUT */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 xl:gap-10">
         
         {/* LEFT COLUMN: TABLES & STAGES */}
-        <div className="xl:col-span-2 space-y-12">
+        <div className="xl:col-span-2 space-y-8 sm:space-y-12">
           
           {isPreTournament && (
-            <div className="text-center bg-white border border-slate-200 rounded-xl p-12 shadow-sm">
-              <h2 className="text-3xl font-black text-slate-800 mb-2">The Elite Group is Set</h2>
+            <div className="text-center bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">The Elite Group is Set</h2>
               <p className="text-slate-500 mb-8">Campaign begins in <strong>{s1Start - currentGw} Gameweeks</strong>.</p>
             </div>
           )}
@@ -144,39 +149,39 @@ async function ChampionsLeagueContent() {
               <div className="p-4 text-center border-b border-indigo-800/50 bg-black/20">
                 <span className="text-indigo-400 font-bold tracking-[0.2em] uppercase text-xs">The Final Showdown • Live GW {displayGw}</span>
               </div>
-              <div className="p-10 flex justify-between items-center text-center">
-                <div className="flex-1">
-                  <TeamName name={entrants[finalFix.manager_1_id]?.teamName} className="text-3xl text-white mb-2" />
+              <div className="p-5 sm:p-10 flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center text-center">
+                <div className="flex-1 min-w-0">
+                  <TeamName name={entrants[finalFix.manager_1_id]?.teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_1_score} pts</div>
                 </div>
-                <div className="px-8"><span className="text-4xl font-black text-slate-500">VS</span></div>
-                <div className="flex-1">
-                  <TeamName name={entrants[finalFix.manager_2_id]?.teamName} className="text-3xl text-white mb-2" />
+                <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-slate-500">VS</span></div>
+                <div className="flex-1 min-w-0">
+                  <TeamName name={entrants[finalFix.manager_2_id]?.teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_2_score} pts</div>
                 </div>
               </div>
               {finalFix.winner_id && finalFix.gw_number <= currentGw && (
-                <div className="bg-indigo-600 p-6 text-center shadow-inner">
-                  <span className="text-white font-black text-2xl tracking-widest uppercase drop-shadow-md">
+                <div className="bg-indigo-600 p-4 sm:p-6 text-center shadow-inner">
+                  <span className="text-white font-black text-lg sm:text-2xl tracking-widest uppercase drop-shadow-md">
                     🏆 <TeamName name={entrants[finalFix.winner_id]?.teamName} inline className="align-middle" /> <span className="align-middle">is the Champion 🏆</span>
                   </span>
                 </div>
               )}
             </div>
           ) : (isWaitingForFinal && stage2Table.length >= 2) && (
-            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-xl overflow-hidden border border-indigo-900/50 mb-12 animate-fade-in-up">
+            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-xl overflow-hidden border border-indigo-900/50 mb-12">
               <div className="p-4 text-center border-b border-indigo-800/50 bg-black/20 flex flex-col items-center">
                 <span className="text-yellow-400 font-bold tracking-[0.2em] uppercase text-xs mb-1">Stage 2 Concluded</span>
                 <span className="text-indigo-300 font-semibold text-sm">Upcoming Final Showdown • Gameweek {finalStart}</span>
               </div>
-              <div className="p-10 flex justify-between items-center text-center opacity-90">
-                <div className="flex-1">
-                  <TeamName name={stage2Table[0].teamName} className="text-3xl text-white mb-2" />
+              <div className="p-5 sm:p-10 flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center text-center opacity-90">
+                <div className="flex-1 min-w-0">
+                  <TeamName name={stage2Table[0].teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
-                <div className="px-8"><span className="text-4xl font-black text-slate-600">VS</span></div>
-                <div className="flex-1">
-                  <TeamName name={stage2Table[1].teamName} className="text-3xl text-white mb-2" />
+                <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-slate-600">VS</span></div>
+                <div className="flex-1 min-w-0">
+                  <TeamName name={stage2Table[1].teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
               </div>
@@ -196,28 +201,12 @@ async function ChampionsLeagueContent() {
                 {isStage2Active && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
               </h2>
                   <StageTable data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} movement={stage2Movement} />
-                  {/* Mobile stacked view */}
-                  <div className="md:hidden mt-4 space-y-3">
-                    {stage2Table.map((team, idx) => (
-                      <div key={team.id} className="bg-white border rounded-lg p-3 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-bold text-slate-700">{idx + 1}. <span className="ml-2">{team.teamName}</span></div>
-                            <div className="text-xs text-slate-500">{team.managerName}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-black text-slate-800">{team.points}</div>
-                            <div className="text-xs mt-1"><span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">{team.totalScore} pts</span></div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <StageList data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} movement={stage2Movement} />
             </section>
           )}
 
           {isWaitingForStage2 && (
-            <div className="bg-slate-100 border border-slate-300 text-slate-700 p-6 rounded-xl text-center shadow-sm">
+            <div className="bg-slate-100 border border-slate-300 text-slate-700 p-4 sm:p-6 rounded-xl text-center shadow-sm">
               <h3 className="font-black text-xl mb-1">Stage 1 Concluded</h3>
               <p>Teams have completed their matches. Stage 2 begins in Gameweek {s2Start}.</p>
             </div>
@@ -231,54 +220,29 @@ async function ChampionsLeagueContent() {
                 {!isStage1Active && <span className="bg-slate-200 text-slate-500 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider">Completed</span>}
               </h2>
               <StageTable data={stage1Table} isLive={isStage1Active} eliminateCount={1} movement={stage1Movement} />
+              <StageList data={stage1Table} isLive={isStage1Active} eliminateCount={1} movement={stage1Movement} />
             </section>
           )}
         </div>
 
-        {/* RIGHT COLUMN: LIVE FIXTURE LOG */}
+        {/* RIGHT COLUMN: LIVE FIXTURE LOG (collapsible below xl, where it sits under the tables) */}
         <div className="xl:col-span-1">
-          <div className="bg-slate-900 rounded-xl shadow-xl overflow-hidden sticky top-8">
+          <details className="xl:hidden bg-slate-900 rounded-xl shadow-xl overflow-hidden">
+            <summary className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-3 cursor-pointer list-none">
+              <h2 className="font-bold text-white tracking-widest uppercase text-sm">Schedule & Results</h2>
+              <span className="text-xs text-slate-400 text-right">{fixtures?.filter(f => f.stage !== 'Final').length || 0} fixtures · tap to expand</span>
+            </summary>
+            <div className="p-3 space-y-3">
+              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} />
+            </div>
+          </details>
+          <div className="hidden xl:block bg-slate-900 rounded-xl shadow-xl overflow-hidden sticky top-8">
             <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
               <h2 className="font-bold text-white tracking-widest uppercase text-sm">Schedule & Results</h2>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             </div>
-            
-            <div className="p-4 space-y-3 max-h-[800px] overflow-y-auto custom-scrollbar">
-              {fixtures?.filter(f => f.stage !== 'Final').map((fix) => {
-                const isPlayed = fix.manager_1_score !== null;
-                const isLiveFix = isPlayed && fix.gw_number === gw.liveGw;
-                
-                return (
-                  <div key={fix.id} className={`rounded p-3 text-sm flex flex-col gap-2 border ${isPlayed ? 'bg-slate-800 border-slate-700' : 'bg-slate-800/40 border-slate-700/50 border-dashed'}`}>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex justify-between">
-                      <span className="flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
-                      <span className={isPlayed ? 'text-indigo-400' : 'text-slate-500'}>{fix.stage}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className={`truncate w-2/5 font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-slate-300'}`}>
-                        <TeamName name={entrants[fix.manager_1_id]?.teamName} inline className="truncate" />
-                      </span>
-                      
-                      {isPlayed ? (
-                        <span className="bg-slate-950 text-white font-mono px-2 py-1 rounded text-xs shadow-inner">
-                          {fix.manager_1_score} - {fix.manager_2_score}
-                        </span>
-                      ) : (
-                        <span className="bg-slate-700 text-slate-400 font-bold px-2 py-1 rounded text-[10px] uppercase tracking-widest">
-                          VS
-                        </span>
-                      )}
-
-                      <span className={`truncate w-2/5 text-right font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-slate-300'}`}>
-                        <TeamName name={entrants[fix.manager_2_id]?.teamName} inline className="truncate" />
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              {(!fixtures || fixtures.length === 0) && (
-                <div className="text-center text-slate-500 italic py-8">Schedule pending.</div>
-              )}
+            <div className="p-4 space-y-3 max-h-[800px] overflow-y-auto">
+              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} />
             </div>
           </div>
         </div>
@@ -289,11 +253,108 @@ async function ChampionsLeagueContent() {
 }
 
 // ==========================================
+// FIXTURE LOG (shared by the sticky desktop panel and the mobile accordion)
+// ==========================================
+function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | undefined, entrants: Record<number, any>, liveGw: number | null }) {
+  const list = fixtures?.filter(f => f.stage !== 'Final') || [];
+  if (list.length === 0) return <div className="text-center text-slate-500 italic py-8">Schedule pending.</div>;
+
+  return (
+    <>
+      {list.map((fix) => {
+        const isPlayed = fix.manager_1_score !== null;
+        const isLiveFix = isPlayed && fix.gw_number === liveGw;
+
+        return (
+          <div key={fix.id} className={`rounded p-3 text-sm flex flex-col gap-2 border ${isPlayed ? 'bg-slate-800 border-slate-700' : 'bg-slate-800/40 border-slate-700/50 border-dashed'}`}>
+            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex justify-between">
+              <span className="flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
+              <span className={isPlayed ? 'text-indigo-400' : 'text-slate-500'}>{fix.stage}</span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <span className={`flex min-w-0 w-2/5 font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-slate-300'}`}>
+                <TeamName name={entrants[fix.manager_1_id]?.teamName} inline className="min-w-0" />
+              </span>
+
+              {isPlayed ? (
+                <span className="bg-slate-950 text-white font-mono px-2 py-1 rounded text-xs shadow-inner shrink-0">
+                  {fix.manager_1_score} - {fix.manager_2_score}
+                </span>
+              ) : (
+                <span className="bg-slate-700 text-slate-400 font-bold px-2 py-1 rounded text-[10px] uppercase tracking-widest shrink-0">
+                  VS
+                </span>
+              )}
+
+              <span className={`flex justify-end min-w-0 w-2/5 text-right font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-slate-300'}`}>
+                <TeamName name={entrants[fix.manager_2_id]?.teamName} inline className="min-w-0" />
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ==========================================
+// MOBILE STAGE LIST (mirrors StageTable's rows and badges)
+// ==========================================
+function StageList({ data, isLive, eliminateCount, highlightTop, movement = {} }: { data: any[], isLive: boolean, eliminateCount: number, highlightTop?: number, movement?: Record<number, number | null> }) {
+  return (
+    <div className="md:hidden space-y-2">
+      {data.map((team: any, index: number) => {
+        const isBottom = index >= data.length - eliminateCount;
+        const isTop = highlightTop && index < highlightTop;
+        let card = 'bg-white border-slate-200';
+        let badge = null;
+        if (isLive && isBottom) {
+          card = 'bg-red-50 border-red-200';
+          badge = <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded font-bold uppercase">Danger Zone</span>;
+        } else if (!isLive && isBottom) {
+          card = 'bg-slate-100 border-slate-200 opacity-70';
+          badge = <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold uppercase">Eliminated</span>;
+        } else if (!isLive && isTop) {
+          card = 'bg-green-50 border-green-200';
+          badge = <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase">Promoted</span>;
+        }
+
+        return (
+          <div key={team.id} className={`border rounded-lg p-3 shadow-sm ${card}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <span className="w-6 shrink-0 text-sm font-black text-slate-400 leading-6">{index + 1}</span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <TeamName name={team.teamName} inline className="font-semibold text-slate-800 min-w-0" />
+                    <MovementArrow delta={movement[team.id]} />
+                    {badge}
+                  </div>
+                  <div className="text-xs text-slate-500">{team.managerName}</div>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-lg font-black text-slate-800 leading-6">{team.points}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pts</div>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between text-xs text-slate-500">
+              <span>P <b className="text-slate-700">{team.played}</b> · W <b className="text-green-600">{team.won}</b> · D <b className="text-slate-600">{team.drawn}</b> · L <b className="text-red-500">{team.lost}</b></span>
+              <span>FPL Pts <b className="text-slate-700">{team.totalScore}</b></span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ==========================================
 // DYNAMIC TABLE COMPONENT
 // ==========================================
 function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} }: { data: any[], isLive: boolean, eliminateCount: number, highlightTop?: number, movement?: Record<number, number | null> }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm whitespace-nowrap">
           <thead className="bg-slate-900 text-white">

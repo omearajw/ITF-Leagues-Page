@@ -1,17 +1,52 @@
 "use client";
 import Link from 'next/link';
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+const LINKS = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/divisions/premier-league', label: 'Premier League' },
+  { href: '/divisions/championship', label: 'Championship' },
+  { href: '/divisions/league-one', label: 'League One' },
+  { href: '/tournaments/onion-baggers-cup', label: 'Onion Baggers' },
+  { href: '/tournaments/champions-league', label: 'Champions League' },
+  { href: '/tournaments/eliminator', label: 'Eliminator' },
+  { href: '/itf-open', label: 'ITF Open' },
+  { href: '/form', label: 'Form Grid' },
+];
 
 export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, isEditor?: boolean }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => { setOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
+  const links = [
+    ...LINKS,
+    ...(isEditor || isAdmin ? [{ href: '/editor', label: 'Editor' }] : []),
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
+  ];
 
   return (
-    <div className="md:hidden relative">
+    <div className="relative">
       <button
         aria-expanded={open}
+        aria-controls="mobile-nav-panel"
         aria-label="Toggle navigation"
         onClick={() => setOpen(!open)}
-        className="p-2 rounded-md text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 z-60 relative"
+        className="relative z-50 p-2.5 -mr-2 rounded-md text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           {open ? (
@@ -24,21 +59,23 @@ export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, is
 
       {open && (
         <>
-          <div onClick={() => setOpen(false)} className="fixed inset-0 bg-black/30 z-40" />
-          <div className="fixed inset-x-0 top-14 z-50 px-4">
-            <div className="bg-slate-800 text-slate-200 rounded-lg p-3 space-y-2 max-w-lg mx-auto">
-              <Link href="/" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Dashboard</Link>
-              <Link href="/divisions/premier-league" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Premier League</Link>
-              <Link href="/divisions/championship" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Championship</Link>
-              <Link href="/divisions/league-one" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">League One</Link>
-              <Link href="/tournaments/onion-baggers-cup" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Onion Baggers</Link>
-              <Link href="/tournaments/champions-league" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Champions League</Link>
-              <Link href="/tournaments/eliminator" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Eliminator</Link>
-              <Link href="/itf-open" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">ITF Open</Link>
-              <Link href="/form" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Form Grid</Link>
-              {isEditor && <Link href="/editor" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Editor</Link>}
-              {isAdmin && <Link href="/admin" onClick={() => setOpen(false)} className="block py-2 px-3 rounded hover:bg-slate-700">Admin</Link>}
-            </div>
+          <div onClick={() => setOpen(false)} className="fixed inset-0 bg-black/40 z-40" />
+          <div id="mobile-nav-panel" className="fixed inset-x-0 top-14 z-50 px-3 pb-3">
+            <nav className="bg-slate-800 text-slate-200 rounded-xl p-2 max-h-[calc(100dvh-5rem)] overflow-y-auto shadow-xl">
+              {links.map(link => {
+                const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`block py-3 px-4 rounded-lg text-base ${active ? 'bg-slate-700 text-white font-semibold' : 'hover:bg-slate-700'}`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
         </>
       )}

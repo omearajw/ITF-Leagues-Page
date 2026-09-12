@@ -33,21 +33,26 @@ async function Navbar() {
               </Link>
             </div>
             
-            {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
-            <div className="flex space-x-6 text-xs font-medium uppercase tracking-wider">
-              {(isAdmin || isEditor) && (
-                <Link href="/editor" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
-              )}
-              {isAdmin && (
-                <Link href="/admin" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
-              )}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
+              <div className="hidden md:flex space-x-6 text-xs font-medium uppercase tracking-wider">
+                {(isAdmin || isEditor) && (
+                  <Link href="/editor" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
+                )}
+                {isAdmin && (
+                  <Link href="/admin" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
+                )}
+              </div>
+              <div className="md:hidden">
+                <MobileNav isAdmin={isAdmin} isEditor={isEditor} />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* BOTTOM TIER: Grouped Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* BOTTOM TIER: Grouped Navigation (desktop only; phones use the hamburger above) */}
+      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center py-3">
           <div className="flex-1 min-w-0">
             {/* Desktop nav groups: never wrap; spacing tightens at narrower widths and the
@@ -78,11 +83,6 @@ async function Navbar() {
               </div>
             </div>
           </div>
-
-          {/* Mobile hamburger */}
-          <div className="md:hidden">
-            <MobileNav isAdmin={isAdmin} isEditor={isEditor} />
-          </div>
         </div>
       </div>
     </nav>
@@ -103,7 +103,7 @@ export default function RootLayout({
       <body className="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
         
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
-        <Suspense fallback={<div className="h-[104px] bg-slate-900 w-full animate-pulse" />}>
+        <Suspense fallback={<div className="h-14 md:h-[104px] bg-slate-900 w-full animate-pulse" />}>
           <Navbar />
         </Suspense>
 

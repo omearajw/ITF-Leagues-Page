@@ -3,6 +3,7 @@ import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { EliminatorSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
+import PageHeader from '@/components/PageHeader';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { eliminatorNextLine } from '@/lib/tournament-next';
 
@@ -23,7 +24,7 @@ export default async function EliminatorPage() {
   const isPreTournament = currentGw < startGw;
 
   return (
-    <div className="max-w-5xl mx-auto py-8 font-sans">
+    <div className="max-w-5xl mx-auto py-2 sm:py-8 font-sans">
       <Suspense fallback={<EliminatorSkeleton phase={isPreTournament ? 'pre' : 'active'} />}>
         <EliminatorContent />
       </Suspense>
@@ -96,31 +97,34 @@ async function EliminatorContent() {
   return (
     <>
       {/* HEADER */}
-      <header className="mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-              The Eliminator
-              <span className={`text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase ${statusMuted ? 'bg-slate-200 text-slate-500' : 'bg-slate-900 text-white'}`}>
-                {statusLabel}
-              </span>
-            </h1>
-          </div>
-          <GameweekBadge provisional={!!gw.liveGw && !isPreTournament}>
+      <PageHeader
+        className="mb-10 sm:mb-12"
+        title="The Eliminator"
+        titleExtra={(
+          <span className={`text-xs sm:text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase ${statusMuted ? 'bg-slate-200 text-slate-500' : 'bg-slate-900 text-white'}`}>
+            {statusLabel}
+          </span>
+        )}
+        badge={(
+          <GameweekBadge
+            provisional={!!gw.liveGw && !isPreTournament}
+            short={isPreTournament ? `Starts GW${startGw}` : gw.liveGw ? `GW${gw.liveGw} live scores` : `Final to GW${currentGw}`}
+          >
             {isPreTournament ? `Starts GW${startGw}` : gw.liveGw ? `Survivors show GW${gw.liveGw} live scores · provisional` : `Eliminations through GW${currentGw} · final`}
           </GameweekBadge>
-        </div>
-        <div className="bg-white border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm text-slate-700 italic leading-relaxed">
+        )}
+      >
+        <div className="bg-white border-l-4 border-red-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-slate-700 italic leading-relaxed">
           "{contentData?.content || 'No editor summary available.'}"
         </div>
         <p className="text-sm text-slate-500 mt-3">{nextLine}</p>
-      </header>
+      </PageHeader>
 
       {/* CONDITIONAL RENDER: PRE-TOURNAMENT VS ACTIVE TOURNAMENT */}
       {isPreTournament ? (
         <>
-          <section className="mb-12 text-center bg-white border border-slate-200 rounded-xl p-12 shadow-sm">
-            <h2 className="text-3xl font-black text-slate-800 mb-2">The Purge is Pending</h2>
+          <section className="mb-12 text-center bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">The Purge is Pending</h2>
             <p className="text-slate-500">The battle for survival begins in <strong>Gameweek {startGw}</strong>. Until then, everyone is safe.</p>
             <p className="text-slate-400 text-sm mt-2">The first elimination is applied once Gameweek {startGw} is finished and the scores are confirmed by FPL.</p>
           </section>
@@ -147,8 +151,8 @@ async function EliminatorContent() {
           </section>
         </>
       ) : !hasEntrants ? (
-        <section className="mb-12 text-center bg-amber-50 border border-amber-200 rounded-xl p-12 shadow-sm">
-          <h2 className="text-3xl font-black text-amber-900 mb-2">Waiting for Entrants</h2>
+        <section className="mb-12 text-center bg-amber-50 border border-amber-200 rounded-xl p-6 sm:p-12 shadow-sm">
+          <h2 className="text-2xl sm:text-3xl font-black text-amber-900 mb-2">Waiting for Entrants</h2>
           <p className="text-amber-800">
             The Eliminator started in <strong>Gameweek {startGw}</strong>, but no managers have been registered yet.
           </p>
@@ -205,47 +209,68 @@ async function EliminatorContent() {
             </h2>
             
             <div className="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
-                  <tr>
-                    <th className="p-4 font-semibold uppercase tracking-wider text-xs">Eliminated</th>
-                    <th className="p-4 font-semibold uppercase tracking-wider text-xs">Team & Manager</th>
-                    <th className="p-4 font-semibold uppercase tracking-wider text-xs text-right">Fatal Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
-                  {dead.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="p-8 text-center text-slate-500 italic">
-                        No one has been eliminated yet. The first casualty falls once Gameweek {startGw} is processed.
-                      </td>
-                    </tr>
-                  )}
-                  {dead.map((mgr: any) => {
-                    const justDied = mgr.eliminated_gw === currentGw;
-                    
-                    return (
-                      <tr key={mgr.season_managers.team_name} className={`${justDied ? 'bg-red-950/40 border-l-4 border-l-red-500' : 'hover:bg-slate-800/50'} transition-colors`}>
-                        <td className="p-4">
-                          <span className={`font-bold ${justDied ? 'text-red-400' : 'text-slate-500'}`}>
-                            GW {mgr.eliminated_gw}
-                          </span>
-                          {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
-                        </td>
-                        <td className="p-4">
-                          <TeamName name={mgr.season_managers.team_name} inline className="text-slate-200 line-through opacity-75" />
-                          <div className="text-xs text-slate-500">{mgr.season_managers.managers.real_name}</div>
-                        </td>
-                        <td className="p-4 text-right">
-                          <span className="text-lg font-black text-red-400">
-                            {getScore(mgr.manager_fpl_id, mgr.eliminated_gw || 1)} pts
-                          </span>
-                        </td>
+              {dead.length === 0 ? (
+                <div className="p-6 sm:p-8 text-center text-slate-500 italic">
+                  No one has been eliminated yet. The first casualty falls once Gameweek {startGw} is processed.
+                </div>
+              ) : (
+                <>
+                  {/* Mobile list */}
+                  <div className="md:hidden divide-y divide-slate-800 text-slate-300">
+                    {dead.map((mgr: any) => {
+                      const justDied = mgr.eliminated_gw === currentGw;
+                      return (
+                        <div key={mgr.season_managers.team_name} className={`p-3 flex items-center justify-between gap-3 ${justDied ? 'bg-red-950/40 border-l-4 border-l-red-500' : ''}`}>
+                          <div className="min-w-0">
+                            <div className={`text-xs font-bold ${justDied ? 'text-red-400' : 'text-slate-500'}`}>
+                              GW {mgr.eliminated_gw}
+                              {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
+                            </div>
+                            <TeamName name={mgr.season_managers.team_name} inline className="text-slate-200 line-through opacity-75 min-w-0" />
+                            <div className="text-xs text-slate-500">{mgr.season_managers.managers.real_name}</div>
+                          </div>
+                          <span className="shrink-0 text-lg font-black text-red-400">{getScore(mgr.manager_fpl_id, mgr.eliminated_gw || 1)} pts</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <table className="hidden md:table w-full text-left text-sm">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th className="p-4 font-semibold uppercase tracking-wider text-xs">Eliminated</th>
+                        <th className="p-4 font-semibold uppercase tracking-wider text-xs">Team & Manager</th>
+                        <th className="p-4 font-semibold uppercase tracking-wider text-xs text-right">Fatal Score</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                      {dead.map((mgr: any) => {
+                        const justDied = mgr.eliminated_gw === currentGw;
+                        
+                        return (
+                          <tr key={mgr.season_managers.team_name} className={`${justDied ? 'bg-red-950/40 border-l-4 border-l-red-500' : 'hover:bg-slate-800/50'} transition-colors`}>
+                            <td className="p-4">
+                              <span className={`font-bold ${justDied ? 'text-red-400' : 'text-slate-500'}`}>
+                                GW {mgr.eliminated_gw}
+                              </span>
+                              {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
+                            </td>
+                            <td className="p-4">
+                              <TeamName name={mgr.season_managers.team_name} inline className="text-slate-200 line-through opacity-75" />
+                              <div className="text-xs text-slate-500">{mgr.season_managers.managers.real_name}</div>
+                            </td>
+                            <td className="p-4 text-right">
+                              <span className="text-lg font-black text-red-400">
+                                {getScore(mgr.manager_fpl_id, mgr.eliminated_gw || 1)} pts
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </div>
           </section>
         </>

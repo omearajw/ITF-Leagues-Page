@@ -9,16 +9,20 @@ export default function Snippet({ preview, full, link }: { preview?: string, ful
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    setOverflow(el.scrollHeight > el.clientHeight || (full || '').length > (preview || '').length);
+    const check = () => setOverflow(el.scrollHeight > el.clientHeight || (full || '').length > (preview || '').length);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, [preview, full]);
 
   return (
-    <div>
-      <p ref={ref} className="italic mb-4 text-xs text-slate-500 line-clamp-3">
-        "{preview || full || 'No snippet.'}"{overflow && (
-          <Link href={link} className="text-blue-500 font-semibold hover:underline ml-1">Read more</Link>
-        )}
+    <div className="mb-4">
+      <p ref={ref} className="italic text-xs text-slate-500 line-clamp-3">
+        "{preview || full || 'No snippet.'}"
       </p>
+      {overflow && (
+        <Link href={link} className="inline-block mt-1 py-1 text-xs text-blue-500 font-semibold hover:underline">Read more</Link>
+      )}
     </div>
   );
 }

@@ -51,15 +51,6 @@ export default {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
-        keyframes: {
-        marquee: {
-          '0%': { transform: 'translateX(0%)' },
-          '100%': { transform: 'translateX(-50%)' }, // Moves half because we duplicated the content
-        }
-      },
-      animation: {
-        marquee: 'marquee 25s linear infinite',
-      }
       },
       borderRadius: {
         lg: "var(--radius)",

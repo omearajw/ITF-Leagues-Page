@@ -4,6 +4,13 @@ import { ACTIVE_DOT, STAGE_PILL } from '@/components/GameweekStrip';
 // Segment widths weight emphasis, not duration: Live is where people look most.
 const SEGMENT_WIDTHS = [28, 47, 25];
 
+const SHORT_LABEL: Record<GameweekStage, string> = {
+  upcoming: 'Upcoming',
+  live: 'Live',
+  awaiting: 'Results',
+  final: 'Final',
+};
+
 function Fact({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
@@ -43,7 +50,8 @@ export function StageCheckpoints({ stage, progress }: { stage: GameweekStage; pr
           const label = state === 'active' ? 'font-bold text-slate-900' : state === 'done' ? 'text-slate-500' : 'text-slate-400';
           return (
             <div key={seg} className={`${label} truncate pr-2`} style={{ width: `${SEGMENT_WIDTHS[i]}%` }}>
-              {STAGE_LABEL[seg]}
+              <span className="sm:hidden">{SHORT_LABEL[seg]}</span>
+              <span className="hidden sm:inline">{STAGE_LABEL[seg]}</span>
             </div>
           );
         })}
@@ -93,7 +101,7 @@ export default async function GameweekTimeline() {
           <div className="mt-5 mb-6">
             <StageCheckpoints stage={stage} progress={stageProgress(gw, now)} />
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Fact label="Deadline" value={formatUk(gw.deadline)} sub={gw.phase === 'upcoming' ? 'Upcoming' : 'Passed'} />
             <Fact
               label="Matches"

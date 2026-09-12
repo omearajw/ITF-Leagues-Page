@@ -9,8 +9,8 @@ export default function FormGrid() {
   return (
     <div className="max-w-[1400px] mx-auto pb-12 font-sans">
       <header className="mb-8">
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">H2H Form Matrix</h1>
-        <p className="text-slate-500">The season-long Win/Draw/Loss record for every division.</p>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">H2H Form Matrix</h1>
+        <p className="text-slate-500">The season-long Win/Draw/Loss record for every division.<span className="md:hidden"> Showing the last five results on small screens.</span></p>
       </header>
 
       <Suspense fallback={<FormGridSkeleton />}>
@@ -87,7 +87,44 @@ async function FormGridContent() {
               {divisionName}
             </div>
             
-            <div className="overflow-x-auto">
+            {/* Phones: last five results per manager instead of a 38-column grid */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {divManagers.map((manager: any) => {
+                const played = (manager.h2h_fixtures || [])
+                  .filter((f: any) => f.gw_number <= (gw.liveGw ?? gw.syncedThroughGw))
+                  .sort((a: any, b: any) => b.gw_number - a.gw_number);
+                const lastFive = played.slice(0, 5).reverse();
+                const tally = played.filter((f: any) => f.gw_number !== gw.liveGw).reduce((acc: Record<string, number>, f: any) => {
+                  acc[f.result] = (acc[f.result] || 0) + 1;
+                  return acc;
+                }, {});
+                return (
+                  <div key={manager.manager_fpl_id} className="p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <TeamName name={manager.team_name} inline className="text-slate-800 min-w-0" />
+                      <div className="text-xs text-slate-500">{manager.managers.real_name} · {tally.W || 0}W {tally.D || 0}D {tally.L || 0}L</div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {lastFive.length === 0 && <span className="text-xs text-slate-400 italic">No results yet</span>}
+                      {lastFive.map((f: any) => {
+                        const isLive = f.gw_number === gw.liveGw;
+                        return (
+                          <span
+                            key={f.gw_number}
+                            className={`w-7 h-7 flex items-center justify-center rounded text-xs ${getResultColor(f.result, isLive)}`}
+                            title={`GW${f.gw_number}: ${f.manager_score} - ${f.opponent_score}${isLive ? ' (live)' : ''}`}
+                          >
+                            {f.result}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm text-center border-collapse">
                 <thead className="bg-slate-50 border-b">
                   <tr>

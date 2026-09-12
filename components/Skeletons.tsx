@@ -19,15 +19,15 @@ function SkeletonBox({ className }: { className?: string }) {
 export function GameweekStripSkeleton() {
   return (
     <div className="bg-white border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 flex items-center">
-        <SkeletonBox className="h-4 w-72 rounded" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 py-2 flex items-center">
+        <SkeletonBox className="h-4 w-72 max-w-full rounded" />
       </div>
     </div>
   );
 }
 
 export function GameweekTimelineSkeleton() {
-  return <SkeletonBox className="h-44 w-full" />;
+  return <SkeletonBox className="h-[22rem] sm:h-60 lg:h-44 w-full" />;
 }
 
 // 1. Eliminator Skeleton
@@ -36,14 +36,14 @@ export function EliminatorSkeleton({ phase = 'active' }: { phase?: 'pre' | 'acti
     <div className="space-y-12">
       <div>
         <div className="flex items-center justify-between mb-4 gap-4">
-          <SkeletonBox className="h-10 w-72" />
-          <SkeletonBox className="h-8 w-64 rounded" />
+          <SkeletonBox className="h-8 sm:h-10 w-48 sm:w-72" />
+          <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
         </div>
         <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
       </div>
 
       {phase === 'pre' ? (
-        <section className="bg-white border border-slate-200 rounded-xl p-12 shadow-sm">
+        <section className="bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
           <div className="flex flex-col items-center">
             <SkeletonBox className="h-10 w-72 mb-4" />
             <SkeletonBox className="h-6 w-[28rem] max-w-full" />
@@ -83,8 +83,8 @@ export function OnionBaggersSkeleton({ phase = 'qualifying' }: { phase?: 'pre' |
   return (
     <div className="space-y-10">
       <div className="flex justify-between items-end mb-2 gap-4">
-        <SkeletonBox className="h-10 w-80" />
-        <SkeletonBox className="h-8 w-64 rounded" />
+        <SkeletonBox className="h-8 sm:h-10 w-56 sm:w-80" />
+        <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
       </div>
       <div className="flex gap-4 mb-4">
         <SkeletonBox className="h-8 w-52 rounded-md" />
@@ -93,7 +93,7 @@ export function OnionBaggersSkeleton({ phase = 'qualifying' }: { phase?: 'pre' |
       <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
 
       {phase === 'pre' && (
-        <section className="bg-white border border-slate-200 rounded-xl p-12 shadow-sm">
+        <section className="bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
           <div className="flex flex-col items-center">
             <SkeletonBox className="h-10 w-72 mb-4" />
             <SkeletonBox className="h-6 w-[30rem] max-w-full" />
@@ -131,8 +131,8 @@ export function DivisionSkeleton() {
     <div className="space-y-10">
       <div>
         <div className="flex items-center justify-between mb-4 gap-4">
-          <SkeletonBox className="h-10 w-64" />
-          <SkeletonBox className="h-8 w-64 rounded" />
+          <SkeletonBox className="h-8 sm:h-10 w-44 sm:w-64" />
+          <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
         </div>
         <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
       </div>
@@ -245,7 +245,7 @@ export function FormGridSkeleton() {
   return (
     <div className="space-y-12">
       <div className="flex justify-end">
-        <SkeletonBox className="h-8 w-64 rounded" />
+        <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
       </div>
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <SkeletonBox className="h-12 w-full rounded-none" />
@@ -280,8 +280,8 @@ export function ChampionsLeagueSkeleton() {
     <div className="space-y-10">
       <div>
         <div className="flex items-end justify-between mb-3 gap-4">
-          <SkeletonBox className="h-10 w-72" />
-          <SkeletonBox className="h-8 w-64 rounded" />
+          <SkeletonBox className="h-8 sm:h-10 w-48 sm:w-72" />
+          <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
         </div>
         <div className="flex gap-3">
           <SkeletonBox className="h-8 w-28 rounded-md" />
