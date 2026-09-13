@@ -1,4 +1,5 @@
 import { getGameweekStatus, describePhase, stageOf, STAGE_ORDER, STAGE_LABEL, type GameweekStage } from '@/lib/gameweek-status';
+import { getLastSyncedAt, describeAgo } from '@/lib/sync-status';
 
 export const ACTIVE_DOT: Record<GameweekStage, string> = {
   upcoming: 'bg-dim',
@@ -35,14 +36,15 @@ export function StageDots({ stage }: { stage: GameweekStage }) {
 }
 
 export default async function GameweekStrip() {
-  const gw = await getGameweekStatus();
+  const [gw, lastSynced] = await Promise.all([getGameweekStatus(), getLastSyncedAt()]);
   const stage = stageOf(gw.phase);
+  const ago = describeAgo(lastSynced);
   return (
     <div className="bg-surface border-b border-line">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="font-black text-ink">GW{gw.activeGw}</span>
         {stage && <StageDots stage={stage} />}
-        <span className="text-dim sm:ml-auto">{describePhase(gw)}</span>
+        <span className="text-dim sm:ml-auto">{describePhase(gw)}{ago ? ` · updated ${ago}` : ''}</span>
       </div>
     </div>
   );

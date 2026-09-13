@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import TeamName from '@/components/TeamName';
 import { DivisionSkeleton } from '@/components/Skeletons';
-import GameweekBadge from '@/components/GameweekBadge';
+import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import DivisionFixtures from '@/components/DivisionFixtures';
 import { DIVISIONS } from '@/lib/divisions';
@@ -54,7 +54,7 @@ async function DivisionContent() {
     return <div className="p-10 text-red-500">Error loading division: {error.message}</div>;
   }
 
-  // Results count only confirmed gameweeks; FPL Pts stay live unless a limit is given.
+  // Results count only confirmed gameweeks; the season total stays live unless a limit is given.
   const buildTable = (resultsThroughGw: number, totalsThroughGw: number | null) => {
     const rows = managers?.map((mgr: any) => {
       let w = 0, d = 0, l = 0;
@@ -104,9 +104,7 @@ async function DivisionContent() {
       <PageHeader
         title={DIVISION_NAME}
         badge={(
-          <GameweekBadge provisional={!!gw.liveGw} short={gw.liveGw ? `Results to GW${currentGw} · FPL live` : `Final to GW${currentGw}`}>
-            {gw.liveGw ? `Results through GW${currentGw} · FPL Pts live` : `Table through GW${currentGw} · final`}
-          </GameweekBadge>
+          <GameweekChip gw={gw} />
         )}
         actions={(
           <Link href="/form" className="text-xs sm:text-sm bg-brand-2/10 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/15 transition">
@@ -114,13 +112,15 @@ async function DivisionContent() {
           </Link>
         )}
       >
-        <div className="bg-surface border-l-4 border-brand p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
-          {contentData?.content || 'No editor summary available for this division yet.'}
-        </div>
+        {contentData?.content && (
+          <div className="bg-surface border-l-4 border-brand p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
+            {contentData.content}
+          </div>
+        )}
       </PageHeader>
 
       {gw.liveGw && (
-        <p className="text-xs text-dim mb-2">FPL Pts include GW{gw.liveGw} live scores. Wins, draws, losses and Pts update once GW{gw.liveGw} is confirmed.</p>
+        <p className="text-xs text-dim mb-2">Total updates live. W/D/L, Pts and positions update once GW{gw.liveGw} is confirmed.</p>
       )}
 
       <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
@@ -134,7 +134,7 @@ async function DivisionContent() {
                 <th className="p-4 text-center w-16">W</th>
                 <th className="p-4 text-center w-16">D</th>
                 <th className="p-4 text-center w-16">L</th>
-                <th className="p-4 text-right w-24">FPL Pts</th>
+                <th className="p-4 text-right w-24">Total</th>
                 <th className="p-4 text-right w-24 text-brand-2 font-bold">Pts</th>
               </tr>
             </thead>
@@ -193,7 +193,7 @@ async function DivisionContent() {
               </div>
               <div className="mt-2 pt-2 border-t border-line flex items-center justify-between text-xs text-dim">
                 <span>P <b className="text-ink-2">{team.played}</b> · W <b className="text-green-400">{team.won}</b> · D <b className="text-dim">{team.drawn}</b> · L <b className="text-red-500">{team.lost}</b></span>
-                <span>FPL Pts <b className="text-ink-2">{team.totalPoints}</b></span>
+                <span>Total <b className="text-ink-2">{team.totalPoints}</b></span>
               </div>
             </div>
           ))}

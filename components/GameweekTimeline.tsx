@@ -1,5 +1,6 @@
 import { getGameweekStatus, describePhase, formatUk, formatUkShort, stageOf, stageProgress, STAGE_ORDER, STAGE_LABEL, type GameweekStage } from '@/lib/gameweek-status';
 import { ACTIVE_DOT, STAGE_PILL } from '@/components/GameweekStrip';
+import { getLastSyncedAt, describeAgo } from '@/lib/sync-status';
 
 // Segment widths weight emphasis, not duration: Live is where people look most.
 const SEGMENT_WIDTHS = [28, 47, 25];
@@ -68,9 +69,10 @@ function matchesLabel(first: string | null, last: string | null): string {
 }
 
 export default async function GameweekTimeline() {
-  const gw = await getGameweekStatus();
+  const [gw, lastSynced] = await Promise.all([getGameweekStatus(), getLastSyncedAt()]);
   const stage = stageOf(gw.phase);
   const now = Date.now();
+  const ago = describeAgo(lastSynced, now);
 
   const resultsValue = gw.phase === 'synced' ? 'Confirmed'
     : gw.phase === 'confirmed' ? 'Confirmed'
@@ -88,7 +90,7 @@ export default async function GameweekTimeline() {
             {STAGE_LABEL[stage]}
           </span>
         )}
-        <span className="text-sm text-dim sm:ml-auto">{describePhase(gw)}</span>
+        <span className="text-sm text-dim sm:ml-auto">{describePhase(gw)}{ago ? ` · updated ${ago}` : ''}</span>
       </div>
 
       {!gw.fplAvailable || !stage ? (

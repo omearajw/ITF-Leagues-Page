@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { EliminatorSkeleton } from '@/components/Skeletons';
-import GameweekBadge from '@/components/GameweekBadge';
+import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { eliminatorNextLine } from '@/lib/tournament-next';
@@ -106,18 +106,18 @@ async function EliminatorContent() {
           </span>
         )}
         badge={(
-          <GameweekBadge
-            provisional={!!gw.liveGw && !isPreTournament}
-            short={isPreTournament ? `Starts GW${startGw}` : gw.liveGw ? `GW${gw.liveGw} live scores` : `Final to GW${currentGw}`}
-          >
-            {isPreTournament ? `Starts GW${startGw}` : gw.liveGw ? `Survivors show GW${gw.liveGw} live scores · provisional` : `Eliminations through GW${currentGw} · final`}
-          </GameweekBadge>
+          <GameweekChip gw={gw} startGw={startGw} />
         )}
       >
-        <div className="bg-surface border-l-4 border-red-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
-          {contentData?.content || 'No editor summary available.'}
-        </div>
-        <p className="text-sm text-dim mt-3">{nextLine}</p>
+        {contentData?.content && (
+          <div className="bg-surface border-l-4 border-red-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
+            {contentData.content}
+          </div>
+        )}
+        <p className="text-sm text-dim mt-3">
+          {nextLine}
+          {gw.liveGw && !isPreTournament ? ` · Survivors show GW${gw.liveGw} points so far; the cut is made once the week is confirmed.` : ''}
+        </p>
       </PageHeader>
 
       {/* CONDITIONAL RENDER: PRE-TOURNAMENT VS ACTIVE TOURNAMENT */}
@@ -195,7 +195,7 @@ async function EliminatorContent() {
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-xl font-black text-ink">{getScore(mgr.manager_fpl_id, displayGw)}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">Pts</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">Points</span>
                   </div>
                 </div>
               ))}

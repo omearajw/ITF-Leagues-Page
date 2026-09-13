@@ -6,7 +6,7 @@ import { DashboardSkeleton } from '@/components/Skeletons';
 import Snippet from '@/components/snippet';
 import Marquee from '@/components/Marquee';
 import GameweekTimeline from '@/components/GameweekTimeline';
-import GameweekBadge from '@/components/GameweekBadge';
+import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
@@ -172,12 +172,11 @@ async function DashboardContent() {
       <div className="flex flex-col gap-10">
         {/* ROW 1: THE DIVISIONS */}
         <section>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1 border-b pb-2">
             <h2 className="text-xl font-bold">League</h2>
-            <GameweekBadge provisional={!!gw.liveGw} short={gw.liveGw ? `H2H to GW${currentGw} · FPL live` : `Final to GW${currentGw}`}>
-              {gw.liveGw ? `H2H through GW${currentGw} · FPL Pts live` : `Standings through GW${currentGw} · final`}
-            </GameweekBadge>
+            <GameweekChip gw={gw} />
           </div>
+          <p className="text-xs text-dim mb-4">{gw.liveGw ? `Pts and positions update once GW${gw.liveGw} is confirmed.` : `Standings after GW${currentGw}.`}</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
             <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} fullSnippet={snippets['championship']} teams={championshipTeams} movement={divisionMovement(championshipTeams, 'Championship')} />
@@ -262,7 +261,7 @@ async function DashboardContent() {
           <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-4">
             <h2 className="text-xl font-bold">ITF Open - Top 10</h2>
             <div className="flex flex-wrap items-center gap-3">
-              <GameweekBadge provisional={showingLive} short={showingLive ? `GW${scoresGw} live` : `GW${scoresGw} final`}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
+              <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
               <Link href="/itf-open" className="text-sm text-brand-2 hover:underline">View Full Table &rarr;</Link>
             </div>
           </div>
@@ -291,7 +290,7 @@ async function DashboardContent() {
                   <th className="p-3">Rank</th>
                   <th className="p-3">Team & Manager</th>
                   <th className="p-3">Division</th>
-                  <th className="p-3 text-right">Points</th>
+                  <th className="p-3 text-right">Total</th>
                 </tr>
               </thead>
               <tbody>

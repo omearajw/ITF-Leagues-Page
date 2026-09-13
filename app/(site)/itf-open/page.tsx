@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ITFOpenSkeleton } from '@/components/Skeletons';
-import GameweekBadge from '@/components/GameweekBadge';
+import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
@@ -35,6 +35,7 @@ async function ITFOpenContent() {
     .from('manager_gw_scores')
     .select(`
       manager_fpl_id,
+      points,
       classic_total_points,
       season_managers!inner (
         team_name,
@@ -71,10 +72,11 @@ async function ITFOpenContent() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-dim">
-        <span>Showing scores for <strong>GW{scoresGw}</strong></span>
-        <GameweekBadge provisional={showingLive}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3 text-sm text-dim">
+        <span>Season totals after <strong>GW{scoresGw}</strong></span>
+        <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
       </div>
+      <p className="text-xs text-dim mb-4">{showingLive ? `Includes GW${scoresGw} points so far; final once FPL confirms the week.` : 'Confirmed totals.'}</p>
       <div className="overflow-x-auto hidden md:block">
       <table className="w-full text-left border-collapse">
         <thead>
@@ -82,7 +84,8 @@ async function ITFOpenContent() {
             <th className="p-3">Rank</th>
             <th className="p-3">Team & Manager</th>
             <th className="p-3">Division</th>
-            <th className="p-3 text-right">Total Points</th>
+            <th className="p-3 text-right">GW{scoresGw}</th>
+            <th className="p-3 text-right">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -101,6 +104,7 @@ async function ITFOpenContent() {
                   {manager.season_managers.division}
                 </span>
               </td>
+              <td className={`p-3 text-right font-semibold ${showingLive ? 'text-amber-300' : 'text-ink-2'}`}>{manager.points}</td>
               <td className="p-3 text-right font-bold text-lg">
                 {manager.classic_total_points}
               </td>
@@ -121,6 +125,7 @@ async function ITFOpenContent() {
               </div>
               <div className="text-right">
                 <div className="text-sm font-black text-ink">{manager.classic_total_points}</div>
+                <div className={`text-xs ${showingLive ? 'text-amber-300' : 'text-dim'}`}>GW{scoresGw}: {manager.points}</div>
                 <div className="text-xs mt-1"><span className="px-2 py-1 bg-brand-2/15 text-brand-2 text-xs rounded-full">{manager.season_managers.division}</span></div>
               </div>
             </div>

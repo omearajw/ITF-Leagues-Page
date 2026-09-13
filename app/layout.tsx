@@ -3,8 +3,6 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import MobileNav from '@/components/mobile-nav';
-import GameweekStrip from '@/components/GameweekStrip';
-import { GameweekStripSkeleton } from '@/components/Skeletons';
 
 export const metadata = {
   title: 'ITF League Hub',
@@ -118,14 +116,8 @@ export default function RootLayout({
           <Navbar />
         </Suspense>
 
-        <Suspense fallback={<GameweekStripSkeleton />}>
-          <GameweekStrip />
-        </Suspense>
-
-        {/* PAGE CONTENT GOES HERE */}
-        <main className="flex-grow max-w-7xl mx-auto w-full p-4 sm:p-7 lg:p-8">
-          {children}
-        </main>
+        {/* Route groups supply the page body: (site) adds the gameweek strip, (home) has the timeline card instead */}
+        {children}
 
         {/* GLOBAL FOOTER */}
         <footer className="bg-panel text-dim text-center py-8 text-sm mt-auto pb-10 relative z-30">

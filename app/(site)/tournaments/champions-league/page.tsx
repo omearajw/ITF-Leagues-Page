@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ChampionsLeagueSkeleton } from '@/components/Skeletons';
-import GameweekBadge, { LiveChip } from '@/components/GameweekBadge';
+import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
@@ -112,12 +112,7 @@ async function ChampionsLeagueContent() {
       <PageHeader
         title="Champions League"
         badge={(
-          <GameweekBadge
-            provisional={!!gw.liveGw && !isPreTournament}
-            short={isPreTournament ? `Starts GW${s1Start}` : gw.liveGw ? `Table to GW${currentGw} · GW${gw.liveGw} live` : `Final to GW${currentGw}`}
-          >
-            {isPreTournament ? `Starts GW${s1Start}` : gw.liveGw ? `Standings through GW${currentGw} · GW${gw.liveGw} ties live` : `Standings through GW${currentGw} · final`}
-          </GameweekBadge>
+          <GameweekChip gw={gw} startGw={s1Start} />
         )}
       >
         <div className="flex flex-wrap gap-x-6 gap-y-1 mb-4 text-xs sm:text-sm font-semibold uppercase tracking-wider">
@@ -125,7 +120,10 @@ async function ChampionsLeagueContent() {
           <span className={isStage2Active || isWaitingForFinal ? 'text-indigo-300 border-b-2 border-indigo-500 pb-0.5' : 'text-faint'}>Stage 2 · GW{s2Start}</span>
           <span className={isFinalLive ? 'text-indigo-300 border-b-2 border-indigo-500 pb-0.5' : 'text-faint'}>Final · GW{finalStart}</span>
         </div>
-        <p className="text-sm text-dim">{championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}</p>
+        <p className="text-sm text-dim">
+          {championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}
+          {gw.liveGw && !isPreTournament ? ` · GW${gw.liveGw} ties are live in Fixtures & Results; standings update once the week is confirmed.` : ''}
+        </p>
       </PageHeader>
 
       {/* TWO COLUMN LAYOUT */}
@@ -135,9 +133,26 @@ async function ChampionsLeagueContent() {
         <div className="xl:col-span-2 space-y-8 sm:space-y-12">
           
           {isPreTournament && (
-            <div className="text-center bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
-              <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">Elite Group Locked In</h2>
-              <p className="text-dim mb-8">Campaign begins in <strong>{s1Start - currentGw} Gameweeks</strong>.</p>
+            <div className="bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">Elite Group Locked In</h2>
+                <p className="text-dim">Campaign begins in <strong>{s1Start - currentGw} Gameweeks</strong>.</p>
+              </div>
+              {Object.keys(entrants).length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {Object.values(entrants).map((e: any) => (
+                    <div key={e.id} className="bg-surface-2 border border-line rounded-lg p-3 flex items-center gap-3">
+                      <span className="text-indigo-300" aria-hidden="true">★</span>
+                      <div className="min-w-0">
+                        <TeamName name={e.teamName} inline className="text-ink min-w-0" />
+                        <div className="text-xs text-dim">{e.managerName}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-sm text-faint italic">Entrants have not been selected yet.</p>
+              )}
             </div>
           )}
 
@@ -340,7 +355,7 @@ function StageList({ data, isLive, eliminateCount, highlightTop, movement = {} }
             </div>
             <div className="mt-2 pt-2 border-t border-line/70 flex items-center justify-between text-xs text-dim">
               <span>P <b className="text-ink-2">{team.played}</b> · W <b className="text-green-400">{team.won}</b> · D <b className="text-dim">{team.drawn}</b> · L <b className="text-red-500">{team.lost}</b></span>
-              <span>FPL Pts <b className="text-ink-2">{team.totalScore}</b></span>
+              <span>Total <b className="text-ink-2">{team.totalScore}</b></span>
             </div>
           </div>
         );
@@ -365,7 +380,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
               <th className="p-4 text-center w-16">W</th>
               <th className="p-4 text-center w-16">D</th>
               <th className="p-4 text-center w-16">L</th>
-              <th className="p-4 text-right w-24">FPL Pts</th>
+              <th className="p-4 text-right w-24">Total</th>
               <th className="p-4 text-right w-24 text-indigo-300 font-bold">Pts</th>
             </tr>
           </thead>
@@ -378,7 +393,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
               let badge = null;
 
               if (isLive && isBottom) {
-                rowClass = "bg-red-500/10 hover:bg-red-500/15/50 text-red-200 transition-colors";
+                rowClass = "bg-red-500/10 hover:bg-red-500/15 text-red-200 transition-colors";
                 badge = <span className="text-[10px] bg-orange-500/15 text-orange-300 border border-orange-500/30 px-2 py-0.5 rounded font-bold uppercase">Danger Zone</span>;
               } else if (!isLive && isBottom) {
                 rowClass = "bg-surface-2 text-faint opacity-60 grayscale";
@@ -402,7 +417,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
                   <td className="p-4 text-center font-semibold">{team.drawn}</td>
                   <td className="p-4 text-center font-semibold">{team.lost}</td>
                   <td className="p-4 text-right">{team.totalScore}</td>
-                  <td className="p-4 text-right font-black text-lg bg-black/5">{team.points}</td>
+                  <td className="p-4 text-right font-black text-lg bg-white/5">{team.points}</td>
                 </tr>
               );
             })}

@@ -1,4 +1,5 @@
 import React from 'react';
+import type { GameweekStatus } from '@/lib/gameweek-status';
 
 // `short` is an optional compact wording shown below the sm breakpoint.
 export default function GameweekBadge({ provisional, children, short, className = '' }: { provisional: boolean; children: React.ReactNode; short?: React.ReactNode; className?: string }) {
@@ -30,4 +31,15 @@ export function LiveChip({ label = 'Live' }: { label?: string }) {
       {label}
     </span>
   );
+}
+
+// The one badge every page uses: which week the numbers cover and whether they are final.
+// Pages add a sentence of detail below the table where it matters.
+export function GameweekChip({ gw, startGw, week, live }: { gw: GameweekStatus; startGw?: number; week?: number; live?: boolean }) {
+  if (startGw && gw.syncedThroughGw + 1 < startGw && !(gw.liveGw && gw.liveGw >= startGw)) {
+    return <GameweekBadge provisional={false}>Starts GW{startGw}</GameweekBadge>;
+  }
+  const isLive = live ?? !!gw.liveGw;
+  const shown = week ?? (isLive ? (gw.liveGw as number) : gw.syncedThroughGw);
+  return <GameweekBadge provisional={isLive}>GW{shown} · {isLive ? 'Live' : 'Final'}</GameweekBadge>;
 }

@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import { Suspense } from 'react';
 import { FormGridSkeleton } from '@/components/Skeletons';
-import GameweekBadge from '@/components/GameweekBadge';
+import { GameweekChip } from '@/components/GameweekBadge';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function FormGrid() {
@@ -88,9 +88,7 @@ async function FormGridContent() {
             dashed = live result, may change
           </span>
         )}
-        <GameweekBadge provisional={!!gw.liveGw}>
-          {gw.liveGw ? `GW${gw.liveGw} in progress · provisional` : `Results through GW${gw.syncedThroughGw} · final`}
-        </GameweekBadge>
+        <GameweekChip gw={gw} />
       </div>
       {divisions.map((divisionName) => {
         const divManagers = (managers?.filter(m => m.division === divisionName) || [])

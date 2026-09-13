@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
 import { OnionBaggersSkeleton } from '@/components/Skeletons';
-import GameweekBadge, { LiveChip } from '@/components/GameweekBadge';
+import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { onionBaggersNextLine } from '@/lib/tournament-next';
@@ -100,16 +100,7 @@ async function OnionBaggersContent() {
       <PageHeader
         title="Onion Baggers Cup"
         badge={(
-          <GameweekBadge
-            provisional={!!gw.liveGw && !isPreTournament}
-            short={isPreTournament ? `Starts GW${qStart}` : gw.liveGw ? `GW${gw.liveGw} live` : `Final to GW${currentGw}`}
-          >
-            {isPreTournament
-              ? `Starts GW${qStart}`
-              : gw.liveGw
-                ? (isKnockouts ? `GW${gw.liveGw} ties live · provisional` : `GW${gw.liveGw} live scores · provisional`)
-                : (isKnockouts ? `Bracket through GW${currentGw} · final` : `Qualifiers through GW${currentGw} · final`)}
-          </GameweekBadge>
+          <GameweekChip gw={gw} startGw={qStart} />
         )}
       >
         {/* Qualifying runs for eight gameweeks; knockouts start later so the final lands in the penultimate week. */}
@@ -117,10 +108,15 @@ async function OnionBaggersContent() {
           <span className={(isQualifying || isPreTournament) ? 'text-orange-300 border-b-2 border-orange-500 pb-0.5' : 'text-faint'}>Qualifiers · GW{qStart}–{qStart + 7}</span>
           <span className={isKnockouts ? 'text-orange-300 border-b-2 border-orange-500 pb-0.5' : 'text-faint'}>Knockouts · GW{kStart}+</span>
         </div>
-        <div className="bg-surface border-l-4 border-orange-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
-          {contentData?.content || 'No editor summary available.'}
-        </div>
-        <p className="text-sm text-dim mt-3">{nextLine}</p>
+        {contentData?.content && (
+          <div className="bg-surface border-l-4 border-orange-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
+            {contentData.content}
+          </div>
+        )}
+        <p className="text-sm text-dim mt-3">
+          {nextLine}
+          {gw.liveGw && !isPreTournament ? ` · GW${gw.liveGw} points update live; qualification is decided once the week is confirmed.` : ''}
+        </p>
       </PageHeader>
 
       {/* PHASE 0: PRE-TOURNAMENT */}
@@ -156,7 +152,7 @@ async function OnionBaggersContent() {
                 </thead>
                 
                 {/* SECTION: QUALIFIED */}
-                <tbody className="divide-y divide-green-500/20 bg-green-500/10/20">
+                <tbody className="divide-y divide-green-500/20 bg-green-500/10">
                   {qualifiedManagers.length > 0 && (
                     <tr>
                       <td colSpan={gwColumns.length + 2} className="bg-green-500/15 text-green-300 font-bold uppercase tracking-widest text-xs px-4 py-2 border-y border-green-500/30">
@@ -168,9 +164,9 @@ async function OnionBaggersContent() {
                     const isNewlyQualified = entrant.qualified_in_gw === currentGw;
                     
                     return (
-                      <tr key={entrant.seed} className={`transition-colors ${isNewlyQualified ? 'bg-green-500/15/50 hover:bg-green-500/15' : 'hover:bg-green-500/10'}`}>
-                        <td className="p-4 text-center font-black text-green-400 border-r border-green-500/20/50">#{entrant.seed}</td>
-                        <td className={`p-4 border-r border-green-500/20/50 sticky left-0 z-10 transition-colors ${isNewlyQualified ? 'bg-green-500/10/50 group-hover:bg-green-500/15' : 'bg-surface group-hover:bg-green-500/10'}`}>
+                      <tr key={entrant.seed} className={`transition-colors ${isNewlyQualified ? 'bg-green-500/15 hover:bg-green-500/15' : 'hover:bg-green-500/10'}`}>
+                        <td className="p-4 text-center font-black text-green-400 border-r border-green-500/20">#{entrant.seed}</td>
+                        <td className={`p-4 border-r border-green-500/20 sticky left-0 z-10 transition-colors ${isNewlyQualified ? 'bg-green-500/10 group-hover:bg-green-500/15' : 'bg-surface group-hover:bg-green-500/10'}`}>
                           <div className="font-bold text-ink flex items-center gap-2">
                             <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} inline />
                             {isNewlyQualified && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">Newly Qualified</span>}
@@ -180,7 +176,7 @@ async function OnionBaggersContent() {
                         {gwColumns.map(gw => {
                           const isQualWeek = gw === entrant.qualified_in_gw;
                           return (
-                            <td key={gw} className={`p-4 text-center font-mono ${isQualWeek ? 'bg-green-500/15/80 text-green-400 font-black text-lg' : 'text-ink-2'}`}>
+                            <td key={gw} className={`p-4 text-center font-mono ${isQualWeek ? 'bg-green-500/15 text-green-400 font-black text-lg' : 'text-ink-2'}`}>
                               {isQualWeek ? getScore(entrant.manager_fpl_id, gw) : '-'}
                             </td>
                           );
@@ -226,7 +222,7 @@ async function OnionBaggersContent() {
                     {qualifiedManagers.map((entrant) => {
                       const isNewlyQualified = entrant.qualified_in_gw === currentGw;
                       return (
-                        <div key={entrant.seed} className={`bg-surface border rounded-lg p-3 shadow-sm flex items-center justify-between gap-3 ${isNewlyQualified ? 'border-green-500/40 bg-green-500/10/40' : 'border-green-500/20'}`}>
+                        <div key={entrant.seed} className={`bg-surface border rounded-lg p-3 shadow-sm flex items-center justify-between gap-3 ${isNewlyQualified ? 'border-green-500/40 bg-green-500/10' : 'border-green-500/20'}`}>
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="w-8 shrink-0 text-sm font-black text-green-400">#{entrant.seed}</span>
                             <div className="min-w-0">
@@ -364,7 +360,7 @@ function BracketMatch({ fix, teamMap, isFinal, liveGw }: { fix: any, teamMap: an
   const isPlayed = fix.manager_1_score !== null;
   const isLiveFix = isPlayed && fix.gw_number === liveGw;
   return (
-    <div className={`flex flex-col rounded-lg border bg-surface shadow-sm overflow-hidden ${isFinal ? 'border-orange-500/40 shadow-orange-100 ring-2 ring-orange-50' : 'border-line'}`}>
+    <div className={`flex flex-col rounded-lg border bg-surface shadow-sm overflow-hidden ${isFinal ? 'border-orange-500/40 ring-2 ring-orange-500/20' : 'border-line'}`}>
       <div className="bg-surface-2 px-3 py-1.5 flex justify-between items-center border-b border-line">
         <span className="text-[10px] font-bold text-faint uppercase tracking-widest flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
         {fix.winner_id && isFinal && !isLiveFix && <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded font-black uppercase tracking-widest">Champion</span>}
@@ -388,7 +384,7 @@ function MatchRow({ managerId, score, isWinner, isPlayed, isLive, teamMap }: { m
   }
 
   return (
-    <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isLive && !isWinner ? 'opacity-40 bg-surface-2' : ''} ${isWinner ? 'bg-green-500/10/50' : 'bg-surface'}`}>
+    <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isLive && !isWinner ? 'opacity-40 bg-surface-2' : ''} ${isWinner ? 'bg-green-500/10' : 'bg-surface'}`}>
       <TeamName
         name={teamMap[managerId]?.teamName}
         inline
