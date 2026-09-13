@@ -7,7 +7,7 @@ import React from 'react';
 // you ONLY change this one component.
 function SkeletonBox({ className }: { className?: string }) {
   return (
-    <div className={`bg-slate-200 animate-pulse rounded-xl ${className || ''}`} />
+    <div className={`bg-surface-3 animate-pulse rounded-xl ${className || ''}`} />
   );
 }
 
@@ -18,7 +18,7 @@ function SkeletonBox({ className }: { className?: string }) {
 // 0. Gameweek status strip (layout) and dashboard timeline
 export function GameweekStripSkeleton() {
   return (
-    <div className="bg-white border-b border-slate-200">
+    <div className="bg-surface border-b border-line">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 py-2 flex items-center">
         <SkeletonBox className="h-4 w-72 max-w-full rounded" />
       </div>
@@ -39,11 +39,11 @@ export function EliminatorSkeleton({ phase = 'active' }: { phase?: 'pre' | 'acti
           <SkeletonBox className="h-8 sm:h-10 w-48 sm:w-72" />
           <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
         </div>
-        <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
+        <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-line" />
       </div>
 
       {phase === 'pre' ? (
-        <section className="bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
+        <section className="bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
           <div className="flex flex-col items-center">
             <SkeletonBox className="h-10 w-72 mb-4" />
             <SkeletonBox className="h-6 w-[28rem] max-w-full" />
@@ -68,8 +68,8 @@ export function EliminatorSkeleton({ phase = 'active' }: { phase?: 'pre' | 'acti
 
           <div>
             <SkeletonBox className="h-8 w-56 mb-6 rounded-md" />
-            <div className="bg-slate-900 rounded-xl p-4">
-              <SkeletonBox className="h-56 w-full bg-slate-700" />
+            <div className="bg-panel rounded-xl p-4">
+              <SkeletonBox className="h-56 w-full bg-surface-3" />
             </div>
           </div>
         </>
@@ -90,10 +90,10 @@ export function OnionBaggersSkeleton({ phase = 'qualifying' }: { phase?: 'pre' |
         <SkeletonBox className="h-8 w-52 rounded-md" />
         <SkeletonBox className="h-8 w-44 rounded-md" />
       </div>
-      <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
+      <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-line" />
 
       {phase === 'pre' && (
-        <section className="bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
+        <section className="bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
           <div className="flex flex-col items-center">
             <SkeletonBox className="h-10 w-72 mb-4" />
             <SkeletonBox className="h-6 w-[30rem] max-w-full" />
@@ -107,7 +107,7 @@ export function OnionBaggersSkeleton({ phase = 'qualifying' }: { phase?: 'pre' |
             <SkeletonBox className="h-8 w-64 rounded-md" />
             <SkeletonBox className="h-3 w-3 rounded-full" />
           </div>
-          <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
             <SkeletonBox className="h-[520px] w-full rounded-none" />
           </div>
         </section>
@@ -116,7 +116,7 @@ export function OnionBaggersSkeleton({ phase = 'qualifying' }: { phase?: 'pre' |
       {phase === 'knockouts' && (
         <section>
           <SkeletonBox className="h-8 w-56 mb-6 rounded-md" />
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div className="bg-surface rounded-xl shadow-sm border border-line p-6">
             <SkeletonBox className="h-[420px] w-full" />
           </div>
         </section>
@@ -134,13 +134,13 @@ export function DivisionSkeleton() {
           <SkeletonBox className="h-8 sm:h-10 w-44 sm:w-64" />
           <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
         </div>
-        <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-slate-300" />
+        <SkeletonBox className="h-24 w-full rounded-r-xl border-l-4 border-line" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
-          <div className="p-4 bg-slate-900">
-            <SkeletonBox className="h-6 w-full bg-slate-700" />
+          <div className="p-4 bg-panel">
+            <SkeletonBox className="h-6 w-full bg-surface-3" />
           </div>
           <div className="space-y-2 p-4">
             <SkeletonBox className="h-12 w-full" />
@@ -195,10 +195,10 @@ export function DashboardSkeleton() {
 export function AdminSkeleton() {
   return (
     <div className="space-y-8">
-      <SkeletonBox className="h-24 w-full bg-slate-300" />
+      <SkeletonBox className="h-24 w-full bg-surface-3" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-xl border shadow-sm space-y-5">
+        <div className="bg-surface p-6 rounded-xl border shadow-sm space-y-5">
           <SkeletonBox className="h-8 w-56 rounded-md" />
           <SkeletonBox className="h-28 w-full" />
           <SkeletonBox className="h-32 w-full" />
@@ -206,7 +206,7 @@ export function AdminSkeleton() {
           <SkeletonBox className="h-11 w-full rounded-lg" />
         </div>
 
-        <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
+        <div className="bg-surface p-6 rounded-xl border shadow-sm space-y-4">
           <SkeletonBox className="h-8 w-64 rounded-md" />
           <SkeletonBox className="h-5 w-72 rounded-md" />
           <div className="space-y-2">
@@ -228,7 +228,7 @@ export function AdminSkeleton() {
 export function EditorSkeleton() {
   return (
     <div className="space-y-6">
-      <SkeletonBox className="h-16 w-full rounded-xl border border-slate-200" />
+      <SkeletonBox className="h-16 w-full rounded-xl border border-line" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <SkeletonBox className="h-72 w-full" />
@@ -247,17 +247,17 @@ export function FormGridSkeleton() {
       <div className="flex justify-end">
         <SkeletonBox className="h-7 sm:h-8 w-full sm:w-64 rounded" />
       </div>
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
         <SkeletonBox className="h-12 w-full rounded-none" />
         <SkeletonBox className="h-80 w-full rounded-none" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
         <SkeletonBox className="h-12 w-full rounded-none" />
         <SkeletonBox className="h-80 w-full rounded-none" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
         <SkeletonBox className="h-12 w-full rounded-none" />
         <SkeletonBox className="h-80 w-full rounded-none" />
       </div>

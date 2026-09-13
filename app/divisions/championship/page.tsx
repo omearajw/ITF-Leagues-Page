@@ -5,6 +5,8 @@ import TeamName from '@/components/TeamName';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
+import DivisionFixtures from '@/components/DivisionFixtures';
+import { DIVISIONS } from '@/lib/divisions';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
@@ -91,6 +93,8 @@ async function DivisionContent() {
   };
 
   const tableData = buildTable(currentGw, null);
+  const teamNames: Record<number, string> = Object.fromEntries((managers || []).map((m: any) => [Number(m.manager_fpl_id), m.team_name]));
+  const division = DIVISIONS.find(d => d.name === DIVISION_NAME);
   const movement = currentGw > 1
     ? positionDeltas(tableData.map(t => t.id), buildTable(currentGw - 1, currentGw - 1).map(t => t.id))
     : {};
@@ -105,24 +109,24 @@ async function DivisionContent() {
           </GameweekBadge>
         )}
         actions={(
-          <Link href="/form" className="text-xs sm:text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-semibold hover:bg-blue-100 transition">
-            View Form Grid &rarr;
+          <Link href="/form" className="text-xs sm:text-sm bg-brand-2/10 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/15 transition">
+            View Form Guide &rarr;
           </Link>
         )}
       >
-        <div className="bg-white border-l-4 border-blue-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-slate-700 italic leading-relaxed">
-          "{contentData?.content || 'No editor summary available for this division yet.'}"
+        <div className="bg-surface border-l-4 border-brand p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
+          {contentData?.content || 'No editor summary available for this division yet.'}
         </div>
       </PageHeader>
 
       {gw.liveGw && (
-        <p className="text-xs text-slate-500 mb-2">FPL Pts include GW{gw.liveGw} live scores. Wins, draws, losses and H2H Pts update once GW{gw.liveGw} is confirmed.</p>
+        <p className="text-xs text-dim mb-2">FPL Pts include GW{gw.liveGw} live scores. Wins, draws, losses and Pts update once GW{gw.liveGw} is confirmed.</p>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
         <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-slate-900 text-white">
+            <thead className="bg-panel text-white">
               <tr>
                 <th className="p-4 w-12 text-center">Pos</th>
                 <th className="p-4">Manager & Team</th>
@@ -131,26 +135,26 @@ async function DivisionContent() {
                 <th className="p-4 text-center w-16">D</th>
                 <th className="p-4 text-center w-16">L</th>
                 <th className="p-4 text-right w-24">FPL Pts</th>
-                <th className="p-4 text-right w-24 text-blue-300 font-bold">H2H Pts</th>
+                <th className="p-4 text-right w-24 text-brand-2 font-bold">Pts</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line">
               {tableData.map((team, index) => (
-                <tr key={team.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 text-center font-bold text-slate-400">{index + 1}</td>
+                <tr key={team.id} className="hover:bg-surface-2 transition-colors">
+                  <td className="p-4 text-center font-bold text-faint">{index + 1}</td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <TeamName name={team.teamName} />
                       <MovementArrow delta={movement[team.id]} />
                     </div>
-                    <div className="text-slate-500 text-xs">{team.managerName}</div>
+                    <div className="text-dim text-xs">{team.managerName}</div>
                   </td>
-                  <td className="p-4 text-center font-medium text-slate-600">{team.played}</td>
-                  <td className="p-4 text-center text-green-600 font-semibold">{team.won}</td>
-                  <td className="p-4 text-center text-slate-500 font-semibold">{team.drawn}</td>
+                  <td className="p-4 text-center font-medium text-dim">{team.played}</td>
+                  <td className="p-4 text-center text-green-400 font-semibold">{team.won}</td>
+                  <td className="p-4 text-center text-dim font-semibold">{team.drawn}</td>
                   <td className="p-4 text-center text-red-500 font-semibold">{team.lost}</td>
-                  <td className="p-4 text-right text-slate-500">{team.totalPoints}</td>
-                  <td className="p-4 text-right font-black text-lg text-slate-800 bg-slate-50/50">
+                  <td className="p-4 text-right text-dim">{team.totalPoints}</td>
+                  <td className="p-4 text-right font-black text-lg text-ink bg-surface-2/50">
                     {team.matchPoints}
                   </td>
                 </tr>
@@ -158,7 +162,7 @@ async function DivisionContent() {
               
               {tableData.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-dim">
                     No teams found in this division.
                   </td>
                 </tr>
@@ -170,34 +174,36 @@ async function DivisionContent() {
         {/* Mobile stacked list: carries every desktop column */}
         <div className="md:hidden p-3 space-y-2">
           {tableData.map((team, index) => (
-            <div key={team.id} className="bg-white border rounded-lg p-3 shadow-sm">
+            <div key={team.id} className="bg-surface border rounded-lg p-3 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-2 min-w-0">
-                  <span className="w-6 shrink-0 text-sm font-black text-slate-400 leading-6">{index + 1}</span>
+                  <span className="w-6 shrink-0 text-sm font-black text-faint leading-6">{index + 1}</span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                      <TeamName name={team.teamName} inline className="font-semibold text-slate-800 min-w-0" />
+                      <TeamName name={team.teamName} inline className="font-semibold text-ink min-w-0" />
                       <MovementArrow delta={movement[team.id]} />
                     </div>
-                    <div className="text-xs text-slate-500">{team.managerName}</div>
+                    <div className="text-xs text-dim">{team.managerName}</div>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-lg font-black text-slate-800 leading-6">{team.matchPoints}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">H2H Pts</div>
+                  <div className="text-lg font-black text-ink leading-6">{team.matchPoints}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-faint">Pts</div>
                 </div>
               </div>
-              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span>P <b className="text-slate-700">{team.played}</b> · W <b className="text-green-600">{team.won}</b> · D <b className="text-slate-600">{team.drawn}</b> · L <b className="text-red-500">{team.lost}</b></span>
-                <span>FPL Pts <b className="text-slate-700">{team.totalPoints}</b></span>
+              <div className="mt-2 pt-2 border-t border-line flex items-center justify-between text-xs text-dim">
+                <span>P <b className="text-ink-2">{team.played}</b> · W <b className="text-green-400">{team.won}</b> · D <b className="text-dim">{team.drawn}</b> · L <b className="text-red-500">{team.lost}</b></span>
+                <span>FPL Pts <b className="text-ink-2">{team.totalPoints}</b></span>
               </div>
             </div>
           ))}
           {tableData.length === 0 && (
-            <div className="p-6 text-center text-slate-500">No teams found in this division.</div>
+            <div className="p-6 text-center text-dim">No teams found in this division.</div>
           )}
         </div>
       </div>
+
+      {division && <DivisionFixtures leagueId={division.fplId} gw={gw} teamNames={teamNames} />}
     </>
   );
 }

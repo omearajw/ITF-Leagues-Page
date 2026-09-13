@@ -112,21 +112,22 @@ async function OnionBaggersContent() {
           </GameweekBadge>
         )}
       >
-        <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 text-xs sm:text-sm font-medium text-slate-500">
-          <span className={`px-3 py-1 rounded border ${(isQualifying || isPreTournament) ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-slate-50'}`}>Qualifiers: GW{qStart}-GW{kStart - 1}</span>
-          <span className={`px-3 py-1 rounded border ${isKnockouts ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-slate-50'}`}>Knockouts: GW{kStart}+</span>
+        {/* Qualifying runs for eight gameweeks; knockouts start later so the final lands in the penultimate week. */}
+        <div className="flex flex-wrap gap-x-6 gap-y-1 mb-4 text-xs sm:text-sm font-semibold uppercase tracking-wider">
+          <span className={(isQualifying || isPreTournament) ? 'text-orange-300 border-b-2 border-orange-500 pb-0.5' : 'text-faint'}>Qualifiers · GW{qStart}–{qStart + 7}</span>
+          <span className={isKnockouts ? 'text-orange-300 border-b-2 border-orange-500 pb-0.5' : 'text-faint'}>Knockouts · GW{kStart}+</span>
         </div>
-        <div className="bg-white border-l-4 border-orange-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-slate-700 italic">
-          "{contentData?.content || 'No editor summary available.'}"
+        <div className="bg-surface border-l-4 border-orange-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
+          {contentData?.content || 'No editor summary available.'}
         </div>
-        <p className="text-sm text-slate-500 mt-3">{nextLine}</p>
+        <p className="text-sm text-dim mt-3">{nextLine}</p>
       </PageHeader>
 
       {/* PHASE 0: PRE-TOURNAMENT */}
       {isPreTournament && (
-        <section className="mb-12 text-center bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">Qualifiers Pending</h2>
-          <p className="text-slate-500">The scramble for the 16 Onion Baggers Cup seeds begins in <strong>Gameweek {qStart}</strong>.</p>
+        <section className="mb-12 text-center bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
+          <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">Qualifiers Pending</h2>
+          <p className="text-dim">The scramble for the 16 Onion Baggers Cup seeds begins in <strong>Gameweek {qStart}</strong>.</p>
         </section>
       )}
 
@@ -134,20 +135,20 @@ async function OnionBaggersContent() {
       {isQualifying && (
         <>
           <section className="mb-12">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-ink mb-6 flex items-center gap-2">
               Qualification Standings
               <span className="w-3 h-3 bg-orange-500 rounded-full animate-pulse ml-2"></span>
             </h2>
             
             {/* Added 'hidden md:block' here */}
-            <div className="bg-white rounded-xl shadow-sm border overflow-x-auto hidden md:block">
+            <div className="bg-surface rounded-xl shadow-sm border overflow-x-auto hidden md:block">
               <table className="w-full text-left text-sm whitespace-nowrap md:min-w-[800px]">
-                <thead className="bg-slate-900 text-white border-b border-slate-700">
+                <thead className="bg-panel text-white border-b border-line">
                   <tr>
-                    <th className="p-4 w-16 text-center border-r border-slate-800">Seed</th>
-                    <th className="p-4 border-r border-slate-800 sticky left-0 bg-slate-900 z-10">Manager & Team</th>
+                    <th className="p-4 w-16 text-center border-r border-line">Seed</th>
+                    <th className="p-4 border-r border-line sticky left-0 bg-panel z-10">Manager & Team</th>
                     {gwColumns.map(col => (
-                      <th key={col} className={`p-4 text-center w-16 ${col === displayGw ? (col === gw.liveGw ? 'bg-slate-800 text-amber-400' : 'bg-slate-800 text-orange-400') : ''}`}>
+                      <th key={col} className={`p-4 text-center w-16 ${col === displayGw ? (col === gw.liveGw ? 'bg-surface-2 text-amber-400' : 'bg-surface-2 text-orange-400') : ''}`}>
                         <span className="inline-flex items-center gap-2">GW{col} {col === gw.liveGw && <LiveChip />}</span>
                       </th>
                     ))}
@@ -155,10 +156,10 @@ async function OnionBaggersContent() {
                 </thead>
                 
                 {/* SECTION: QUALIFIED */}
-                <tbody className="divide-y divide-green-100 bg-green-50/20">
+                <tbody className="divide-y divide-green-500/20 bg-green-500/10/20">
                   {qualifiedManagers.length > 0 && (
                     <tr>
-                      <td colSpan={gwColumns.length + 2} className="bg-green-100 text-green-800 font-bold uppercase tracking-widest text-xs px-4 py-2 border-y border-green-200">
+                      <td colSpan={gwColumns.length + 2} className="bg-green-500/15 text-green-300 font-bold uppercase tracking-widest text-xs px-4 py-2 border-y border-green-500/30">
                         The Final 16 (Locked)
                       </td>
                     </tr>
@@ -167,19 +168,19 @@ async function OnionBaggersContent() {
                     const isNewlyQualified = entrant.qualified_in_gw === currentGw;
                     
                     return (
-                      <tr key={entrant.seed} className={`transition-colors ${isNewlyQualified ? 'bg-green-100/50 hover:bg-green-100' : 'hover:bg-green-50'}`}>
-                        <td className="p-4 text-center font-black text-green-700 border-r border-green-100/50">#{entrant.seed}</td>
-                        <td className={`p-4 border-r border-green-100/50 sticky left-0 z-10 transition-colors ${isNewlyQualified ? 'bg-green-50/50 group-hover:bg-green-100' : 'bg-white group-hover:bg-green-50'}`}>
-                          <div className="font-bold text-slate-900 flex items-center gap-2">
+                      <tr key={entrant.seed} className={`transition-colors ${isNewlyQualified ? 'bg-green-500/15/50 hover:bg-green-500/15' : 'hover:bg-green-500/10'}`}>
+                        <td className="p-4 text-center font-black text-green-400 border-r border-green-500/20/50">#{entrant.seed}</td>
+                        <td className={`p-4 border-r border-green-500/20/50 sticky left-0 z-10 transition-colors ${isNewlyQualified ? 'bg-green-500/10/50 group-hover:bg-green-500/15' : 'bg-surface group-hover:bg-green-500/10'}`}>
+                          <div className="font-bold text-ink flex items-center gap-2">
                             <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} inline />
                             {isNewlyQualified && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">Newly Qualified</span>}
                           </div>
-                          <div className="text-xs text-slate-500">{teamMap[entrant.manager_fpl_id]?.realName}</div>
+                          <div className="text-xs text-dim">{teamMap[entrant.manager_fpl_id]?.realName}</div>
                         </td>
                         {gwColumns.map(gw => {
                           const isQualWeek = gw === entrant.qualified_in_gw;
                           return (
-                            <td key={gw} className={`p-4 text-center font-mono ${isQualWeek ? 'bg-green-100/80 text-green-700 font-black text-lg' : 'text-slate-300'}`}>
+                            <td key={gw} className={`p-4 text-center font-mono ${isQualWeek ? 'bg-green-500/15/80 text-green-400 font-black text-lg' : 'text-ink-2'}`}>
                               {isQualWeek ? getScore(entrant.manager_fpl_id, gw) : '-'}
                             </td>
                           );
@@ -190,23 +191,23 @@ async function OnionBaggersContent() {
                 </tbody>
 
                 {/* SECTION: UNQUALIFIED (FIGHTING FOR SPOTS) */}
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-line">
                   <tr>
-                    <td colSpan={gwColumns.length + 2} className="bg-slate-100 text-slate-500 font-bold uppercase tracking-widest text-xs px-4 py-2 border-y border-slate-200">
+                    <td colSpan={gwColumns.length + 2} className="bg-surface-2 text-dim font-bold uppercase tracking-widest text-xs px-4 py-2 border-y border-line">
                       Live Contenders (Ordered by GW{displayGw} Score{displayGw === gw.liveGw ? ' · live' : ''})
                     </td>
                   </tr>
                   {unqualifiedManagers.map((manager) => (
-                    <tr key={manager.manager_fpl_id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-4 text-center text-slate-300 font-bold border-r border-slate-100">-</td>
-                      <td className="p-4 border-r border-slate-100 sticky left-0 z-10 bg-white group-hover:bg-slate-50 transition-colors">
-                        <div className="font-bold text-slate-900 flex items-center gap-2">
+                    <tr key={manager.manager_fpl_id} className="hover:bg-surface-2 transition-colors">
+                      <td className="p-4 text-center text-ink-2 font-bold border-r border-line">-</td>
+                      <td className="p-4 border-r border-line sticky left-0 z-10 bg-surface group-hover:bg-surface-2 transition-colors">
+                        <div className="font-bold text-ink flex items-center gap-2">
                           <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} inline />
                         </div>
-                        <div className="text-xs text-slate-500">{teamMap[manager.manager_fpl_id]?.realName}</div>
+                        <div className="text-xs text-dim">{teamMap[manager.manager_fpl_id]?.realName}</div>
                       </td>
                       {gwColumns.map(col => (
-                        <td key={col} className={`p-4 text-center font-mono ${col === displayGw ? 'bg-slate-50 font-black text-slate-800' : 'text-slate-400 font-medium'}`}>
+                        <td key={col} className={`p-4 text-center font-mono ${col === displayGw ? 'bg-surface-2 font-black text-ink' : 'text-faint font-medium'}`}>
                           {getScore(manager.manager_fpl_id, col)}
                         </td>
                       ))}
@@ -220,25 +221,25 @@ async function OnionBaggersContent() {
             <div className="md:hidden space-y-4">
               {qualifiedManagers.length > 0 && (
                 <div>
-                  <div className="bg-green-100 text-green-800 font-bold uppercase tracking-widest text-xs px-3 py-2 rounded-lg border border-green-200 mb-2">The Final 16 (Locked)</div>
+                  <div className="bg-green-500/15 text-green-300 font-bold uppercase tracking-widest text-xs px-3 py-2 rounded-lg border border-green-500/30 mb-2">The Final 16 (Locked)</div>
                   <div className="space-y-2">
                     {qualifiedManagers.map((entrant) => {
                       const isNewlyQualified = entrant.qualified_in_gw === currentGw;
                       return (
-                        <div key={entrant.seed} className={`bg-white border rounded-lg p-3 shadow-sm flex items-center justify-between gap-3 ${isNewlyQualified ? 'border-green-300 bg-green-50/40' : 'border-green-100'}`}>
+                        <div key={entrant.seed} className={`bg-surface border rounded-lg p-3 shadow-sm flex items-center justify-between gap-3 ${isNewlyQualified ? 'border-green-500/40 bg-green-500/10/40' : 'border-green-500/20'}`}>
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-8 shrink-0 text-sm font-black text-green-700">#{entrant.seed}</span>
+                            <span className="w-8 shrink-0 text-sm font-black text-green-400">#{entrant.seed}</span>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                                <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} inline className="font-semibold text-slate-900 min-w-0" />
+                                <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} inline className="font-semibold text-ink min-w-0" />
                                 {isNewlyQualified && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">New</span>}
                               </div>
-                              <div className="text-xs text-slate-500">{teamMap[entrant.manager_fpl_id]?.realName}</div>
+                              <div className="text-xs text-dim">{teamMap[entrant.manager_fpl_id]?.realName}</div>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-lg font-black text-green-700 leading-6">{getScore(entrant.manager_fpl_id, entrant.qualified_in_gw)}</div>
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">GW{entrant.qualified_in_gw}</div>
+                            <div className="text-lg font-black text-green-400 leading-6">{getScore(entrant.manager_fpl_id, entrant.qualified_in_gw)}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-faint">GW{entrant.qualified_in_gw}</div>
                           </div>
                         </div>
                       );
@@ -248,28 +249,28 @@ async function OnionBaggersContent() {
               )}
 
               <div>
-                <div className="bg-slate-100 text-slate-500 font-bold uppercase tracking-widest text-xs px-3 py-2 rounded-lg border border-slate-200 mb-2">
+                <div className="bg-surface-2 text-dim font-bold uppercase tracking-widest text-xs px-3 py-2 rounded-lg border border-line mb-2">
                   Live Contenders · GW{displayGw}{displayGw === gw.liveGw ? ' live' : ''}
                 </div>
                 <div className="space-y-2">
                   {unqualifiedManagers.map((manager) => {
                     const recent = gwColumns.filter(col => col !== displayGw).slice(-4);
                     return (
-                      <div key={manager.manager_fpl_id} className="bg-white border rounded-lg p-3 shadow-sm">
+                      <div key={manager.manager_fpl_id} className="bg-surface border rounded-lg p-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} inline className="font-semibold text-slate-900 min-w-0" />
-                            <div className="text-xs text-slate-500">{teamMap[manager.manager_fpl_id]?.realName}</div>
+                            <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} inline className="font-semibold text-ink min-w-0" />
+                            <div className="text-xs text-dim">{teamMap[manager.manager_fpl_id]?.realName}</div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-lg font-black text-slate-800 leading-6">{getScore(manager.manager_fpl_id, displayGw)}</div>
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">GW{displayGw}</div>
+                            <div className="text-lg font-black text-ink leading-6">{getScore(manager.manager_fpl_id, displayGw)}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-faint">GW{displayGw}</div>
                           </div>
                         </div>
                         {recent.length > 0 && (
-                          <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5 text-[11px] text-slate-500">
+                          <div className="mt-2 pt-2 border-t border-line flex flex-wrap gap-1.5 text-[11px] text-dim">
                             {recent.map(col => (
-                              <span key={col} className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">GW{col} <b className="text-slate-700">{getScore(manager.manager_fpl_id, col)}</b></span>
+                              <span key={col} className="bg-surface-2 border border-line rounded px-1.5 py-0.5">GW{col} <b className="text-ink-2">{getScore(manager.manager_fpl_id, col)}</b></span>
                             ))}
                           </div>
                         )}
@@ -286,8 +287,8 @@ async function OnionBaggersContent() {
       {/* PHASE 2: KNOCKOUT BRACKET (LIGHT THEME) */}
       {isKnockouts && (
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">Knockout Bracket</h2>
-          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-x-auto">
+          <h2 className="text-2xl font-bold text-ink mb-6">Knockout Bracket</h2>
+          <div className="hidden md:block bg-surface rounded-xl shadow-sm border border-line p-6 overflow-x-auto">
             <div className="flex gap-8 min-w-[1000px]">
               
               <BracketColumn title="Round of 16" fixtures={fixtures?.filter(f => f.stage === 'Round of 16')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} />
@@ -309,9 +310,9 @@ async function OnionBaggersContent() {
               const roundFixtures = fixtures?.filter(f => f.stage === round.stage) || [];
               return (
                 <div key={round.stage}>
-                  <h3 className={`font-bold uppercase tracking-widest text-xs mb-2 ${round.isFinal ? 'text-orange-600' : 'text-slate-500'}`}>{round.title}</h3>
+                  <h3 className={`font-bold uppercase tracking-widest text-xs mb-2 ${round.isFinal ? 'text-orange-600' : 'text-dim'}`}>{round.title}</h3>
                   {roundFixtures.length === 0 ? (
-                    <div className="border-2 border-slate-100 border-dashed rounded-xl text-center text-slate-400 font-bold text-sm italic py-6 bg-slate-50/50">TBD</div>
+                    <div className="border-2 border-line border-dashed rounded-xl text-center text-faint font-bold text-sm italic py-6 bg-surface-2/50">TBD</div>
                   ) : (
                     <div className="space-y-3">
                       {roundFixtures.map(fix => <BracketMatch key={fix.id} fix={fix} teamMap={teamMap} isFinal={round.isFinal} liveGw={gw.liveGw} />)}
@@ -326,7 +327,7 @@ async function OnionBaggersContent() {
 
       {/* The Tribute Footer */}
       <div className="mt-16 text-center pb-8">
-        <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-400">
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-faint">
           Dedicated to the original Onion Bagger.
         </p>
       </div>
@@ -341,8 +342,8 @@ function BracketColumn({ title, fixtures, teamMap, isFinal, liveGw }: { title: s
   if (!fixtures || fixtures.length === 0) {
     return (
       <div className="flex-1 flex flex-col gap-4">
-        <h3 className="text-slate-500 font-bold uppercase tracking-widest text-xs text-center mb-4">{title}</h3>
-        <div className="flex-1 border-2 border-slate-100 border-dashed rounded-xl flex items-center justify-center text-slate-400 font-bold text-sm italic py-20 bg-slate-50/50">
+        <h3 className="text-dim font-bold uppercase tracking-widest text-xs text-center mb-4">{title}</h3>
+        <div className="flex-1 border-2 border-line border-dashed rounded-xl flex items-center justify-center text-faint font-bold text-sm italic py-20 bg-surface-2/50">
           TBD
         </div>
       </div>
@@ -351,7 +352,7 @@ function BracketColumn({ title, fixtures, teamMap, isFinal, liveGw }: { title: s
 
   return (
     <div className={`flex flex-col gap-6 ${isFinal ? 'w-80' : 'flex-1'}`}>
-      <h3 className={`font-bold uppercase tracking-widest text-xs text-center mb-2 ${isFinal ? 'text-orange-600 text-sm' : 'text-slate-500'}`}>{title}</h3>
+      <h3 className={`font-bold uppercase tracking-widest text-xs text-center mb-2 ${isFinal ? 'text-orange-600 text-sm' : 'text-dim'}`}>{title}</h3>
       <div className="flex flex-col justify-around h-full gap-4">
         {fixtures.map(fix => <BracketMatch key={fix.id} fix={fix} teamMap={teamMap} isFinal={isFinal} liveGw={liveGw} />)}
       </div>
@@ -363,14 +364,14 @@ function BracketMatch({ fix, teamMap, isFinal, liveGw }: { fix: any, teamMap: an
   const isPlayed = fix.manager_1_score !== null;
   const isLiveFix = isPlayed && fix.gw_number === liveGw;
   return (
-    <div className={`flex flex-col rounded-lg border bg-white shadow-sm overflow-hidden ${isFinal ? 'border-orange-300 shadow-orange-100 ring-2 ring-orange-50' : 'border-slate-200'}`}>
-      <div className="bg-slate-50 px-3 py-1.5 flex justify-between items-center border-b border-slate-100">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
+    <div className={`flex flex-col rounded-lg border bg-surface shadow-sm overflow-hidden ${isFinal ? 'border-orange-500/40 shadow-orange-100 ring-2 ring-orange-50' : 'border-line'}`}>
+      <div className="bg-surface-2 px-3 py-1.5 flex justify-between items-center border-b border-line">
+        <span className="text-[10px] font-bold text-faint uppercase tracking-widest flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
         {fix.winner_id && isFinal && !isLiveFix && <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded font-black uppercase tracking-widest">Champion</span>}
       </div>
       <div className="flex flex-col">
         <MatchRow managerId={fix.manager_1_id} score={fix.manager_1_score} isWinner={!isLiveFix && fix.winner_id === fix.manager_1_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
-        <div className="border-t border-slate-100"></div>
+        <div className="border-t border-line"></div>
         <MatchRow managerId={fix.manager_2_id} score={fix.manager_2_score} isWinner={!isLiveFix && fix.winner_id === fix.manager_2_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
       </div>
     </div>
@@ -380,21 +381,21 @@ function BracketMatch({ fix, teamMap, isFinal, liveGw }: { fix: any, teamMap: an
 function MatchRow({ managerId, score, isWinner, isPlayed, isLive, teamMap }: { managerId: number, score: number | null, isWinner: boolean, isPlayed: boolean, isLive: boolean, teamMap: any }) {
   if (!managerId) {
     return (
-      <div className="px-3 py-2 flex justify-between items-center opacity-50 bg-slate-50">
-        <span className="text-sm font-semibold text-slate-400 italic">TBD</span>
+      <div className="px-3 py-2 flex justify-between items-center opacity-50 bg-surface-2">
+        <span className="text-sm font-semibold text-faint italic">TBD</span>
       </div>
     );
   }
 
   return (
-    <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isLive && !isWinner ? 'opacity-40 bg-slate-50' : ''} ${isWinner ? 'bg-green-50/50' : 'bg-white'}`}>
+    <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isLive && !isWinner ? 'opacity-40 bg-surface-2' : ''} ${isWinner ? 'bg-green-500/10/50' : 'bg-surface'}`}>
       <TeamName
         name={teamMap[managerId]?.teamName}
         inline
-        className={`text-sm min-w-0 max-w-[60vw] sm:max-w-[140px] ${isWinner ? 'text-green-700' : 'text-slate-700'}`}
+        className={`text-sm min-w-0 max-w-[60vw] sm:max-w-[140px] ${isWinner ? 'text-green-400' : 'text-ink-2'}`}
       />
       {isPlayed && (
-        <span className={`font-mono text-sm font-black ${isWinner ? 'text-green-600' : 'text-slate-700'}`}>
+        <span className={`font-mono text-sm font-black ${isWinner ? 'text-green-400' : 'text-ink-2'}`}>
           {score}
         </span>
       )}

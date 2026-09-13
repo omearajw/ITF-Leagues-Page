@@ -11,7 +11,16 @@ export const metadata = {
   description: 'Custom Fantasy Premier League Dashboard',
 };
 
-const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-slate-300 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
+const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
+const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden xl:block';
+
+// Reference pages still live on the old site until they are rebuilt here.
+const FOOTER_LINKS = [
+  { label: 'Rulebook', href: 'https://itf1718.wordpress.com/itf-rulebook/' },
+  { label: 'Trophy Cabinets', href: 'https://itf1718.wordpress.com/honours/' },
+  { label: 'Club History', href: 'http://wp.me/P8LnIt-6e' },
+  { label: 'Table Archives', href: 'https://itf1718.wordpress.com/tables-archive/' },
+];
 
 // 1. We extract the Navbar into its own async component
 async function Navbar() {
@@ -22,14 +31,14 @@ async function Navbar() {
   const isEditor = role === process.env.EDITOR_SECRET_TOKEN;
 
   return (
-    <nav className="bg-slate-900 text-white shadow-md">
+    <nav className="bg-panel text-white shadow-md">
       {/* TOP TIER: Logo and Tools */}
-      <div className="border-b border-slate-800">
+      <div className="border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="font-extrabold text-xl tracking-tight hover:opacity-80 transition">
-                ITF<span className="text-blue-400">LEAGUE</span>
+                ITF<span className="text-brand-2">LEAGUE</span>
               </Link>
             </div>
             
@@ -37,10 +46,10 @@ async function Navbar() {
               {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
               <div className="hidden md:flex space-x-6 text-xs font-medium uppercase tracking-wider">
                 {(isAdmin || isEditor) && (
-                  <Link href="/editor" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
+                  <Link href="/editor" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
                 )}
                 {isAdmin && (
-                  <Link href="/admin" className="text-slate-400 hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
+                  <Link href="/admin" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
                 )}
               </div>
               <div className="md:hidden">
@@ -58,28 +67,30 @@ async function Navbar() {
             {/* Desktop nav groups: never wrap; spacing tightens at narrower widths and the
                 group labels only appear when there is room, so the row stays on one line. */}
             <div className="hidden md:flex flex-nowrap items-center overflow-x-auto no-scrollbar">
-              {/* GROUP 1: DIVISIONS */}
-              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-slate-700 pr-3 xl:pr-5">
-                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block">Divisions</span>
-                <Link href="/divisions/premier-league" className={navLink}>Premier League</Link>
+              <Link href="/" className="whitespace-nowrap text-[13px] xl:text-sm font-black text-brand hover:text-brand/80 transition py-2 px-1.5 xl:px-2 rounded-md mr-3 xl:mr-5 border-r border-line pr-3 xl:pr-5">ITF Hub</Link>
+
+              {/* GROUP 1: LEAGUE */}
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-line pr-3 xl:pr-5">
+                <span className={navGroup}>League</span>
+                <Link href="/divisions/premier-league" className={navLink}>Premier</Link>
                 <Link href="/divisions/championship" className={navLink}>Championship</Link>
                 <Link href="/divisions/league-one" className={navLink}>League One</Link>
               </div>
 
               {/* GROUP 2: TOURNAMENTS */}
-              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-slate-700 pr-3 xl:pr-5">
-                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block">Cups</span>
-                <Link href="/tournaments/onion-baggers-cup" className={navLink}>Onion Baggers</Link>
-                <Link href="/tournaments/champions-league" className={navLink}>Champions League</Link>
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-line pr-3 xl:pr-5">
+                <span className={navGroup}>Tournaments</span>
                 <Link href="/tournaments/eliminator" className={navLink}>Eliminator</Link>
+                <Link href="/tournaments/onion-baggers-cup" className={navLink}>OB Cup</Link>
+                <Link href="/tournaments/champions-league" className={navLink}>Champions League</Link>
               </div>
 
-              {/* GROUP 3: EVERYTHING ELSE */}
+              {/* GROUP 3: PERFORMANCE */}
               <div className="flex items-center shrink-0 space-x-1 xl:space-x-2">
-                <span className="text-slate-500 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block">Hub</span>
-                <Link href="/" className={navLink}>Dashboard</Link>
-                <Link href="/itf-open" className={navLink}>ITF Open</Link>
-                <Link href="/form" className={navLink}>Form Grid</Link>
+                <span className={navGroup}>Performance</span>
+                <Link href="/itf-open" className={navLink}>The Open</Link>
+                <Link href="/motm" className={navLink}>MotM</Link>
+                <Link href="/form" className={navLink}>Form</Link>
               </div>
             </div>
           </div>
@@ -100,10 +111,10 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body className="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
+      <body className="bg-bg text-ink font-sans min-h-screen flex flex-col">
         
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
-        <Suspense fallback={<div className="h-14 md:h-[104px] bg-slate-900 w-full animate-pulse" />}>
+        <Suspense fallback={<div className="h-14 md:h-[104px] bg-panel w-full animate-pulse" />}>
           <Navbar />
         </Suspense>
 
@@ -117,7 +128,14 @@ export default function RootLayout({
         </main>
 
         {/* GLOBAL FOOTER */}
-        <footer className="bg-slate-900 text-slate-500 text-center py-8 text-sm mt-auto pb-10 relative z-30">
+        <footer className="bg-panel text-dim text-center py-8 text-sm mt-auto pb-10 relative z-30">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-3">
+            {FOOTER_LINKS.map(link => (
+              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="text-faint hover:text-white transition">
+                {link.label}
+              </a>
+            ))}
+          </div>
           © 2026 ITF League. Data sourced from official FPL API.
         </footer>
       </body>

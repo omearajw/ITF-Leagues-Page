@@ -14,9 +14,9 @@ const SHORT_LABEL: Record<GameweekStage, string> = {
 function Fact({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
-      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</div>
-      <div className="font-bold text-slate-800">{value}</div>
-      {sub && <div className="text-xs text-slate-500">{sub}</div>}
+      <div className="text-[10px] font-bold uppercase tracking-widest text-faint">{label}</div>
+      <div className="font-bold text-ink">{value}</div>
+      {sub && <div className="text-xs text-dim">{sub}</div>}
     </div>
   );
 }
@@ -30,24 +30,24 @@ export function StageCheckpoints({ stage, progress }: { stage: GameweekStage; pr
       <div className="flex items-center">
         {segments.map((seg, i) => {
           const state = i < idx ? 'done' : i === idx ? 'active' : 'todo';
-          const dot = state === 'todo' ? 'bg-slate-300' : 'bg-slate-900';
+          const dot = state === 'todo' ? 'bg-surface-3' : 'bg-ink';
           return (
             <div key={seg} className="flex items-center" style={{ width: `${SEGMENT_WIDTHS[i]}%` }}>
-              <span className={`w-3 h-3 rounded-full shrink-0 ring-4 ring-white ${dot}`} />
-              <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden mx-1">
-                {state === 'done' && <div className="h-full w-full bg-slate-900" />}
+              <span className={`w-3 h-3 rounded-full shrink-0 ring-4 ring-surface ${dot}`} />
+              <div className="flex-1 h-1.5 bg-surface-3 rounded-full overflow-hidden mx-1">
+                {state === 'done' && <div className="h-full w-full bg-panel" />}
                 {state === 'active' && <div className={`h-full ${ACTIVE_DOT[stage]}`} style={{ width: `${Math.round(progress * 100)}%` }} />}
               </div>
             </div>
           );
         })}
-        <span className={`w-3 h-3 rounded-full shrink-0 ring-4 ring-white ${idx === 3 ? 'bg-green-500' : 'bg-slate-300'}`} />
+        <span className={`w-3 h-3 rounded-full shrink-0 ring-4 ring-surface ${idx === 3 ? 'bg-green-500' : 'bg-surface-3'}`} />
       </div>
 
       <div className="flex mt-2 text-xs">
         {segments.map((seg, i) => {
           const state = i < idx ? 'done' : i === idx ? 'active' : 'todo';
-          const label = state === 'active' ? 'font-bold text-slate-900' : state === 'done' ? 'text-slate-500' : 'text-slate-400';
+          const label = state === 'active' ? 'font-bold text-ink' : state === 'done' ? 'text-dim' : 'text-faint';
           return (
             <div key={seg} className={`${label} truncate pr-2`} style={{ width: `${SEGMENT_WIDTHS[i]}%` }}>
               <span className="sm:hidden">{SHORT_LABEL[seg]}</span>
@@ -55,7 +55,7 @@ export function StageCheckpoints({ stage, progress }: { stage: GameweekStage; pr
             </div>
           );
         })}
-        <div className={`shrink-0 -ml-8 w-8 text-right ${idx === 3 ? 'font-bold text-green-700' : 'text-slate-400'}`}>{STAGE_LABEL.final}</div>
+        <div className={`shrink-0 -ml-8 w-8 text-right ${idx === 3 ? 'font-bold text-green-400' : 'text-faint'}`}>{STAGE_LABEL.final}</div>
       </div>
     </div>
   );
@@ -80,19 +80,19 @@ export default async function GameweekTimeline() {
     : 'Estimated';
 
   return (
-    <div className="bg-white border rounded-xl shadow-sm p-5 sm:p-6">
+    <div className="bg-surface border rounded-xl shadow-sm p-5 sm:p-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-xl font-bold text-slate-900">{gw.activeGwName}</h2>
+        <h2 className="text-xl font-bold text-ink">{gw.activeGwName}</h2>
         {stage && (
           <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${STAGE_PILL[stage]}`}>
             {STAGE_LABEL[stage]}
           </span>
         )}
-        <span className="text-sm text-slate-500 sm:ml-auto">{describePhase(gw)}</span>
+        <span className="text-sm text-dim sm:ml-auto">{describePhase(gw)}</span>
       </div>
 
       {!gw.fplAvailable || !stage ? (
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-4 text-sm mt-4">
+        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-200 rounded-lg p-4 text-sm mt-4">
           Live FPL status is unavailable right now. Results are final through GW{gw.syncedThroughGw}
           {gw.liveGw ? `, and GW${gw.liveGw} scores on the site are provisional.` : '.'}
         </div>

@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   SITE COLOURS — change the site's look here.
+   Values are RGB channels so Tailwind can apply opacity (e.g. bg-accent/20).
+   Tokens: bg (page), surface (cards), surface-2 (subtle panels), surface-3
+   (table headers, skeletons), panel / panel-2 (nav, dark tables), ink (text),
+   ink-2 (secondary text), dim, faint, line (borders), brand (red accent),
+   brand-2 (blue links and labels).
+   ========================================================================== */
+:root {
+  --color-bg: 13 17 31;
+  --color-surface: 23 29 51;
+  --color-surface-2: 31 39 66;
+  --color-surface-3: 42 51 80;
+  --color-panel: 9 12 24;
+  --color-panel-2: 5 7 16;
+  --color-ink: 241 245 249;
+  --color-ink-2: 203 213 225;
+  --color-dim: 148 163 184;
+  --color-faint: 100 116 139;
+  --color-line: 45 54 84;
+  --color-brand: 225 29 72;
+  --color-brand-2: 96 165 250;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -66,8 +90,9 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-bg text-ink;
     overflow-x: hidden;
+    color-scheme: dark;
   }
 
   .marquee-group {

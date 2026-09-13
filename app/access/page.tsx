@@ -33,7 +33,7 @@ export default function AccessPage() {
           className="p-3 border rounded text-center"
           required 
         />
-        <button type="submit" className="bg-slate-900 text-white py-3 rounded font-bold hover:bg-slate-800">
+        <button type="submit" className="bg-panel text-white py-3 rounded font-bold hover:bg-surface-2">
           Unlock
         </button>
       </form>

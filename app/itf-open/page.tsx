@@ -12,7 +12,7 @@ export default function Index() {
     <div className="max-w-4xl mx-auto py-2 sm:py-8 font-sans">
       <header className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">ITF Open</h1>
-        <p className="text-gray-500">The master leaderboard across all divisions.</p>
+        <p className="text-dim">The master leaderboard across all divisions.</p>
       </header>
       
       <Suspense fallback={<ITFOpenSkeleton />}>
@@ -71,14 +71,14 @@ async function ITFOpenContent() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-dim">
         <span>Showing scores for <strong>GW{scoresGw}</strong></span>
         <GameweekBadge provisional={showingLive}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
       </div>
       <div className="overflow-x-auto hidden md:block">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="border-b-2 border-gray-200">
+          <tr className="border-b-2 border-line">
             <th className="p-3">Rank</th>
             <th className="p-3">Team & Manager</th>
             <th className="p-3">Division</th>
@@ -87,17 +87,17 @@ async function ITFOpenContent() {
         </thead>
         <tbody>
           {managers?.map((manager: any, index: number) => (
-            <tr key={manager.manager_fpl_id} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="p-3 font-bold text-gray-700">{index + 1}</td>
+            <tr key={manager.manager_fpl_id} className="border-b border-line hover:bg-surface-2">
+              <td className="p-3 font-bold text-ink-2">{index + 1}</td>
               <td className="p-3">
                 <div className="flex items-center gap-2">
                   <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
                   <MovementArrow delta={movement[manager.manager_fpl_id]} />
                 </div>
-                <div className="text-sm text-gray-500">{manager.season_managers.managers.real_name}</div>
+                <div className="text-sm text-dim">{manager.season_managers.managers.real_name}</div>
               </td>
               <td className="p-3">
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                <span className="px-2 py-1 bg-brand-2/15 text-brand-2 text-xs rounded-full">
                   {manager.season_managers.division}
                 </span>
               </td>
@@ -113,15 +113,15 @@ async function ITFOpenContent() {
       {/* Mobile stacked list */}
       <div className="md:hidden space-y-3">
         {managers?.map((manager: any, index: number) => (
-          <div key={manager.manager_fpl_id} className="bg-white border rounded-lg p-3 shadow-sm">
+          <div key={manager.manager_fpl_id} className="bg-surface border rounded-lg p-3 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-bold text-slate-700">{index + 1}. <span className="ml-2"><TeamName name={manager.season_managers.team_name} inline className="font-semibold" /></span> <MovementArrow delta={movement[manager.manager_fpl_id]} className="ml-1" /></div>
-                <div className="text-xs text-slate-500">{manager.season_managers.managers.real_name}</div>
+                <div className="font-bold text-ink-2">{index + 1}. <span className="ml-2"><TeamName name={manager.season_managers.team_name} inline className="font-semibold" /></span> <MovementArrow delta={movement[manager.manager_fpl_id]} className="ml-1" /></div>
+                <div className="text-xs text-dim">{manager.season_managers.managers.real_name}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-black text-slate-800">{manager.classic_total_points}</div>
-                <div className="text-xs mt-1"><span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{manager.season_managers.division}</span></div>
+                <div className="text-sm font-black text-ink">{manager.classic_total_points}</div>
+                <div className="text-xs mt-1"><span className="px-2 py-1 bg-brand-2/15 text-brand-2 text-xs rounded-full">{manager.season_managers.division}</span></div>
               </div>
             </div>
           </div>
@@ -129,7 +129,7 @@ async function ITFOpenContent() {
       </div>
 
       {(!managers || managers.length === 0) && (
-        <div className="p-10 text-center text-gray-500">
+        <div className="p-10 text-center text-dim">
           No scores found yet. The season hasn't started!
         </div>
       )}

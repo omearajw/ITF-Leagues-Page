@@ -10,7 +10,9 @@ import GameweekBadge from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
-import { getGameweekStatus } from '@/lib/gameweek-status';
+import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
+import { buildMotm } from '@/lib/motm';
+import { DIVISIONS } from '@/lib/divisions';
 import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } from '@/lib/tournament-next';
 
 // =========================================
@@ -20,8 +22,8 @@ export default function Dashboard() {
   return (
     <div className="relative pb-4 md:pb-20">
       <header className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">ITF Hub</h1>
-        <p className="text-slate-500">Live updates and standings for the 2026-27 Season.</p>
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-ink tracking-tight">ITF Hub</h1>
+        <p className="text-dim">Live updates and standings for the 2026-27 Season.</p>
       </header>
 
       <div className="mb-8">
@@ -145,6 +147,19 @@ async function DashboardContent() {
   const divisionMovement = (teams: any[], division: string) =>
     currentGw > 1 ? positionDeltas(teams.map(t => t.manager_fpl_id), previousDivisionOrder(division)) : {};
 
+  // Manager of the Month: latest awarded month, or the month in progress
+  const [events, { data: allScoreRows }] = await Promise.all([
+    getFplEvents(),
+    supabase.from('manager_gw_scores').select('manager_fpl_id, gw_number, points').eq('season_id', SEASON_ID).lte('gw_number', currentGw),
+  ]);
+  const motmManagers = (scores || []).map((s: any) => ({ id: Number(s.manager_fpl_id), teamName: s.season_managers.team_name, realName: s.season_managers.managers.real_name, division: s.season_managers.division }));
+  const motmMonths = events ? buildMotm({
+    events, syncedThroughGw: currentGw, managers: motmManagers,
+    scores: (allScoreRows || []).map((r: any) => ({ manager_fpl_id: Number(r.manager_fpl_id), gw_number: r.gw_number, points: r.points })),
+    divisions: DIVISIONS.map(d => d.name),
+  }) : [];
+  const motmLatest = motmMonths[0] || null;
+
   const itfMovement = itfPreviousScores
     ? positionDeltas(
         [...processedTeams].sort((a, b) => b.classic_total_points - a.classic_total_points).map(t => t.manager_fpl_id),
@@ -158,7 +173,7 @@ async function DashboardContent() {
         {/* ROW 1: THE DIVISIONS */}
         <section>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b pb-2">
-            <h2 className="text-xl font-bold">Official Divisions</h2>
+            <h2 className="text-xl font-bold">League</h2>
             <GameweekBadge provisional={!!gw.liveGw} short={gw.liveGw ? `H2H to GW${currentGw} · FPL live` : `Final to GW${currentGw}`}>
               {gw.liveGw ? `H2H through GW${currentGw} · FPL Pts live` : `Standings through GW${currentGw} · final`}
             </GameweekBadge>
@@ -172,7 +187,7 @@ async function DashboardContent() {
 
         {/* ROW 2: TOURNAMENTS */}
         <section>
-          <h2 className="text-xl font-bold mb-4 border-b pb-2">Custom Tournaments</h2>
+          <h2 className="text-xl font-bold mb-4 border-b pb-2">Tournaments</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <TournamentWidget 
               name="Onion Baggers Cup" 
@@ -207,36 +222,71 @@ async function DashboardContent() {
           </div>
         </section>
 
-        {/* ROW 3: LIVE ITF OPEN */}
+        {/* ROW 3: MANAGER OF THE MONTH */}
+        {motmLatest && (
+          <section>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b pb-2">
+              <h2 className="text-xl font-bold">Manager of the Month</h2>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-dim">{motmLatest.label} · {motmLatest.complete ? 'awarded' : 'in progress'}</span>
+                <Link href="/motm" className="text-brand-2 hover:underline">All months &rarr;</Link>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {motmLatest.divisions.map(div => (
+                <div key={div.division} className={`bg-surface border rounded-xl shadow-sm p-4 ${motmLatest.complete ? '' : 'border-amber-500/30'}`}>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-2">{div.division}</div>
+                  {div.leaders.length === 0 ? (
+                    <div className="text-sm text-faint italic">No scores yet</div>
+                  ) : div.leaders.map(leader => (
+                    <div key={leader.id} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span aria-hidden="true">{motmLatest.complete ? '🏆' : '⏳'}</span>
+                          <TeamName name={leader.teamName} inline className="text-ink min-w-0" />
+                        </div>
+                        <div className="text-xs text-dim pl-7">{leader.realName}</div>
+                      </div>
+                      <span className="shrink-0 text-lg font-black text-ink">{leader.points}</span>
+                    </div>
+                  ))}
+                  {div.leaders.length > 1 && <div className="text-[10px] uppercase tracking-wider font-bold text-amber-300 mt-1">Shared</div>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ROW 4: LIVE ITF OPEN */}
         <section className="mb-12">
           <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-4">
             <h2 className="text-xl font-bold">ITF Open - Top 10</h2>
             <div className="flex flex-wrap items-center gap-3">
               <GameweekBadge provisional={showingLive} short={showingLive ? `GW${scoresGw} live` : `GW${scoresGw} final`}>{showingLive ? `GW${scoresGw} live totals · provisional` : `GW${scoresGw} totals · final`}</GameweekBadge>
-              <Link href="/itf-open" className="text-sm text-blue-600 hover:underline">View Full Table &rarr;</Link>
+              <Link href="/itf-open" className="text-sm text-brand-2 hover:underline">View Full Table &rarr;</Link>
             </div>
           </div>
-          <div className="bg-white shadow rounded-lg border overflow-hidden">
+          <div className="bg-surface shadow rounded-lg border overflow-hidden">
             {/* Mobile list */}
-            <div className="md:hidden divide-y divide-slate-100">
+            <div className="md:hidden divide-y divide-line">
               {topTenITF.map((manager: any, index: number) => (
                 <div key={manager.manager_fpl_id} className="p-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-6 shrink-0 text-sm font-black text-slate-400">{index + 1}</span>
+                    <span className="w-6 shrink-0 text-sm font-black text-faint">{index + 1}</span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <TeamName name={manager.season_managers.team_name} inline className="font-semibold min-w-0" />
                         <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
                       </div>
-                      <div className="text-xs text-slate-400">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
+                      <div className="text-xs text-faint">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
                     </div>
                   </div>
-                  <span className="shrink-0 font-bold text-blue-600">{manager.classic_total_points}</span>
+                  <span className="shrink-0 font-bold text-brand-2">{manager.classic_total_points}</span>
                 </div>
               ))}
             </div>
             <table className="hidden md:table w-full text-left text-sm">
-              <thead className="bg-slate-50 border-b">
+              <thead className="bg-surface-2 border-b">
                 <tr>
                   <th className="p-3">Rank</th>
                   <th className="p-3">Team & Manager</th>
@@ -246,21 +296,21 @@ async function DashboardContent() {
               </thead>
               <tbody>
                 {topTenITF.map((manager: any, index: number) => (
-                  <tr key={manager.manager_fpl_id} className="border-b last:border-0 hover:bg-slate-50">
-                    <td className="p-3 font-bold text-slate-500">{index + 1}</td>
+                  <tr key={manager.manager_fpl_id} className="border-b last:border-0 hover:bg-surface-2">
+                    <td className="p-3 font-bold text-dim">{index + 1}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
                         <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
                       </div>
-                      <div className="text-xs text-slate-400">{manager.season_managers.managers.real_name}</div>
+                      <div className="text-xs text-faint">{manager.season_managers.managers.real_name}</div>
                     </td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded border">
+                      <span className="px-2 py-0.5 bg-surface-2 text-ink-2 text-xs rounded border">
                         {manager.season_managers.division}
                       </span>
                     </td>
-                    <td className="p-3 text-right font-bold text-blue-600">{manager.classic_total_points}</td>
+                    <td className="p-3 text-right font-bold text-brand-2">{manager.classic_total_points}</td>
                   </tr>
                 ))}
               </tbody>
@@ -270,7 +320,7 @@ async function DashboardContent() {
       </div>
 
       {/* FOOTER: TICKER */}
-      <div className="hidden md:block fixed bottom-0 left-0 w-full bg-slate-900 text-white shadow-inner overflow-hidden border-t-4 border-blue-500 z-40">
+      <div className="hidden md:block fixed bottom-0 left-0 w-full bg-panel text-white shadow-inner overflow-hidden border-t-4 border-brand z-40">
         <Marquee>
           <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
         </Marquee>
@@ -285,29 +335,29 @@ async function DashboardContent() {
 
 function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: { name: string, link: string, snippet: string, fullSnippet?: string, teams: any[], movement: Record<number, number | null> }) {
   return (
-    <div className="bg-white border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition">
-      <Link href={link} className="p-4 border-b bg-slate-50 rounded-t-xl hover:bg-slate-100 transition group cursor-pointer">
-        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors">{name} &rarr;</h3>
+    <div className="bg-surface border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition">
+      <Link href={link} className="p-4 border-b bg-surface-2 rounded-t-xl hover:bg-surface-2 transition group cursor-pointer">
+        <h3 className="font-bold text-lg group-hover:text-brand-2 transition-colors">{name} &rarr;</h3>
       </Link>
-      <div className="p-4 flex-grow text-sm text-slate-600 flex flex-col justify-between">
+      <div className="p-4 flex-grow text-sm text-dim flex flex-col justify-between">
         <Snippet preview={snippet?.slice(0, 180)} full={fullSnippet} link={link} />
-        <div className="border rounded overflow-hidden bg-slate-50 md:max-h-48 md:overflow-y-auto">
+        <div className="border rounded overflow-hidden bg-surface-2">
           <table className="w-full text-xs text-left border-collapse">
             <tbody>
               {teams.map((team, index) => (
-                <tr key={team.manager_fpl_id} className="border-b last:border-0 bg-white hover:bg-slate-50">
-                  <td className="p-1.5 pl-2 font-bold text-slate-400 w-6">{index + 1}</td>
+                <tr key={team.manager_fpl_id} className="border-b last:border-0 bg-surface hover:bg-surface-2">
+                  <td className="p-1.5 pl-2 font-bold text-faint w-6">{index + 1}</td>
                   <td className="p-1.5 font-medium min-w-0 max-w-[1px] w-full">
                     <span className="flex items-center gap-1.5 min-w-0">
                       <TeamName name={team.season_managers.team_name} inline className="min-w-0" />
                       <MovementArrow delta={movement[team.manager_fpl_id]} />
                     </span>
                   </td>
-                  <td className="p-1.5 text-right font-bold pr-2 text-slate-800">{team.h2h_points} Pts</td>
+                  <td className="p-1.5 text-right font-bold pr-2 text-ink">{team.h2h_points} Pts</td>
                 </tr>
               ))}
               {teams.length === 0 && (
-                <tr><td className="p-4 text-center text-slate-400 italic">No teams registered.</td></tr>
+                <tr><td className="p-4 text-center text-faint italic">No teams registered.</td></tr>
               )}
             </tbody>
           </table>
@@ -321,20 +371,20 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
   const isPending = status === 'Pending';
 
   return (
-    <div className={`bg-white border rounded-xl flex flex-col h-full relative overflow-hidden ${isPending ? 'border-slate-200 bg-slate-50 shadow-none' : 'shadow-sm hover:shadow-md transition'}`}>
+    <div className={`bg-surface border rounded-xl flex flex-col h-full relative overflow-hidden ${isPending ? 'border-line bg-surface-2 shadow-none' : 'shadow-sm hover:shadow-md transition'}`}>
       
       {/* 1. THE STATUS BADGE */}
-      <div className={`absolute top-0 right-0 text-xs font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm ${isPending ? 'bg-slate-200 text-slate-500' : 'bg-blue-100 text-blue-800'}`}>
+      <div className={`absolute top-0 right-0 text-xs font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm ${isPending ? 'bg-surface-3 text-dim' : 'bg-brand-2/15 text-brand-2'}`}>
         {status}
       </div>
 
       {/* 2. THE HEADER (Always completely visible) */}
-      <Link href={link} className={`p-4 border-b rounded-t-xl transition ${isPending ? 'bg-slate-50/50' : 'bg-slate-50 hover:bg-slate-100 group'}`}>
-        <h3 className={`font-bold text-lg transition-colors pr-16 ${isPending ? 'text-slate-600' : 'group-hover:text-blue-600'}`}>
+      <Link href={link} className={`p-4 border-b rounded-t-xl transition ${isPending ? 'bg-surface-2/50' : 'bg-surface-2 hover:bg-surface-2 group'}`}>
+        <h3 className={`font-bold text-lg transition-colors pr-16 ${isPending ? 'text-dim' : 'group-hover:text-brand-2'}`}>
           {name} {!isPending && <span>&rarr;</span>}
         </h3>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{stage}</p>
-        {nextLine && <p className="text-xs text-slate-500 mt-1">{nextLine}</p>}
+        <p className="text-xs font-semibold text-dim uppercase tracking-wider mt-1">{stage}</p>
+        {nextLine && <p className="text-xs text-dim mt-1">{nextLine}</p>}
       </Link>
 
       {/* 3. THE BODY (With the overlay applied ONLY here if pending) */}
@@ -342,24 +392,21 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
         
         {/* THE NEW OVERLAY DESIGN */}
         {isPending && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-[1.5px] z-20 flex flex-col items-center justify-center text-center">
+          <div className="absolute inset-0 bg-surface/80 backdrop-blur-[1.5px] z-20 flex flex-col items-center justify-center text-center">
             {/* Simple text label, no button background */}
-            <span className="text-slate-500 font-bold tracking-widest uppercase text-sm mb-1 flex items-center gap-2">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <span className="text-dim font-bold tracking-widest uppercase text-sm mb-1 flex items-center gap-2">
+              <svg className="w-4 h-4 text-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
               Pending Start
             </span>
-            <span className="text-slate-600 font-medium">
+            <span className="text-dim font-medium">
               Starts in {startGw}
             </span>
           </div>
         )}
 
         {/* THE WIDGET CONTENT (Greyed out if pending) */}
-        <div className={`p-4 flex-grow text-sm text-slate-600 flex flex-col justify-between ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
+        <div className={`p-4 flex-grow text-sm text-dim ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
           <Snippet preview={snippet?.slice(0, 160)} full={fullSnippet} link={link} />
-          <Link href={link} className="block text-center w-full bg-slate-900 text-white rounded py-2.5 font-medium transition text-xs mt-4 hover:bg-slate-800">
-            View Bracket
-          </Link>
         </div>
       </div>
       
@@ -377,7 +424,7 @@ function TickerContent({ scores, label }: { scores: any[], label: string }) {
 
   return (
     <>
-      <span className="text-blue-400 font-bold">{label}</span>
+      <span className="text-brand-2 font-bold">{label}</span>
       <span>•</span>
       <span>PREMIER LEAGUE: {filterTopThree('Premier League').length ? formatPodium(filterTopThree('Premier League')) : 'Awaiting Data'}</span>
       <span>•</span>

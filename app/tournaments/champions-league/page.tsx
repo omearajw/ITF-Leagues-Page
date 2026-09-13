@@ -120,12 +120,12 @@ async function ChampionsLeagueContent() {
           </GameweekBadge>
         )}
       >
-        <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 text-xs sm:text-sm font-medium text-slate-500">
-          <span className={`px-3 py-1 rounded border ${isStage1Active || isWaitingForStage2 ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Stage 1: GW{s1Start}</span>
-          <span className={`px-3 py-1 rounded border ${isStage2Active || isWaitingForFinal ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Stage 2: GW{s2Start}</span>
-          <span className={`px-3 py-1 rounded border ${isFinalLive ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-slate-50'}`}>Final: GW{finalStart}</span>
+        <div className="flex flex-wrap gap-x-6 gap-y-1 mb-4 text-xs sm:text-sm font-semibold uppercase tracking-wider">
+          <span className={isStage1Active || isWaitingForStage2 ? 'text-indigo-300 border-b-2 border-indigo-500 pb-0.5' : 'text-faint'}>Stage 1 · GW{s1Start}</span>
+          <span className={isStage2Active || isWaitingForFinal ? 'text-indigo-300 border-b-2 border-indigo-500 pb-0.5' : 'text-faint'}>Stage 2 · GW{s2Start}</span>
+          <span className={isFinalLive ? 'text-indigo-300 border-b-2 border-indigo-500 pb-0.5' : 'text-faint'}>Final · GW{finalStart}</span>
         </div>
-        <p className="text-sm text-slate-500">{championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}</p>
+        <p className="text-sm text-dim">{championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}</p>
       </PageHeader>
 
       {/* TWO COLUMN LAYOUT */}
@@ -135,9 +135,9 @@ async function ChampionsLeagueContent() {
         <div className="xl:col-span-2 space-y-8 sm:space-y-12">
           
           {isPreTournament && (
-            <div className="text-center bg-white border border-slate-200 rounded-xl p-6 sm:p-12 shadow-sm">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">The Elite Group is Set</h2>
-              <p className="text-slate-500 mb-8">Campaign begins in <strong>{s1Start - currentGw} Gameweeks</strong>.</p>
+            <div className="text-center bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
+              <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">Elite Group Locked In</h2>
+              <p className="text-dim mb-8">Campaign begins in <strong>{s1Start - currentGw} Gameweeks</strong>.</p>
             </div>
           )}
 
@@ -145,7 +145,7 @@ async function ChampionsLeagueContent() {
               PHASE 3: THE FINAL (PREVIEW OR LIVE)
           ========================================== */}
           {(isFinalLive && finalFix) ? (
-            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden border border-indigo-900/50 mb-12">
+            <div className="bg-gradient-to-br from-panel via-indigo-950 to-panel text-white rounded-2xl shadow-2xl overflow-hidden border border-indigo-900/50 mb-12">
               <div className="p-4 text-center border-b border-indigo-800/50 bg-black/20">
                 <span className="text-indigo-400 font-bold tracking-[0.2em] uppercase text-xs">The Final Showdown • Live GW {displayGw}</span>
               </div>
@@ -154,7 +154,7 @@ async function ChampionsLeagueContent() {
                   <TeamName name={entrants[finalFix.manager_1_id]?.teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_1_score} pts</div>
                 </div>
-                <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-slate-500">VS</span></div>
+                <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-dim">VS</span></div>
                 <div className="flex-1 min-w-0">
                   <TeamName name={entrants[finalFix.manager_2_id]?.teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_2_score} pts</div>
@@ -169,7 +169,7 @@ async function ChampionsLeagueContent() {
               )}
             </div>
           ) : (isWaitingForFinal && stage2Table.length >= 2) && (
-            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-xl overflow-hidden border border-indigo-900/50 mb-12">
+            <div className="bg-gradient-to-br from-panel via-indigo-950 to-panel text-white rounded-2xl shadow-xl overflow-hidden border border-indigo-900/50 mb-12">
               <div className="p-4 text-center border-b border-indigo-800/50 bg-black/20 flex flex-col items-center">
                 <span className="text-yellow-400 font-bold tracking-[0.2em] uppercase text-xs mb-1">Stage 2 Concluded</span>
                 <span className="text-indigo-300 font-semibold text-sm">Upcoming Final Showdown • Gameweek {finalStart}</span>
@@ -179,14 +179,14 @@ async function ChampionsLeagueContent() {
                   <TeamName name={stage2Table[0].teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
-                <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-slate-600">VS</span></div>
+                <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-dim">VS</span></div>
                 <div className="flex-1 min-w-0">
                   <TeamName name={stage2Table[1].teamName} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
               </div>
-              <div className="bg-slate-950/50 p-4 text-center shadow-inner">
-                 <span className="text-slate-400 font-semibold tracking-widest uppercase text-xs">Match will be played in Gameweek {finalStart}</span>
+              <div className="bg-panel-2/50 p-4 text-center shadow-inner">
+                 <span className="text-faint font-semibold tracking-widest uppercase text-xs">Match will be played in Gameweek {finalStart}</span>
               </div>
             </div>
           )}
@@ -196,9 +196,9 @@ async function ChampionsLeagueContent() {
           ========================================== */}
           {(isStage2Active || isWaitingForFinal || isFinalLive) && stage2Table.length > 0 && (
             <section>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-ink mb-6 flex items-center gap-2">
                 Stage 2 Standings 
-                {isStage2Active && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
+                {isStage2Active && <span className="bg-red-500/15 text-red-400 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
               </h2>
                   <StageTable data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} movement={stage2Movement} />
                   <StageList data={stage2Table} isLive={isStage2Active} eliminateCount={Math.max(0, stage2Table.length - 2)} highlightTop={!isStage2Active ? 2 : 0} movement={stage2Movement} />
@@ -206,7 +206,7 @@ async function ChampionsLeagueContent() {
           )}
 
           {isWaitingForStage2 && (
-            <div className="bg-slate-100 border border-slate-300 text-slate-700 p-4 sm:p-6 rounded-xl text-center shadow-sm">
+            <div className="bg-surface-2 border border-line text-ink-2 p-4 sm:p-6 rounded-xl text-center shadow-sm">
               <h3 className="font-black text-xl mb-1">Stage 1 Concluded</h3>
               <p>Teams have completed their matches. Stage 2 begins in Gameweek {s2Start}.</p>
             </div>
@@ -214,10 +214,10 @@ async function ChampionsLeagueContent() {
 
           {(isStage1Active || isWaitingForStage2 || isStage2Active || isWaitingForFinal || isFinalLive) && stage1Table.length > 0 && (
             <section className={!isStage1Active && !isWaitingForStage2 ? 'opacity-70 scale-[0.98] transform origin-top transition-all' : ''}>
-              <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-ink mb-6 flex items-center gap-2">
                 Stage 1 Standings
-                {isStage1Active && <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
-                {!isStage1Active && <span className="bg-slate-200 text-slate-500 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider">Completed</span>}
+                {isStage1Active && <span className="bg-red-500/15 text-red-400 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">Live Matches</span>}
+                {!isStage1Active && <span className="bg-surface-3 text-dim text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider">Completed</span>}
               </h2>
               <StageTable data={stage1Table} isLive={isStage1Active} eliminateCount={1} movement={stage1Movement} />
               <StageList data={stage1Table} isLive={isStage1Active} eliminateCount={1} movement={stage1Movement} />
@@ -227,18 +227,18 @@ async function ChampionsLeagueContent() {
 
         {/* RIGHT COLUMN: LIVE FIXTURE LOG (collapsible below xl, where it sits under the tables) */}
         <div className="xl:col-span-1">
-          <details className="xl:hidden bg-slate-900 rounded-xl shadow-xl overflow-hidden">
-            <summary className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-3 cursor-pointer list-none">
-              <h2 className="font-bold text-white tracking-widest uppercase text-sm">Schedule & Results</h2>
-              <span className="text-xs text-slate-400 text-right">{fixtures?.filter(f => f.stage !== 'Final').length || 0} fixtures · tap to expand</span>
+          <details className="xl:hidden bg-panel rounded-xl shadow-xl overflow-hidden">
+            <summary className="p-4 bg-panel-2 border-b border-line flex justify-between items-center gap-3 cursor-pointer list-none">
+              <h2 className="font-bold text-white tracking-widest uppercase text-sm">Fixtures & Results</h2>
+              <span className="text-xs text-faint text-right">{fixtures?.filter(f => f.stage !== 'Final').length || 0} fixtures · tap to expand</span>
             </summary>
             <div className="p-3 space-y-3">
               <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} />
             </div>
           </details>
-          <div className="hidden xl:block bg-slate-900 rounded-xl shadow-xl overflow-hidden sticky top-8">
-            <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
-              <h2 className="font-bold text-white tracking-widest uppercase text-sm">Schedule & Results</h2>
+          <div className="hidden xl:block bg-panel rounded-xl shadow-xl overflow-hidden sticky top-8">
+            <div className="p-4 bg-panel-2 border-b border-line flex justify-between items-center">
+              <h2 className="font-bold text-white tracking-widest uppercase text-sm">Fixtures & Results</h2>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             </div>
             <div className="p-4 space-y-3 max-h-[800px] overflow-y-auto">
@@ -257,7 +257,7 @@ async function ChampionsLeagueContent() {
 // ==========================================
 function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | undefined, entrants: Record<number, any>, liveGw: number | null }) {
   const list = fixtures?.filter(f => f.stage !== 'Final') || [];
-  if (list.length === 0) return <div className="text-center text-slate-500 italic py-8">Schedule pending.</div>;
+  if (list.length === 0) return <div className="text-center text-dim italic py-8">Schedule pending.</div>;
 
   return (
     <>
@@ -266,27 +266,27 @@ function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | u
         const isLiveFix = isPlayed && fix.gw_number === liveGw;
 
         return (
-          <div key={fix.id} className={`rounded p-3 text-sm flex flex-col gap-2 border ${isPlayed ? 'bg-slate-800 border-slate-700' : 'bg-slate-800/40 border-slate-700/50 border-dashed'}`}>
-            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex justify-between">
+          <div key={fix.id} className={`rounded p-3 text-sm flex flex-col gap-2 border ${isPlayed ? 'bg-surface-2 border-line' : 'bg-surface-2/40 border-line/50 border-dashed'}`}>
+            <div className="text-[10px] text-faint font-bold uppercase tracking-wider flex justify-between">
               <span className="flex items-center gap-2">GW {fix.gw_number} {isLiveFix && <LiveChip />}</span>
-              <span className={isPlayed ? 'text-indigo-400' : 'text-slate-500'}>{fix.stage}</span>
+              <span className={isPlayed ? 'text-indigo-400' : 'text-dim'}>{fix.stage}</span>
             </div>
             <div className="flex justify-between items-center gap-2">
-              <span className={`flex min-w-0 w-2/5 font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-slate-300'}`}>
+              <span className={`flex min-w-0 w-2/5 font-semibold ${!isPlayed ? 'text-faint' : !isLiveFix && fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-ink-2'}`}>
                 <TeamName name={entrants[fix.manager_1_id]?.teamName} inline className="min-w-0" />
               </span>
 
               {isPlayed ? (
-                <span className="bg-slate-950 text-white font-mono px-2 py-1 rounded text-xs shadow-inner shrink-0">
+                <span className="bg-panel-2 text-white font-mono px-2 py-1 rounded text-xs shadow-inner shrink-0">
                   {fix.manager_1_score} - {fix.manager_2_score}
                 </span>
               ) : (
-                <span className="bg-slate-700 text-slate-400 font-bold px-2 py-1 rounded text-[10px] uppercase tracking-widest shrink-0">
+                <span className="bg-surface-3 text-faint font-bold px-2 py-1 rounded text-[10px] uppercase tracking-widest shrink-0">
                   VS
                 </span>
               )}
 
-              <span className={`flex justify-end min-w-0 w-2/5 text-right font-semibold ${!isPlayed ? 'text-slate-400' : !isLiveFix && fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-slate-300'}`}>
+              <span className={`flex justify-end min-w-0 w-2/5 text-right font-semibold ${!isPlayed ? 'text-faint' : !isLiveFix && fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-ink-2'}`}>
                 <TeamName name={entrants[fix.manager_2_id]?.teamName} inline className="min-w-0" />
               </span>
             </div>
@@ -306,16 +306,16 @@ function StageList({ data, isLive, eliminateCount, highlightTop, movement = {} }
       {data.map((team: any, index: number) => {
         const isBottom = index >= data.length - eliminateCount;
         const isTop = highlightTop && index < highlightTop;
-        let card = 'bg-white border-slate-200';
+        let card = 'bg-surface border-line';
         let badge = null;
         if (isLive && isBottom) {
-          card = 'bg-red-50 border-red-200';
-          badge = <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded font-bold uppercase">Danger Zone</span>;
+          card = 'bg-red-500/10 border-red-500/30';
+          badge = <span className="text-[10px] bg-orange-500/15 text-orange-300 border border-orange-500/30 px-2 py-0.5 rounded font-bold uppercase">Danger Zone</span>;
         } else if (!isLive && isBottom) {
-          card = 'bg-slate-100 border-slate-200 opacity-70';
+          card = 'bg-surface-2 border-line opacity-70';
           badge = <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold uppercase">Eliminated</span>;
         } else if (!isLive && isTop) {
-          card = 'bg-green-50 border-green-200';
+          card = 'bg-green-500/10 border-green-500/30';
           badge = <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase">Promoted</span>;
         }
 
@@ -323,24 +323,24 @@ function StageList({ data, isLive, eliminateCount, highlightTop, movement = {} }
           <div key={team.id} className={`border rounded-lg p-3 shadow-sm ${card}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2 min-w-0">
-                <span className="w-6 shrink-0 text-sm font-black text-slate-400 leading-6">{index + 1}</span>
+                <span className="w-6 shrink-0 text-sm font-black text-faint leading-6">{index + 1}</span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                    <TeamName name={team.teamName} inline className="font-semibold text-slate-800 min-w-0" />
+                    <TeamName name={team.teamName} inline className="font-semibold text-ink min-w-0" />
                     <MovementArrow delta={movement[team.id]} />
                     {badge}
                   </div>
-                  <div className="text-xs text-slate-500">{team.managerName}</div>
+                  <div className="text-xs text-dim">{team.managerName}</div>
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <div className="text-lg font-black text-slate-800 leading-6">{team.points}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pts</div>
+                <div className="text-lg font-black text-ink leading-6">{team.points}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-faint">Pts</div>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between text-xs text-slate-500">
-              <span>P <b className="text-slate-700">{team.played}</b> · W <b className="text-green-600">{team.won}</b> · D <b className="text-slate-600">{team.drawn}</b> · L <b className="text-red-500">{team.lost}</b></span>
-              <span>FPL Pts <b className="text-slate-700">{team.totalScore}</b></span>
+            <div className="mt-2 pt-2 border-t border-line/70 flex items-center justify-between text-xs text-dim">
+              <span>P <b className="text-ink-2">{team.played}</b> · W <b className="text-green-400">{team.won}</b> · D <b className="text-dim">{team.drawn}</b> · L <b className="text-red-500">{team.lost}</b></span>
+              <span>FPL Pts <b className="text-ink-2">{team.totalScore}</b></span>
             </div>
           </div>
         );
@@ -354,10 +354,10 @@ function StageList({ data, isLive, eliminateCount, highlightTop, movement = {} }
 // ==========================================
 function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} }: { data: any[], isLive: boolean, eliminateCount: number, highlightTop?: number, movement?: Record<number, number | null> }) {
   return (
-    <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
+    <div className="hidden md:block bg-surface rounded-xl shadow-sm border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead className="bg-slate-900 text-white">
+          <thead className="bg-panel text-white">
             <tr>
               <th className="p-4 w-12 text-center">Pos</th>
               <th className="p-4">Manager & Team</th>
@@ -369,22 +369,22 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
               <th className="p-4 text-right w-24 text-indigo-300 font-bold">Pts</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-line">
             {data.map((team: any, index: number) => {
               const isBottom = index >= data.length - eliminateCount;
               const isTop = highlightTop && index < highlightTop;
               
-              let rowClass = "hover:bg-slate-50 transition-colors";
+              let rowClass = "hover:bg-surface-2 transition-colors";
               let badge = null;
 
               if (isLive && isBottom) {
-                rowClass = "bg-red-50 hover:bg-red-100/50 text-red-900 transition-colors";
-                badge = <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded font-bold uppercase">Danger Zone</span>;
+                rowClass = "bg-red-500/10 hover:bg-red-500/15/50 text-red-200 transition-colors";
+                badge = <span className="text-[10px] bg-orange-500/15 text-orange-300 border border-orange-500/30 px-2 py-0.5 rounded font-bold uppercase">Danger Zone</span>;
               } else if (!isLive && isBottom) {
-                rowClass = "bg-slate-100 text-slate-400 opacity-60 grayscale";
+                rowClass = "bg-surface-2 text-faint opacity-60 grayscale";
                 badge = <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold uppercase">Eliminated</span>;
               } else if (!isLive && isTop) {
-                rowClass = "bg-green-50 text-green-900";
+                rowClass = "bg-green-500/10 text-green-900";
                 badge = <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase">Promoted</span>;
               }
 
@@ -395,7 +395,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
                     <div className="font-bold flex items-center gap-2">
                       <TeamName name={team.teamName} inline /> <MovementArrow delta={movement[team.id]} /> {badge}
                     </div>
-                    <div className={`text-xs ${isLive && isBottom ? 'text-red-600/70' : 'text-slate-500'}`}>{team.managerName}</div>
+                    <div className={`text-xs ${isLive && isBottom ? 'text-red-400/70' : 'text-dim'}`}>{team.managerName}</div>
                   </td>
                   <td className="p-4 text-center font-medium">{team.played}</td>
                   <td className="p-4 text-center font-semibold">{team.won}</td>

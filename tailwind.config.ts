@@ -11,6 +11,28 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Site palette, defined once in app/globals.css
+        bg: "rgb(var(--color-bg) / <alpha-value>)",
+        surface: {
+          DEFAULT: "rgb(var(--color-surface) / <alpha-value>)",
+          2: "rgb(var(--color-surface-2) / <alpha-value>)",
+          3: "rgb(var(--color-surface-3) / <alpha-value>)",
+        },
+        panel: {
+          DEFAULT: "rgb(var(--color-panel) / <alpha-value>)",
+          2: "rgb(var(--color-panel-2) / <alpha-value>)",
+        },
+        ink: {
+          DEFAULT: "rgb(var(--color-ink) / <alpha-value>)",
+          2: "rgb(var(--color-ink-2) / <alpha-value>)",
+        },
+        dim: "rgb(var(--color-dim) / <alpha-value>)",
+        faint: "rgb(var(--color-faint) / <alpha-value>)",
+        line: "rgb(var(--color-line) / <alpha-value>)",
+        brand: {
+          DEFAULT: "rgb(var(--color-brand) / <alpha-value>)",
+          2: "rgb(var(--color-brand-2) / <alpha-value>)",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {

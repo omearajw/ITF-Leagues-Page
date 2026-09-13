@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+import SaveToast from '@/components/SaveToast';
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -7,28 +8,33 @@ import { EditorSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 
-export default async function EditorPage() {
+export default async function EditorPage({ searchParams }: { searchParams: Promise<{ saved?: string; gw?: string }> }) {
+  const { saved, gw } = await searchParams;
+  const requestedGw = gw ? parseInt(gw, 10) : NaN;
 
   return (
     <div className="max-w-5xl mx-auto py-8">
+      {saved && <SaveToast message={`Write-up saved (${saved})`} />}
       <header className="mb-8 border-b pb-4">
-        <h1 className="text-3xl font-bold text-slate-900">Content Editor</h1>
-        <p className="text-slate-500">Update weekly write-ups and snippets displayed across the ITF Hub.</p>
+        <h1 className="text-3xl font-bold text-ink">Content Editor</h1>
+        <p className="text-dim">Update weekly write-ups and snippets displayed across the ITF Hub.</p>
       </header>
 
       <Suspense fallback={<EditorSkeleton />}>
-        <EditorContent />
+        <EditorContent requestedGw={Number.isFinite(requestedGw) ? requestedGw : null} />
       </Suspense>
     </div>
   );
 }
 
-async function EditorContent() {
+async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
   const supabase = await createClient();
 
-  // 1. Write-ups are keyed to the last synced (completed) gameweek
+  // 1. Write-ups default to the last synced (completed) gameweek; earlier weeks stay editable.
   const gw = await getGameweekStatus();
-  const currentGw = gw.syncedThroughGw;
+  const latestGw = Math.max(1, gw.syncedThroughGw);
+  const currentGw = requestedGw && requestedGw >= 1 && requestedGw <= latestGw ? requestedGw : latestGw;
+  const editableWeeks = Array.from({ length: latestGw }, (_, i) => latestGw - i);
 
   // 2. Define the pages/leagues managed by the CMS
   const managedPages = [
@@ -77,16 +83,27 @@ async function EditorContent() {
     }
 
     revalidatePath('/editor');
-    revalidatePath('/'); 
+    revalidatePath('/');
+    redirect(`/editor?gw=${gwNumber}&saved=${encodeURIComponent(title)}`);
   }
 
   return (
     <div>
-      <div className="mb-6 bg-blue-50 border border-blue-200 p-4 rounded-xl flex flex-wrap gap-3 justify-between items-center">
-        <span className="font-bold text-blue-900">Editing Write-ups for Gameweek {currentGw}</span>
+      <div className="mb-6 bg-brand-2/10 border border-brand-2/30 p-4 rounded-xl flex flex-wrap gap-3 justify-between items-center">
+        <form method="get" className="flex items-center gap-2 font-bold text-brand-2">
+          <label htmlFor="gw-select">Editing write-ups for</label>
+          <select id="gw-select" name="gw" defaultValue={currentGw} className="border border-brand-2/30 rounded px-2 py-1 bg-surface text-sm">
+            {editableWeeks.map(week => <option key={week} value={week}>Gameweek {week}{week === latestGw ? ' (latest)' : ''}</option>)}
+          </select>
+          <button type="submit" className="text-xs bg-brand text-white px-2.5 py-1.5 rounded hover:bg-brand/90">Go</button>
+        </form>
         <GameweekBadge provisional={!!gw.liveGw}>
-          {gw.liveGw ? `GW${gw.liveGw} in progress · write-ups keyed to GW${currentGw}` : `Write-ups keyed to GW${currentGw} (last completed)`}
+          {gw.liveGw ? `GW${gw.liveGw} in progress · latest completed GW${latestGw}` : `Latest completed GW${latestGw}`}
         </GameweekBadge>
+        <p className="w-full text-xs text-brand-2/70">
+          Pages always show the most recent saved write-up, so a week never goes blank: the current text stays until a newer week is saved.
+          Line breaks are kept.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -94,9 +111,9 @@ async function EditorContent() {
           const entry = contentMap[page.id];
 
           return (
-            <div key={page.id} className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
-              <h2 className="text-lg font-bold text-slate-800 mb-1">{page.title}</h2>
-              <p className="text-xs text-slate-400 mb-4">
+            <div key={page.id} className="bg-surface p-6 rounded-xl border shadow-sm flex flex-col">
+              <h2 className="text-lg font-bold text-ink mb-1">{page.title}</h2>
+              <p className="text-xs text-faint mb-4">
                 {entry ? `Last updated: ${new Date(entry.updated_at).toLocaleDateString()}` : 'No write-up for this week yet'}
               </p>
               
@@ -108,14 +125,14 @@ async function EditorContent() {
                 <textarea 
                   name="content"
                   defaultValue={entry?.content || ''}
-                  className="w-full h-32 p-3 border rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none text-sm mb-4"
+                  className="w-full h-32 p-3 border rounded-lg bg-surface-2 focus:ring-2 focus:ring-brand-2 focus:outline-none resize-none text-sm mb-4"
                   placeholder={`Write the summary for Gameweek ${currentGw}...`}
                   required
                 />
                 
                 <button 
                   type="submit"
-                  className="mt-auto bg-slate-900 text-white py-2 px-4 rounded-lg font-medium hover:bg-slate-800 transition"
+                  className="mt-auto bg-panel text-white py-2 px-4 rounded-lg font-medium hover:bg-surface-2 transition"
                 >
                   Save GW{currentGw} Write-Up
                 </button>

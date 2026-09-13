@@ -8,12 +8,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+import { DIVISIONS } from '@/lib/divisions';
+
 const SEASON_ID = '2026-27';
-const DIVISIONS = [
-  { name: 'Premier League', fplId: '894360' }, 
-  { name: 'Championship', fplId: '868856' },
-  { name: 'League One', fplId: '1089643' }
-];
 
 // Helper: Champions League Stage Standings
 async function getStageStandings(stage: string, entrants: number[]) {

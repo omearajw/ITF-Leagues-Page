@@ -151,6 +151,14 @@ async function fetchFplSnapshot(): Promise<FplSnapshot | null> {
   }
 }
 
+export type FplEventLite = { id: number; name: string; deadline_time: string; finished: boolean };
+
+// The season's gameweek list with deadlines, or null when FPL is unreachable.
+export const getFplEvents = cache(async (): Promise<FplEventLite[] | null> => {
+  const snapshot = await fetchFplSnapshot();
+  return snapshot ? snapshot.events.map(e => ({ id: e.id, name: e.name, deadline_time: e.deadline_time, finished: e.finished })) : null;
+});
+
 export const getGameweekStatus = cache(async (): Promise<GameweekStatus> => {
   const supabase = await createClient();
   const [snapshot, { data: gwRows }] = await Promise.all([
