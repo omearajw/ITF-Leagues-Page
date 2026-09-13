@@ -281,7 +281,7 @@ export function formatUkShort(iso: string | null | undefined): string {
   return `${get('weekday')} ${get('hour')}:${get('minute')}`;
 }
 
-export const SYNC_CADENCE = 'updates every 15-30 min';
+export const SYNC_CADENCE = 'updates every 15 min';
 
 export function describePhase(gw: GameweekStatus): string {
   switch (gw.phase) {
