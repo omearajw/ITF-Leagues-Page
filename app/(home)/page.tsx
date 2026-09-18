@@ -11,7 +11,7 @@ import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
-import { buildMotm } from '@/lib/motm';
+import { buildMotm, type MotmMonth } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
 import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } from '@/lib/tournament-next';
 
@@ -321,7 +321,7 @@ async function DashboardContent() {
       {/* FOOTER: TICKER */}
       <div className="hidden md:block fixed bottom-0 left-0 w-full bg-panel text-white shadow-inner overflow-hidden border-t-4 border-brand z-40">
         <Marquee>
-          <TickerContent scores={scores || []} label={showingLive ? 'LIVE' : `GW${scoresGw} FINAL`} />
+          <TickerContent month={motmLatest} />
         </Marquee>
       </div>
     </>
@@ -386,8 +386,9 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
         {nextLine && <p className="text-xs text-dim mt-1">{nextLine}</p>}
       </Link>
 
-      {/* 3. THE BODY (With the overlay applied ONLY here if pending) */}
-      <div className="relative flex-grow flex flex-col">
+      {/* 3. THE BODY (With the overlay applied ONLY here if pending). Minimum height keeps the
+          pending overlay clear of the header border when there is no write-up to show. */}
+      <div className="relative flex-grow flex flex-col min-h-[6.5rem]">
         
         {/* THE NEW OVERLAY DESIGN */}
         {isPending && (
@@ -417,19 +418,30 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
   );
 }
 
-function TickerContent({ scores, label }: { scores: any[], label: string }) {
-  const filterTopThree = (div: string) => scores.filter((s: any) => s.season_managers.division === div).slice(0, 3);
-  const formatPodium = (list: any[]) => list.map((s, i) => `${i + 1}. ${s.season_managers.managers.real_name} (${s.classic_total_points})`).join(' | ');
-
+function TickerContent({ month }: { month: MotmMonth | null }) {
+  if (!month) {
+    return (
+      <>
+        <span className="text-brand-2 font-bold">MANAGER OF THE MONTH</span>
+        <span>•</span>
+        <span>Awaiting the first confirmed gameweek</span>
+        <span>•</span>
+      </>
+    );
+  }
+  const podium = (division: string) => {
+    const standings = month.divisions.find(d => d.division === division)?.standings.slice(0, 3) || [];
+    return standings.length ? standings.map((m, i) => `${i + 1}. ${m.realName} (${m.points})`).join(' | ') : 'Awaiting Data';
+  };
   return (
     <>
-      <span className="text-brand-2 font-bold">{label}</span>
+      <span className="text-brand-2 font-bold">MANAGER OF THE MONTH · {month.label.toUpperCase()}{month.complete ? '' : ' SO FAR'}</span>
       <span>•</span>
-      <span>PREMIER LEAGUE: {filterTopThree('Premier League').length ? formatPodium(filterTopThree('Premier League')) : 'Awaiting Data'}</span>
+      <span>PREMIER LEAGUE: {podium('Premier League')}</span>
       <span>•</span>
-      <span>CHAMPIONSHIP: {filterTopThree('Championship').length ? formatPodium(filterTopThree('Championship')) : 'Awaiting Data'}</span>
+      <span>CHAMPIONSHIP: {podium('Championship')}</span>
       <span>•</span>
-      <span>LEAGUE ONE: {filterTopThree('League One').length ? formatPodium(filterTopThree('League One')) : 'Awaiting Data'}</span>
+      <span>LEAGUE ONE: {podium('League One')}</span>
       <span>•</span>
     </>
   );
