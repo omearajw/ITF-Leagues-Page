@@ -56,12 +56,17 @@ async function DashboardContent() {
   const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = item.content; return acc; }, {}) || {};
 
   // F. Fetch tournament configs to display status/stage
-  const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }] = await Promise.all([
+  const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }, { data: elStatus }] = await Promise.all([
     supabase.from('eliminator_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single(),
-    supabase.from('champions_league_entrants').select('manager_fpl_id', { count: 'exact', head: true }).eq('season_id', SEASON_ID)
+    supabase.from('champions_league_entrants').select('manager_fpl_id', { count: 'exact', head: true }).eq('season_id', SEASON_ID),
+    supabase.from('eliminator_status').select('is_eliminated, eliminated_gw, season_managers!inner (team_name)').eq('season_id', SEASON_ID)
   ]);
+
+  // Card summaries so each tournament widget says something even without a write-up
+  const elAlive = (elStatus || []).filter((e: any) => !e.is_eliminated).length;
+  const elLastCut = (elStatus || []).filter((e: any) => e.is_eliminated).sort((a: any, b: any) => (b.eliminated_gw || 0) - (a.eliminated_gw || 0))[0] || null;
 
   const elStart = elConfig?.start_gw || 1;
   const clS1 = clConfig?.stage_1_start_gw || 1;
@@ -193,6 +198,7 @@ async function DashboardContent() {
               stage={`Qualifiers GW${obQual}`} 
               status={currentGw < obQual ? 'Pending' : currentGw < obKnock ? 'Qualifying' : 'Knockouts'} 
               nextLine={nextLines.ob}
+              summary={`16 places · the two highest scorers each week qualify from GW${obQual} · knockouts from GW${obKnock}`}
               link="/tournaments/onion-baggers-cup" 
               snippet={snippets['onion-baggers-cup']} 
               fullSnippet={snippets['onion-baggers-cup']}
@@ -203,6 +209,7 @@ async function DashboardContent() {
               stage={`Stage 1 GW${clS1}`} 
               status={currentGw < clS1 ? 'Pending' : 'Active'} 
               nextLine={nextLines.cl}
+              summary={clEntrants > 0 ? `${clEntrants} entrants confirmed · round robin from GW${clS1}` : 'Entrants not yet selected'}
               link="/tournaments/champions-league" 
               snippet={snippets['champions-league']} 
               fullSnippet={snippets['champions-league']}
@@ -213,6 +220,16 @@ async function DashboardContent() {
               stage={`Gameweek ${elStart}`} 
               status={currentGw < elStart ? 'Pending' : 'Active'} 
               nextLine={nextLines.el}
+              summary={elStatus && elStatus.length > 0 ? (
+                <>
+                  <span className="text-2xl font-black text-ink">{elAlive}</span> <span className="text-dim">alive</span>
+                  {elLastCut && (
+                    <span className="block mt-1 text-xs text-dim">
+                      Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} inline className="text-red-400 min-w-0" />
+                    </span>
+                  )}
+                </>
+              ) : 'Entrants are registered on the first sync after the start week'}
               link="/tournaments/eliminator" 
               snippet={snippets['eliminator']} 
               fullSnippet={snippets['eliminator']}
@@ -366,7 +383,7 @@ function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: {
   );
 }
 
-function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw, nextLine }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string, nextLine?: string }) {
+function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw, nextLine, summary }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string, nextLine?: string, summary?: React.ReactNode }) {
   const isPending = status === 'Pending';
 
   return (
@@ -406,6 +423,7 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
 
         {/* THE WIDGET CONTENT (Greyed out if pending) */}
         <div className={`p-4 flex-grow text-sm text-dim ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
+          {summary && <div className="mb-3 text-sm leading-snug">{summary}</div>}
           <Snippet preview={snippet?.slice(0, 160)} full={fullSnippet} link={link} />
         </div>
       </div>
