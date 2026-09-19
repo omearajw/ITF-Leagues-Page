@@ -177,21 +177,41 @@ export async function GET(request: Request) {
         }
       }
 
-      // Fetch Individual Points. FPL's history (and picks) endpoints only update once the
-      // gameweek is processed, so for the in-progress week the live total comes from the
-      // entry summary instead; bench and hit data are provisional zeros until then.
+      // Fetch Individual Points. `points` is stored NET of transfer hits: the score FPL uses
+      // for H2H fixture results, and the one every ITF competition is decided on. FPL's
+      // history endpoint reports gross points with the hit separate, and only updates once the
+      // week is processed; for the in-progress week the net score is this week's overall total
+      // minus last week's stored total (overall totals are always net).
+      const { data: prevTotalRows } = currentProcessingGw > 1
+        ? await supabase.from('manager_gw_scores').select('manager_fpl_id, classic_total_points').eq('season_id', SEASON_ID).eq('gw_number', currentProcessingGw - 1)
+        : { data: [] as any[] };
+      const prevTotals: Record<number, number> = {};
+      (prevTotalRows || []).forEach((r: any) => { prevTotals[Number(r.manager_fpl_id)] = r.classic_total_points; });
+
       for (const manager of allDiscoveredManagers) {
         await supabase.from('managers').upsert({ fpl_id: manager.fpl_id, real_name: manager.real_name });
         await supabase.from('season_managers').upsert({ season_id: SEASON_ID, manager_fpl_id: manager.fpl_id, team_name: manager.team_name, division: manager.division });
 
-        let gwStats: { points: number, points_on_bench: number, event_transfers_cost: number, total_points: number } | null = null;
+        let gwStats: { net: number, points_on_bench: number, event_transfers_cost: number, total_points: number } | null = null;
 
         if (!isGwFinished) {
           const entryRes = await fetch(`https://fantasy.premierleague.com/api/entry/${manager.fpl_id}/`);
           if (entryRes.ok) {
             const entry = await entryRes.json();
             if (entry.current_event === currentProcessingGw) {
-              gwStats = { points: entry.summary_event_points ?? 0, points_on_bench: 0, event_transfers_cost: 0, total_points: entry.summary_overall_points ?? 0 };
+              let prevTotal = prevTotals[manager.fpl_id];
+              if (prevTotal === undefined) {
+                prevTotal = 0;
+                if (currentProcessingGw > 1) {
+                  const historyRes = await fetch(`https://fantasy.premierleague.com/api/entry/${manager.fpl_id}/history/`);
+                  if (historyRes.ok) {
+                    const historyData = await historyRes.json();
+                    prevTotal = historyData.current.find((h: any) => h.event === currentProcessingGw - 1)?.total_points ?? 0;
+                  }
+                }
+              }
+              const overall = entry.summary_overall_points ?? prevTotal;
+              gwStats = { net: overall - prevTotal, points_on_bench: 0, event_transfers_cost: 0, total_points: overall };
             }
           }
         }
@@ -200,14 +220,15 @@ export async function GET(request: Request) {
           const historyRes = await fetch(`https://fantasy.premierleague.com/api/entry/${manager.fpl_id}/history/`);
           if (!historyRes.ok) continue;
           const historyData = await historyRes.json();
-          gwStats = historyData.current.find((h: any) => h.event === currentProcessingGw) || null;
+          const h = historyData.current.find((x: any) => x.event === currentProcessingGw);
+          if (h) gwStats = { net: h.points - (h.event_transfers_cost || 0), points_on_bench: h.points_on_bench, event_transfers_cost: h.event_transfers_cost, total_points: h.total_points };
         }
 
         if (gwStats) {
-          managerPointsMap[manager.fpl_id] = gwStats.points;
+          managerPointsMap[manager.fpl_id] = gwStats.net;
           scoresToInsert.push({
             season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: manager.fpl_id,
-            points: gwStats.points, bench_points: gwStats.points_on_bench,
+            points: gwStats.net, bench_points: gwStats.points_on_bench,
             transfers_cost: gwStats.event_transfers_cost, classic_total_points: gwStats.total_points
           });
         }
