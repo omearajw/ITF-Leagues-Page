@@ -41,7 +41,7 @@ function MonthCard({ month }: { month: MotmMonth }) {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <span aria-hidden="true">{month.complete ? '🏆' : '⏳'}</span>
-                        <TeamName name={leader.teamName} inline className="text-ink min-w-0" />
+                        <TeamName name={leader.teamName} managerId={leader.id} inline className="text-ink min-w-0" />
                       </div>
                       <div className="text-xs text-dim pl-7">{leader.realName}</div>
                     </div>
@@ -57,7 +57,7 @@ function MonthCard({ month }: { month: MotmMonth }) {
                 <ol className="mt-2 space-y-1 text-xs text-dim">
                   {div.standings.map((m, i) => (
                     <li key={m.id} className="flex justify-between gap-2">
-                      <span className="min-w-0 flex items-center gap-1.5"><span className="text-faint w-4">{i + 1}</span><TeamName name={m.teamName} inline className="min-w-0" /></span>
+                      <span className="min-w-0 flex items-center gap-1.5"><span className="text-faint w-4">{i + 1}</span><TeamName name={m.teamName} managerId={m.id} inline className="min-w-0" /></span>
                       <span className="font-bold">{m.points}</span>
                     </li>
                   ))}

@@ -168,7 +168,7 @@ async function OnionBaggersContent() {
                         <td className="p-4 text-center font-black text-green-400 border-r border-green-500/20">#{entrant.seed}</td>
                         <td className={`p-4 border-r border-green-500/20 sticky left-0 z-10 transition-colors ${isNewlyQualified ? 'bg-green-500/10 group-hover:bg-green-500/15' : 'bg-surface group-hover:bg-green-500/10'}`}>
                           <div className="font-bold text-ink flex items-center gap-2">
-                            <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} inline />
+                            <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} managerId={entrant.manager_fpl_id} inline />
                             {isNewlyQualified && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">Newly Qualified</span>}
                           </div>
                           <div className="text-xs text-dim">{teamMap[entrant.manager_fpl_id]?.realName}</div>
@@ -198,7 +198,7 @@ async function OnionBaggersContent() {
                       <td className="p-4 text-center text-ink-2 font-bold border-r border-line">-</td>
                       <td className="p-4 border-r border-line sticky left-0 z-10 bg-surface group-hover:bg-surface-2 transition-colors">
                         <div className="font-bold text-ink flex items-center gap-2">
-                          <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} inline />
+                          <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} managerId={manager.manager_fpl_id} inline />
                         </div>
                         <div className="text-xs text-dim">{teamMap[manager.manager_fpl_id]?.realName}</div>
                       </td>
@@ -227,7 +227,7 @@ async function OnionBaggersContent() {
                             <span className="w-8 shrink-0 text-sm font-black text-green-400">#{entrant.seed}</span>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                                <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} inline className="font-semibold text-ink min-w-0" />
+                                <TeamName name={teamMap[entrant.manager_fpl_id]?.teamName} managerId={entrant.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                                 {isNewlyQualified && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">New</span>}
                               </div>
                               <div className="text-xs text-dim">{teamMap[entrant.manager_fpl_id]?.realName}</div>
@@ -255,7 +255,7 @@ async function OnionBaggersContent() {
                       <div key={manager.manager_fpl_id} className="bg-surface border rounded-lg p-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} inline className="font-semibold text-ink min-w-0" />
+                            <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                             <div className="text-xs text-dim">{teamMap[manager.manager_fpl_id]?.realName}</div>
                           </div>
                           <div className="text-right shrink-0">
@@ -387,6 +387,7 @@ function MatchRow({ managerId, score, isWinner, isPlayed, isLive, teamMap }: { m
     <div className={`px-3 py-2 flex justify-between items-center transition-colors ${isPlayed && !isLive && !isWinner ? 'opacity-40 bg-surface-2' : ''} ${isWinner ? 'bg-green-500/10' : 'bg-surface'}`}>
       <TeamName
         name={teamMap[managerId]?.teamName}
+        managerId={managerId}
         inline
         className={`text-sm min-w-0 max-w-[60vw] sm:max-w-[140px] ${isWinner ? 'text-green-400' : 'text-ink-2'}`}
       />

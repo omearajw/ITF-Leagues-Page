@@ -61,7 +61,7 @@ async function DashboardContent() {
     supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('champions_league_entrants').select('manager_fpl_id', { count: 'exact', head: true }).eq('season_id', SEASON_ID),
-    supabase.from('eliminator_status').select('is_eliminated, eliminated_gw, season_managers!inner (team_name)').eq('season_id', SEASON_ID)
+    supabase.from('eliminator_status').select('manager_fpl_id, is_eliminated, eliminated_gw, season_managers!inner (team_name)').eq('season_id', SEASON_ID)
   ]);
 
   // Card summaries so each tournament widget says something even without a write-up
@@ -225,7 +225,7 @@ async function DashboardContent() {
                   <span className="text-2xl font-black text-ink">{elAlive}</span> <span className="text-dim">alive</span>
                   {elLastCut && (
                     <span className="block mt-1 text-xs text-dim">
-                      Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} inline className="text-red-400 min-w-0" />
+                      Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="text-red-400 min-w-0" />
                     </span>
                   )}
                 </>
@@ -259,7 +259,7 @@ async function DashboardContent() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
                           <span aria-hidden="true">{motmLatest.complete ? '🏆' : '⏳'}</span>
-                          <TeamName name={leader.teamName} inline className="text-ink min-w-0" />
+                          <TeamName name={leader.teamName} managerId={leader.id} inline className="text-ink min-w-0" />
                         </div>
                         <div className="text-xs text-dim pl-7">{leader.realName}</div>
                       </div>
@@ -291,7 +291,7 @@ async function DashboardContent() {
                     <span className="w-6 shrink-0 text-sm font-black text-faint">{index + 1}</span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <TeamName name={manager.season_managers.team_name} inline className="font-semibold min-w-0" />
+                        <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold min-w-0" />
                         <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
                       </div>
                       <div className="text-xs text-faint">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
@@ -316,7 +316,7 @@ async function DashboardContent() {
                     <td className="p-3 font-bold text-dim">{index + 1}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
+                        <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold" />
                         <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
                       </div>
                       <div className="text-xs text-faint">{manager.season_managers.managers.real_name}</div>
@@ -365,7 +365,7 @@ function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: {
                   <td className="p-1.5 pl-2 font-bold text-faint w-6">{index + 1}</td>
                   <td className="p-1.5 font-medium min-w-0 max-w-[1px] w-full">
                     <span className="flex items-center gap-1.5 min-w-0">
-                      <TeamName name={team.season_managers.team_name} inline className="min-w-0" />
+                      <TeamName name={team.season_managers.team_name} managerId={team.manager_fpl_id} inline className="min-w-0" />
                       <MovementArrow delta={movement[team.manager_fpl_id]} />
                     </span>
                   </td>

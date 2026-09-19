@@ -144,7 +144,7 @@ async function ChampionsLeagueContent() {
                     <div key={e.id} className="bg-surface-2 border border-line rounded-lg p-3 flex items-center gap-3">
                       <span className="text-indigo-300" aria-hidden="true">★</span>
                       <div className="min-w-0">
-                        <TeamName name={e.teamName} inline className="text-ink min-w-0" />
+                        <TeamName name={e.teamName} managerId={e.id} inline className="text-ink min-w-0" />
                         <div className="text-xs text-dim">{e.managerName}</div>
                       </div>
                     </div>
@@ -166,19 +166,19 @@ async function ChampionsLeagueContent() {
               </div>
               <div className="p-5 sm:p-10 flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center text-center">
                 <div className="flex-1 min-w-0">
-                  <TeamName name={entrants[finalFix.manager_1_id]?.teamName} className="text-xl sm:text-3xl text-white mb-2" />
+                  <TeamName name={entrants[finalFix.manager_1_id]?.teamName} managerId={finalFix.manager_1_id} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_1_score} pts</div>
                 </div>
                 <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-dim">VS</span></div>
                 <div className="flex-1 min-w-0">
-                  <TeamName name={entrants[finalFix.manager_2_id]?.teamName} className="text-xl sm:text-3xl text-white mb-2" />
+                  <TeamName name={entrants[finalFix.manager_2_id]?.teamName} managerId={finalFix.manager_2_id} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-300 font-bold text-2xl">{finalFix.manager_2_score} pts</div>
                 </div>
               </div>
               {finalFix.winner_id && finalFix.gw_number <= currentGw && (
                 <div className="bg-indigo-600 p-4 sm:p-6 text-center shadow-inner">
                   <span className="text-white font-black text-lg sm:text-2xl tracking-widest uppercase drop-shadow-md">
-                    🏆 <TeamName name={entrants[finalFix.winner_id]?.teamName} inline className="align-middle" /> <span className="align-middle">is the Champion 🏆</span>
+                    🏆 <TeamName name={entrants[finalFix.winner_id]?.teamName} managerId={finalFix.winner_id} inline className="align-middle" /> <span className="align-middle">is the Champion 🏆</span>
                   </span>
                 </div>
               )}
@@ -191,12 +191,12 @@ async function ChampionsLeagueContent() {
               </div>
               <div className="p-5 sm:p-10 flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center text-center opacity-90">
                 <div className="flex-1 min-w-0">
-                  <TeamName name={stage2Table[0].teamName} className="text-xl sm:text-3xl text-white mb-2" />
+                  <TeamName name={stage2Table[0].teamName} managerId={stage2Table[0].id} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
                 <div className="sm:px-8"><span className="text-2xl sm:text-4xl font-black text-dim">VS</span></div>
                 <div className="flex-1 min-w-0">
-                  <TeamName name={stage2Table[1].teamName} className="text-xl sm:text-3xl text-white mb-2" />
+                  <TeamName name={stage2Table[1].teamName} managerId={stage2Table[1].id} className="text-xl sm:text-3xl text-white mb-2" />
                   <div className="text-indigo-400 font-bold text-sm uppercase tracking-widest">Finalist</div>
                 </div>
               </div>
@@ -288,7 +288,7 @@ function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | u
             </div>
             <div className="flex justify-between items-center gap-2">
               <span className={`flex min-w-0 w-2/5 font-semibold ${!isPlayed ? 'text-faint' : !isLiveFix && fix.winner_id === fix.manager_1_id ? 'text-green-400' : 'text-ink-2'}`}>
-                <TeamName name={entrants[fix.manager_1_id]?.teamName} inline className="min-w-0" />
+                <TeamName name={entrants[fix.manager_1_id]?.teamName} managerId={fix.manager_1_id} inline className="min-w-0" />
               </span>
 
               {isPlayed ? (
@@ -302,7 +302,7 @@ function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | u
               )}
 
               <span className={`flex justify-end min-w-0 w-2/5 text-right font-semibold ${!isPlayed ? 'text-faint' : !isLiveFix && fix.winner_id === fix.manager_2_id ? 'text-green-400' : 'text-ink-2'}`}>
-                <TeamName name={entrants[fix.manager_2_id]?.teamName} inline className="min-w-0" />
+                <TeamName name={entrants[fix.manager_2_id]?.teamName} managerId={fix.manager_2_id} inline className="min-w-0" />
               </span>
             </div>
           </div>
@@ -341,7 +341,7 @@ function StageList({ data, isLive, eliminateCount, highlightTop, movement = {} }
                 <span className="w-6 shrink-0 text-sm font-black text-faint leading-6">{index + 1}</span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                    <TeamName name={team.teamName} inline className="font-semibold text-ink min-w-0" />
+                    <TeamName name={team.teamName} managerId={team.id} inline className="font-semibold text-ink min-w-0" />
                     <MovementArrow delta={movement[team.id]} />
                     {badge}
                   </div>
@@ -408,7 +408,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
                   <td className="p-4 text-center font-bold">{index + 1}</td>
                   <td className="p-4">
                     <div className="font-bold flex items-center gap-2">
-                      <TeamName name={team.teamName} inline /> <MovementArrow delta={movement[team.id]} /> {badge}
+                      <TeamName name={team.teamName} managerId={team.id} inline /> <MovementArrow delta={movement[team.id]} /> {badge}
                     </div>
                     <div className={`text-xs ${isLive && isBottom ? 'text-red-400/70' : 'text-dim'}`}>{team.managerName}</div>
                   </td>

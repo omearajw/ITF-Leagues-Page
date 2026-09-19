@@ -187,7 +187,7 @@ async function AdminContent() {
                     defaultChecked={currentEntrantIds.includes(mgr.manager_fpl_id)}
                     className="w-4 h-4 text-brand-2 rounded mr-3"
                   />
-                  <TeamName name={mgr.team_name} inline className="text-sm font-medium text-ink-2" />
+                  <TeamName name={mgr.team_name} managerId={mgr.manager_fpl_id} inline className="text-sm font-medium text-ink-2" />
                 </label>
               ))}
             </div>

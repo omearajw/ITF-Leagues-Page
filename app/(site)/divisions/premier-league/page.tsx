@@ -144,7 +144,7 @@ async function DivisionContent() {
                   <td className="p-4 text-center font-bold text-faint">{index + 1}</td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <TeamName name={team.teamName} />
+                      <TeamName name={team.teamName} managerId={team.id} />
                       <MovementArrow delta={movement[team.id]} />
                     </div>
                     <div className="text-dim text-xs">{team.managerName}</div>
@@ -180,7 +180,7 @@ async function DivisionContent() {
                   <span className="w-6 shrink-0 text-sm font-black text-faint leading-6">{index + 1}</span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                      <TeamName name={team.teamName} inline className="font-semibold text-ink min-w-0" />
+                      <TeamName name={team.teamName} managerId={team.id} inline className="font-semibold text-ink min-w-0" />
                       <MovementArrow delta={movement[team.id]} />
                     </div>
                     <div className="text-xs text-dim">{team.managerName}</div>

@@ -119,7 +119,7 @@ async function FormGridContent() {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-5 shrink-0 text-xs font-black text-faint">{divManagers.indexOf(manager) + 1}</span>
                       <div className="min-w-0">
-                        <TeamName name={manager.team_name} inline className="text-ink min-w-0" />
+                        <TeamName name={manager.team_name} managerId={manager.manager_fpl_id} inline className="text-ink min-w-0" />
                         <div className="text-xs text-dim">{manager.managers.real_name} · {tally.W || 0}W {tally.D || 0}D {tally.L || 0}L · form {manager.form.score % 1 === 0 ? manager.form.score : manager.form.score.toFixed(1)}</div>
                       </div>
                     </div>
@@ -170,7 +170,7 @@ async function FormGridContent() {
                         <td className="p-3 text-left sticky left-0 bg-surface border-r z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="w-5 shrink-0 text-xs font-black text-faint">{rank + 1}</span>
-                            <TeamName name={manager.team_name} inline className="text-ink min-w-0 max-w-[180px]" />
+                            <TeamName name={manager.team_name} managerId={manager.manager_fpl_id} inline className="text-ink min-w-0 max-w-[180px]" />
                           </div>
                           <div className="text-xs text-dim pl-7">{manager.managers.real_name}</div>
                         </td>

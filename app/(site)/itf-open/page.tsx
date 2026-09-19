@@ -94,7 +94,7 @@ async function ITFOpenContent() {
               <td className="p-3 font-bold text-ink-2">{index + 1}</td>
               <td className="p-3">
                 <div className="flex items-center gap-2">
-                  <TeamName name={manager.season_managers.team_name} inline className="font-semibold" />
+                  <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold" />
                   <MovementArrow delta={movement[manager.manager_fpl_id]} />
                 </div>
                 <div className="text-sm text-dim">{manager.season_managers.managers.real_name}</div>
@@ -120,7 +120,7 @@ async function ITFOpenContent() {
           <div key={manager.manager_fpl_id} className="bg-surface border rounded-lg p-3 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-bold text-ink-2">{index + 1}. <span className="ml-2"><TeamName name={manager.season_managers.team_name} inline className="font-semibold" /></span> <MovementArrow delta={movement[manager.manager_fpl_id]} className="ml-1" /></div>
+                <div className="font-bold text-ink-2">{index + 1}. <span className="ml-2"><TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold" /></span> <MovementArrow delta={movement[manager.manager_fpl_id]} className="ml-1" /></div>
                 <div className="text-xs text-dim">{manager.season_managers.managers.real_name}</div>
               </div>
               <div className="text-right">

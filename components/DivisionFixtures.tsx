@@ -20,7 +20,7 @@ function FixtureRow({ fix, scores, teamNames, live }: { fix: H2HFixture; scores:
   return (
     <div className="flex items-center gap-2 py-2.5 text-sm">
       <span className={`flex justify-end min-w-0 flex-1 text-right ${lead1 ? 'font-bold text-ink' : lead2 ? 'text-dim' : 'text-ink-2'}`}>
-        <TeamName name={teamNames[fix.m1] || fix.name1} inline className="min-w-0" />
+        <TeamName name={teamNames[fix.m1] || fix.name1} managerId={fix.m1} inline className="min-w-0" />
       </span>
       {played ? (
         <span className={`shrink-0 font-mono font-bold px-2 py-0.5 rounded text-xs ${live ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-panel text-white'}`}>
@@ -30,7 +30,7 @@ function FixtureRow({ fix, scores, teamNames, live }: { fix: H2HFixture; scores:
         <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-faint px-2">v</span>
       )}
       <span className={`flex min-w-0 flex-1 ${lead2 ? 'font-bold text-ink' : lead1 ? 'text-dim' : 'text-ink-2'}`}>
-        <TeamName name={teamNames[fix.m2] || fix.name2} inline className="min-w-0" />
+        <TeamName name={teamNames[fix.m2] || fix.name2} managerId={fix.m2} inline className="min-w-0" />
       </span>
     </div>
   );

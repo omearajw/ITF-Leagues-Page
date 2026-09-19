@@ -138,7 +138,7 @@ async function EliminatorContent() {
               {roster?.map((mgr: any) => (
                 <div key={mgr.manager_fpl_id} className="bg-surface border border-line p-4 rounded-xl shadow-sm flex items-center justify-between">
                   <div>
-                    <TeamName name={mgr.team_name} inline className="text-ink" />
+                    <TeamName name={mgr.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink" />
                     <div className="text-xs text-dim">{mgr.managers.real_name}</div>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-faint bg-surface-2 px-2 py-1 rounded">{mgr.division}</span>
@@ -186,7 +186,7 @@ async function EliminatorContent() {
                 <div key={mgr.season_managers.team_name} className="bg-surface border border-green-500/20 p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition">
                   <div>
                     <div className="flex items-center gap-2">
-                      <TeamName name={mgr.season_managers.team_name} inline className="text-ink" />
+                      <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink" />
                       {displayGw === gw.liveGw && alive.length > 1 && idx === alive.length - 1 && (
                         <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-bold uppercase">Lowest</span>
                       )}
@@ -226,7 +226,7 @@ async function EliminatorContent() {
                               GW {mgr.eliminated_gw}
                               {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
                             </div>
-                            <TeamName name={mgr.season_managers.team_name} inline className="text-ink line-through opacity-75 min-w-0" />
+                            <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink line-through opacity-75 min-w-0" />
                             <div className="text-xs text-dim">{mgr.season_managers.managers.real_name}</div>
                           </div>
                           <span className="shrink-0 text-lg font-black text-red-400">{getScore(mgr.manager_fpl_id, mgr.eliminated_gw || 1)} pts</span>
@@ -256,7 +256,7 @@ async function EliminatorContent() {
                               {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
                             </td>
                             <td className="p-4">
-                              <TeamName name={mgr.season_managers.team_name} inline className="text-ink line-through opacity-75" />
+                              <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink line-through opacity-75" />
                               <div className="text-xs text-dim">{mgr.season_managers.managers.real_name}</div>
                             </td>
                             <td className="p-4 text-right">
