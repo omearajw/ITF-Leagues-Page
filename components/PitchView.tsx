@@ -186,12 +186,12 @@ export function FlipPitch({ front, back, flipped }: { front: React.ReactNode; ba
 export function FlipButton({ flipped, onToggle, label }: { flipped: boolean; onToggle: () => void; label: string }) {
   return (
     <button type="button" onClick={onToggle} aria-pressed={flipped} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${flipped ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-surface border-line text-dim hover:text-ink'}`}>
-      {flipped ? '↺ Back to your team' : `⇄ Flip to ${label}`}
+      {flipped ? '↺ Back to this team' : `⇄ Flip to ${label}`}
     </button>
   );
 }
 
-export type PitchOpponent = { name: string; starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number };
+export type PitchOpponent = { name: string; week: number; starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number };
 
 export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, opponent }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; opponent?: PitchOpponent | null }) {
   const [view, choose] = usePitchViewPreference();
@@ -221,11 +221,11 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
     <section className="mb-8">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <h2 className="text-lg font-bold text-ink flex items-center gap-2">
-          {flipped && opponent ? <span>{opponent.name}<span className="text-faint font-normal"> (opponent)</span></span> : 'Line-up'} {live && <LiveChip />}
+          {flipped && opponent ? <span>{opponent.name}<span className="text-faint font-normal"> · GW{opponent.week} opponent</span></span> : 'Line-up'} {live && <LiveChip />}
           {pointsUnavailable && <span className="text-xs font-normal text-faint">player points unavailable</span>}
         </h2>
         <div className="flex items-center gap-2">
-          {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={opponent.name} />}
+          {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`${opponent.name} (GW${opponent.week} opponent)`} />}
           <ViewSwitch view={view} onChange={choose} />
         </div>
       </div>

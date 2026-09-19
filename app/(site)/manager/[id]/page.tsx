@@ -10,6 +10,7 @@ import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry } from '@/lib/fpl-manager';
 import { DIVISIONS } from '@/lib/divisions';
+import TeamBadge from '@/components/TeamBadge';
 
 export default async function ManagerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ gw?: string }> }) {
   const { id } = await params;
@@ -85,6 +86,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   const bench = (picks?.picks || []).filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(toPitch);
   const pitchOpponent: PitchOpponent | null = opponentPicks && opponentName ? {
     name: opponentName,
+    week: selectedGw,
     starters: opponentPicks.picks.filter(p => p.position <= 11).map(p => ({ ...toPitch(p), subbedIn: false, subbedOut: false })),
     bench: opponentPicks.picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(p => ({ ...toPitch(p), subbedIn: false, subbedOut: false })),
     benchPoints: opponentPicks.entry_history.points_on_bench,
@@ -97,7 +99,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   return (
     <>
       <PageHeader
-        title={<TeamName name={manager.team_name} inline className="min-w-0" />}
+        title={<span className="inline-flex items-center gap-3 min-w-0">{entry?.club_badge_src && <TeamBadge src={entry.club_badge_src} size={56} className="rounded-md" />}<TeamName name={manager.team_name} inline className="min-w-0" hideBadge showStars starSize={12} /></span>}
         titleExtra={division && (
           <Link href={`/divisions/${division.slug}`} className="text-xs sm:text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase bg-surface-3 text-dim hover:text-ink">
             {manager.division}

@@ -86,7 +86,7 @@ export function getManagerTransfers(managerId: number) {
   return memoized<Transfer[]>(`transfers:${managerId}`, 5 * 60_000, () => fplJson(`/entry/${managerId}/transfers/`));
 }
 
-export type ManagerEntry = { name: string; player_first_name: string; player_last_name: string; summary_overall_rank: number | null; summary_overall_points: number; started_event: number };
+export type ManagerEntry = { name: string; player_first_name: string; player_last_name: string; summary_overall_rank: number | null; summary_overall_points: number; started_event: number; club_badge_src: string | null };
 
 export function getManagerEntry(managerId: number) {
   return memoized<ManagerEntry>(`entry:${managerId}`, 5 * 60_000, () => fplJson(`/entry/${managerId}/`));

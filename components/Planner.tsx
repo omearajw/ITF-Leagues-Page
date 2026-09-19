@@ -200,7 +200,7 @@ export default function Planner(props: PlannerProps) {
       {/* Pitch */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-bold text-ink">{flipped && opponent ? <>{opponent.name} <span className="text-faint font-normal">(your GW{planGw} opponent)</span></> : 'Your squad'}</div>
-        {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={opponent.name} />}
+        {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`${opponent.name} (GW${planGw} opponent)`} />}
       </div>
       {(() => {
         const indexed = squad.map((s, i) => ({ s, i }));
@@ -229,7 +229,7 @@ export default function Planner(props: PlannerProps) {
       {/* Tabs */}
       <div>
         <div className="flex gap-1 border-b border-line mb-4">
-          {([['matchup', opponent ? `Match-up v ${opponent.name}` : 'Match-up'], ['stakes', 'What it means'], ['apply', changed ? `Apply (${transfersIn.length + (captain !== baseCaptain ? 1 : 0)})` : 'Apply on FPL']] as const).map(([key, label]) => (
+          {([['matchup', opponent ? `GW${planGw} match-up v ${opponent.name}` : 'Match-up'], ['stakes', 'What it means'], ['apply', changed ? `Apply (${transfersIn.length + (captain !== baseCaptain ? 1 : 0)})` : 'Apply on FPL']] as const).map(([key, label]) => (
             <button key={key} type="button" onClick={() => setTab(key)} className={`px-3 sm:px-4 py-2 text-sm font-bold border-b-2 -mb-px truncate max-w-[45%] ${tab === key ? 'border-brand text-ink' : 'border-transparent text-dim hover:text-ink'}`}>{label}</button>
           ))}
         </div>
