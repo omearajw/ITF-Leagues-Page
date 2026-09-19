@@ -107,6 +107,10 @@
 }
 
 @layer utilities {
+  .flip-face,
+  .flip-face * {
+    backface-visibility: hidden;
+  }
   .no-scrollbar {
     scrollbar-width: none;
   }

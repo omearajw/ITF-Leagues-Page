@@ -18,18 +18,19 @@ export type PitchPlayer = {
   subbedOut: boolean;
 };
 
-type View = 'photo' | 'shirt' | 'plain';
+export type View = 'photo' | 'shirt' | 'plain';
 const VIEWS: { key: View; label: string }[] = [{ key: 'photo', label: 'Photos' }, { key: 'shirt', label: 'Shirts' }, { key: 'plain', label: 'Plain' }];
 const STORAGE_KEY = 'itf-pitch-view';
 const POSITION_ORDER: PitchPlayer['position'][] = ['GKP', 'DEF', 'MID', 'FWD'];
 
 // FPL's public artwork: club shirts (goalkeepers have their own kit), player headshots,
 // and the silhouette FPL shows for players without a photo.
-const shirtUrl = (p: PitchPlayer) => `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${p.teamCode}${p.position === 'GKP' ? '_1' : ''}-110.png`;
-const photoUrl = (p: PitchPlayer) => `https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png`;
+type VisualPlayer = Pick<PitchPlayer, 'element' | 'team' | 'teamCode' | 'code' | 'position'>;
+const shirtUrl = (p: VisualPlayer) => `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${p.teamCode}${p.position === 'GKP' ? '_1' : ''}-110.png`;
+const photoUrl = (p: VisualPlayer) => `https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png`;
 const MISSING_PHOTO = 'https://resources.premierleague.com/premierleague/photos/players/110x140/Photo-Missing.png';
 
-function Visual({ player, view }: { player: PitchPlayer; view: View }) {
+export function Visual({ player, view }: { player: VisualPlayer; view: View }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     setSrc(view === 'photo' ? photoUrl(player) : view === 'shirt' ? shirtUrl(player) : null);
@@ -83,7 +84,7 @@ function PlayerCard({ player, view, live, onGrass }: { player: PitchPlayer; view
 
 // Pitch markings drawn with borders rather than a stretched SVG, so every line stays the
 // same thickness whatever shape the pitch ends up.
-function PitchMarkings() {
+export function PitchMarkings() {
   const line = 'border-white/35';
   return (
     <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -109,71 +110,126 @@ function PitchMarkings() {
   );
 }
 
-export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean }) {
+// Remembered Photos / Shirts / Plain preference, shared with the planner.
+export function usePitchViewPreference(): [View, (next: View) => void] {
   const [view, setView] = useState<View>('photo');
-
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY) as View | null;
       if (saved && VIEWS.some(v => v.key === saved)) setView(saved);
     } catch {}
   }, []);
-
   const choose = (next: View) => {
     setView(next);
     try { window.localStorage.setItem(STORAGE_KEY, next); } catch {}
   };
+  return [view, choose];
+}
+
+export function ViewSwitch({ view, onChange }: { view: View; onChange: (next: View) => void }) {
+  return (
+    <div className="flex rounded-lg border border-line overflow-hidden text-xs font-bold" role="group" aria-label="Player display">
+      {VIEWS.map(v => (
+        <button key={v.key} type="button" onClick={() => onChange(v.key)} aria-pressed={view === v.key} className={`px-3 py-1.5 ${view === v.key ? 'bg-brand text-white' : 'bg-surface text-dim hover:text-ink'}`}>
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export const PITCH_STRIPES = 'repeating-linear-gradient(180deg, #2f8a4b 0px, #2f8a4b 48px, #2a7f44 48px, #2a7f44 96px)';
+
+// Generic pitch layout: four rows of starters on the grass, bench strip underneath.
+export function PitchBoard<T>({ starters, bench, positionOf, renderPlayer, benchLabel, className = '' }: {
+  starters: T[]; bench: T[]; positionOf: (p: T) => PitchPlayer['position']; renderPlayer: (p: T, onBench: boolean) => React.ReactNode; benchLabel: React.ReactNode; className?: string;
+}) {
+  return (
+    <div className={`rounded-2xl overflow-hidden shadow-lg border border-black/30 ${className}`}>
+      <div className="relative px-2 sm:px-6 pt-8 pb-6" style={{ backgroundImage: PITCH_STRIPES }}>
+        <PitchMarkings />
+        <div className="relative space-y-5 sm:space-y-7">
+          {POSITION_ORDER.map(position => {
+            const row = starters.filter(p => positionOf(p) === position);
+            if (row.length === 0) return null;
+            return (
+              <div key={position} className="flex justify-center items-start gap-1 sm:gap-3">
+                {row.map((p, i) => <div key={i} className="w-[19%] sm:w-28 flex">{renderPlayer(p, false)}</div>)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="bg-surface-2 border-t border-line px-2 sm:px-6 pt-4 pb-4">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-3 text-center">{benchLabel}</div>
+        <div className="flex justify-center items-start gap-1 sm:gap-3">
+          {bench.map((p, i) => <div key={i} className="w-[19%] sm:w-28 flex">{renderPlayer(p, true)}</div>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 3D flip between two boards of the same shape.
+export function FlipPitch({ front, back, flipped }: { front: React.ReactNode; back: React.ReactNode; flipped: boolean }) {
+  return (
+    <div style={{ perspective: '2000px' }}>
+      <div className="relative transition-transform duration-700" style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
+        {/* Absolutely positioned badges ignore the face's backface-visibility, so the hidden face is also made invisible once the turn completes. */}
+        <div className={`flip-face transition-[visibility] duration-0 ${flipped ? 'invisible delay-300' : 'visible delay-0'}`} aria-hidden={flipped}>{front}</div>
+        <div className={`flip-face absolute inset-0 transition-[visibility] duration-0 ${flipped ? 'visible delay-0' : 'invisible delay-300'}`} style={{ transform: 'rotateY(180deg)' }} aria-hidden={!flipped}>{back}</div>
+      </div>
+    </div>
+  );
+}
+
+export function FlipButton({ flipped, onToggle, label }: { flipped: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button type="button" onClick={onToggle} aria-pressed={flipped} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${flipped ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-surface border-line text-dim hover:text-ink'}`}>
+      {flipped ? '↺ Back to your team' : `⇄ Flip to ${label}`}
+    </button>
+  );
+}
+
+export type PitchOpponent = { name: string; starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number };
+
+export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, opponent }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; opponent?: PitchOpponent | null }) {
+  const [view, choose] = usePitchViewPreference();
+  const [flipped, setFlipped] = useState(false);
+  const mineIds = new Set([...starters, ...bench].map(p => p.element));
+  const theirIds = new Set(opponent ? [...opponent.starters, ...opponent.bench].map(p => p.element) : []);
+
+  const board = (list: PitchPlayer[], benchList: PitchPlayer[], label: string, sharedWith: Set<number>) => (
+    <PitchBoard
+      starters={list}
+      bench={benchList}
+      positionOf={p => p.position}
+      benchLabel={label}
+      renderPlayer={(p, onBench) => (
+        <div className={`w-full ${sharedWith.has(p.element) ? 'opacity-90' : ''}`}>
+          <PlayerCard player={onBench ? { ...p, multiplier: 1 } : p} view={view} live={live} onGrass={!onBench} />
+          {opponent && sharedWith.has(p.element) && <div className="text-center text-[9px] font-bold uppercase tracking-wider text-white/70 mt-0.5">both own</div>}
+        </div>
+      )}
+    />
+  );
+
+  const front = board(starters, bench, `Bench · ${benchPoints} pts`, theirIds);
+  const back = opponent ? board(opponent.starters, opponent.bench, `${opponent.name} bench · ${opponent.benchPoints} pts`, mineIds) : null;
 
   return (
     <section className="mb-8">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <h2 className="text-lg font-bold text-ink flex items-center gap-2">
-          Line-up {live && <LiveChip />}
+          {flipped && opponent ? <span>{opponent.name}<span className="text-faint font-normal"> (opponent)</span></span> : 'Line-up'} {live && <LiveChip />}
           {pointsUnavailable && <span className="text-xs font-normal text-faint">player points unavailable</span>}
         </h2>
-        <div className="flex rounded-lg border border-line overflow-hidden text-xs font-bold" role="group" aria-label="Player display">
-          {VIEWS.map(v => (
-            <button key={v.key} type="button" onClick={() => choose(v.key)} aria-pressed={view === v.key} className={`px-3 py-1.5 ${view === v.key ? 'bg-brand text-white' : 'bg-surface text-dim hover:text-ink'}`}>
-              {v.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={opponent.name} />}
+          <ViewSwitch view={view} onChange={choose} />
         </div>
       </div>
-
-      <div className="rounded-2xl overflow-hidden shadow-lg border border-black/30">
-        <div
-          className="relative px-2 sm:px-6 pt-8 pb-6 space-y-5 sm:space-y-7"
-          style={{ backgroundImage: 'repeating-linear-gradient(180deg, #2f8a4b 0px, #2f8a4b 48px, #2a7f44 48px, #2a7f44 96px)' }}
-        >
-          <PitchMarkings />
-          <div className="relative space-y-5 sm:space-y-7">
-            {POSITION_ORDER.map(position => {
-              const row = starters.filter(p => p.position === position);
-              if (row.length === 0) return null;
-              return (
-                <div key={position} className="flex justify-center items-start gap-1 sm:gap-3">
-                  {row.map(p => (
-                    <div key={p.element} className="w-[19%] sm:w-28 flex">
-                      <PlayerCard player={p} view={view} live={live} onGrass />
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-surface-2 border-t border-line px-2 sm:px-6 pt-4 pb-4">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-3 text-center">Bench · {benchPoints} pts</div>
-          <div className="flex justify-center items-start gap-1 sm:gap-3">
-            {bench.map(p => (
-              <div key={p.element} className="w-[19%] sm:w-28 flex">
-                <PlayerCard player={{ ...p, multiplier: 1 }} view={view} live={live} onGrass={false} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front}
     </section>
   );
 }

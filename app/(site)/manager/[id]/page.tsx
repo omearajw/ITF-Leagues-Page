@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
 import { GameweekChip } from '@/components/GameweekBadge';
-import PitchView, { type PitchPlayer } from '@/components/PitchView';
+import PitchView, { type PitchPlayer, type PitchOpponent } from '@/components/PitchView';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry } from '@/lib/fpl-manager';
@@ -58,7 +58,13 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
     supabase.from('h2h_fixtures').select('gw_number, result').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).lte('gw_number', gw.syncedThroughGw).order('gw_number', { ascending: false }).limit(5),
   ]);
 
-  const opponentRow = h2h ? (await supabase.from('season_managers').select('team_name').eq('season_id', SEASON_ID).eq('manager_fpl_id', (h2h as any).opponent_fpl_id).maybeSingle()).data : null;
+  const opponentId = h2h ? Number((h2h as any).opponent_fpl_id) : null;
+  const [opponentRow, opponentPicks] = opponentId
+    ? await Promise.all([
+        supabase.from('season_managers').select('team_name').eq('season_id', SEASON_ID).eq('manager_fpl_id', opponentId).maybeSingle().then(r => r.data),
+        getManagerPicks(opponentId, selectedGw, isFinal),
+      ])
+    : [null, null];
   const opponentName = opponentRow ? getTeamNameDisplayText(opponentRow.team_name) : null;
 
   const division = DIVISIONS.find(d => d.name === manager.division);
@@ -77,6 +83,12 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   };
   const starters = (picks?.picks || []).filter(p => p.position <= 11).map(toPitch);
   const bench = (picks?.picks || []).filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(toPitch);
+  const pitchOpponent: PitchOpponent | null = opponentPicks && opponentName ? {
+    name: opponentName,
+    starters: opponentPicks.picks.filter(p => p.position <= 11).map(p => ({ ...toPitch(p), subbedIn: false, subbedOut: false })),
+    bench: opponentPicks.picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(p => ({ ...toPitch(p), subbedIn: false, subbedOut: false })),
+    benchPoints: opponentPicks.entry_history.points_on_bench,
+  } : null;
   const weekTransfers = (transfers || []).filter(t => t.event === selectedGw);
   // Newest first so the current week is visible without scrolling on a phone
   const weeks = Array.from({ length: latestGw }, (_, i) => latestGw - i);
@@ -92,6 +104,14 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
           </Link>
         )}
         badge={<GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />}
+        actions={(
+          // FPL's own pages always open the logged-in user's team, so these read "your team" rather than this manager's.
+          <span className="flex items-center gap-2">
+            <Link href={`/manager/${managerId}/plan`} className="text-xs sm:text-sm bg-brand text-white px-3 py-1.5 rounded-full font-semibold hover:bg-brand/90 transition">Plan next week &rarr;</Link>
+            <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="text-xs sm:text-sm bg-brand-2/15 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/25 transition">Pick your team on FPL &rarr;</a>
+            <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="text-xs sm:text-sm bg-brand-2/15 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/25 transition">Transfers &rarr;</a>
+          </span>
+        )}
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dim">
           <span className="font-semibold text-ink-2">{manager.managers.real_name}</span>
@@ -146,7 +166,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
             ))}
           </div>
 
-          <PitchView starters={starters} bench={bench} benchPoints={picks.entry_history.points_on_bench} live={isLiveWeek} pointsUnavailable={live === null} />
+          <PitchView starters={starters} bench={bench} benchPoints={picks.entry_history.points_on_bench} live={isLiveWeek} pointsUnavailable={live === null} opponent={pitchOpponent} />
 
           {/* Transfers this week */}
           <section className="mb-8">
