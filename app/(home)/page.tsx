@@ -4,14 +4,13 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
 import Snippet from '@/components/snippet';
-import Marquee from '@/components/Marquee';
 import GameweekTimeline from '@/components/GameweekTimeline';
 import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
-import { buildMotm, type MotmMonth } from '@/lib/motm';
+import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
 import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } from '@/lib/tournament-next';
 
@@ -20,7 +19,7 @@ import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } fro
 // =========================================
 export default function Dashboard() {
   return (
-    <div className="relative pb-4 md:pb-20">
+    <div className="relative pb-4">
       <header className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-4xl font-extrabold text-ink tracking-tight">ITF Hub</h1>
         <p className="text-dim">Live updates and standings for the 2026-27 Season.</p>
@@ -335,12 +334,6 @@ async function DashboardContent() {
         </section>
       </div>
 
-      {/* FOOTER: TICKER */}
-      <div className="hidden md:block fixed bottom-0 left-0 w-full bg-panel text-white shadow-inner overflow-hidden border-t-4 border-brand z-40">
-        <Marquee>
-          <TickerContent month={motmLatest} />
-        </Marquee>
-      </div>
     </>
   );
 }
@@ -433,34 +426,5 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
         <Link href={link} className="absolute inset-0 z-30" aria-label={`View ${name}`} />
       )}
     </div>
-  );
-}
-
-function TickerContent({ month }: { month: MotmMonth | null }) {
-  if (!month) {
-    return (
-      <>
-        <span className="text-brand-2 font-bold">MANAGER OF THE MONTH</span>
-        <span>•</span>
-        <span>Awaiting the first confirmed gameweek</span>
-        <span>•</span>
-      </>
-    );
-  }
-  const podium = (division: string) => {
-    const standings = month.divisions.find(d => d.division === division)?.standings.slice(0, 3) || [];
-    return standings.length ? standings.map((m, i) => `${i + 1}. ${m.realName} (${m.points})`).join(' | ') : 'Awaiting Data';
-  };
-  return (
-    <>
-      <span className="text-brand-2 font-bold">MANAGER OF THE MONTH · {month.label.toUpperCase()}{month.complete ? '' : ' SO FAR'}</span>
-      <span>•</span>
-      <span>PREMIER LEAGUE: {podium('Premier League')}</span>
-      <span>•</span>
-      <span>CHAMPIONSHIP: {podium('Championship')}</span>
-      <span>•</span>
-      <span>LEAGUE ONE: {podium('League One')}</span>
-      <span>•</span>
-    </>
   );
 }

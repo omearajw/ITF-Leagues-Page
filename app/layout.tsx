@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import MobileNav from '@/components/mobile-nav';
+import TickerServer from '@/components/TickerServer';
+import { TickerSwitch } from '@/components/Ticker';
 
 export const metadata = {
   title: 'ITF League Hub',
@@ -40,6 +42,7 @@ async function Navbar() {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4">
+              <TickerSwitch />
               {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
               <div className="hidden md:flex space-x-6 text-xs font-medium uppercase tracking-wider">
                 {(isAdmin || isEditor) && (
@@ -117,6 +120,12 @@ export default function RootLayout({
 
         {/* Route groups supply the page body: (site) adds the gameweek strip, (home) has the timeline card instead */}
         {children}
+
+        {/* Bottom ticker (desktop); the spacer keeps the footer clear of it */}
+        <Suspense fallback={null}>
+          <TickerServer />
+        </Suspense>
+        <div className="hidden md:block h-12" aria-hidden="true" />
 
         {/* GLOBAL FOOTER */}
         <footer className="bg-panel text-dim text-center py-8 text-sm mt-auto pb-10 relative z-30">
