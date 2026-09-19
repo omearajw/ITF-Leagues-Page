@@ -4,10 +4,11 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
-import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
+import { GameweekChip } from '@/components/GameweekBadge';
+import PitchView, { type PitchPlayer } from '@/components/PitchView';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
-import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, type Player } from '@/lib/fpl-manager';
+import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry } from '@/lib/fpl-manager';
 import { DIVISIONS } from '@/lib/divisions';
 
 export default async function ManagerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ gw?: string }> }) {
@@ -31,28 +32,6 @@ export default async function ManagerPage({ params, searchParams }: { params: Pr
       <Suspense fallback={<DivisionSkeleton />}>
         <ManagerContent managerId={managerId} manager={seasonRow} requestedGw={Number.isFinite(requestedGw) ? requestedGw : null} />
       </Suspense>
-    </div>
-  );
-}
-
-const POSITION_ORDER: Player['position'][] = ['GKP', 'DEF', 'MID', 'FWD'];
-
-function PlayerCard({ player, points, pick, subbedIn, subbedOut, live }: { player: Player | undefined; points: number | null; pick: { multiplier: number; is_captain: boolean; is_vice_captain: boolean }; subbedIn: boolean; subbedOut: boolean; live: boolean }) {
-  if (!player) return <div className="bg-surface-2 border border-line rounded-lg p-2 text-xs text-faint">Unknown player</div>;
-  const scored = points === null ? null : points * (pick.multiplier || 1);
-  return (
-    <div className={`relative bg-surface border rounded-lg px-2 py-2 text-center min-w-0 ${subbedOut ? 'border-red-500/40 opacity-60' : subbedIn ? 'border-green-500/40' : 'border-line'}`}>
-      {(pick.is_captain || pick.is_vice_captain) && (
-        <span className={`absolute -top-2 -right-1.5 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ${pick.is_captain ? 'bg-brand text-white' : 'bg-surface-3 text-ink'}`}>
-          {pick.is_captain ? 'C' : 'V'}
-        </span>
-      )}
-      <div className="text-sm font-bold text-ink truncate">{player.name}</div>
-      <div className="text-[10px] uppercase tracking-wider text-faint">{player.team} · {player.position}</div>
-      <div className={`mt-1 text-lg font-black ${live ? 'text-amber-300' : 'text-ink'}`}>{scored === null ? '–' : scored}</div>
-      {pick.multiplier > 1 && <div className="text-[10px] text-dim">×{pick.multiplier}</div>}
-      {subbedIn && <div className="text-[10px] font-bold uppercase tracking-wider text-green-400">Auto sub in</div>}
-      {subbedOut && <div className="text-[10px] font-bold uppercase tracking-wider text-red-400">Auto sub out</div>}
     </div>
   );
 }
@@ -88,11 +67,19 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   const net = scoreRow?.points ?? (gross !== null ? gross - cost : null);
   const subsIn = new Set((picks?.automatic_subs || []).map(s => s.element_in));
   const subsOut = new Set((picks?.automatic_subs || []).map(s => s.element_out));
-  const starters = (picks?.picks || []).filter(p => p.position <= 11);
-  const bench = (picks?.picks || []).filter(p => p.position > 11).sort((a, b) => a.position - b.position);
+  const toPitch = (p: { element: number; multiplier: number; is_captain: boolean; is_vice_captain: boolean }): PitchPlayer => {
+    const pl = players?.[p.element];
+    return {
+      element: p.element, name: pl?.name || `#${p.element}`, team: pl?.team || '', teamCode: pl?.teamCode || 0, code: pl?.code || 0, position: pl?.position || 'MID',
+      points: live ? (live[p.element]?.total_points ?? 0) : null, multiplier: p.multiplier, isCaptain: p.is_captain, isVice: p.is_vice_captain,
+      subbedIn: subsIn.has(p.element), subbedOut: subsOut.has(p.element),
+    };
+  };
+  const starters = (picks?.picks || []).filter(p => p.position <= 11).map(toPitch);
+  const bench = (picks?.picks || []).filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(toPitch);
   const weekTransfers = (transfers || []).filter(t => t.event === selectedGw);
-  const pointsFor = (element: number) => (live ? (live[element]?.total_points ?? 0) : null);
-  const weeks = Array.from({ length: latestGw }, (_, i) => i + 1);
+  // Newest first so the current week is visible without scrolling on a phone
+  const weeks = Array.from({ length: latestGw }, (_, i) => latestGw - i);
   const chipLabel: Record<string, string> = { wildcard: 'Wildcard', freehit: 'Free Hit', bboost: 'Bench Boost', '3xc': 'Triple Captain', manager: 'Assistant Manager' };
 
   return (
@@ -159,36 +146,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
             ))}
           </div>
 
-          {/* Pitch */}
-          <section className="mb-8">
-            <h2 className="text-lg font-bold text-ink mb-3 flex items-center gap-2">
-              Line-up {isLiveWeek && <LiveChip />}
-              {live === null && <span className="text-xs font-normal text-faint">player points unavailable</span>}
-            </h2>
-            <div className="rounded-2xl border border-green-500/20 bg-gradient-to-b from-green-500/10 to-green-500/5 p-3 sm:p-6 space-y-4">
-              {POSITION_ORDER.map(position => {
-                const row = starters.filter(p => players?.[p.element]?.position === position);
-                if (row.length === 0) return null;
-                return (
-                  <div key={position} className="flex justify-center gap-2 sm:gap-4 flex-wrap">
-                    {row.map(p => (
-                      <div key={p.element} className="w-[30%] sm:w-32">
-                        <PlayerCard player={players?.[p.element]} points={pointsFor(p.element)} pick={p} subbedIn={subsIn.has(p.element)} subbedOut={subsOut.has(p.element)} live={isLiveWeek} />
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-3">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-2">Bench · {picks.entry_history.points_on_bench} pts</div>
-              <div className="grid grid-cols-4 gap-2 sm:gap-4 sm:max-w-xl">
-                {bench.map(p => (
-                  <PlayerCard key={p.element} player={players?.[p.element]} points={pointsFor(p.element)} pick={{ ...p, multiplier: 1 }} subbedIn={subsIn.has(p.element)} subbedOut={subsOut.has(p.element)} live={isLiveWeek} />
-                ))}
-              </div>
-            </div>
-          </section>
+          <PitchView starters={starters} bench={bench} benchPoints={picks.entry_history.points_on_bench} live={isLiveWeek} pointsUnavailable={live === null} />
 
           {/* Transfers this week */}
           <section className="mb-8">

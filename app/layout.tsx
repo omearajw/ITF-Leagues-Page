@@ -12,12 +12,11 @@ export const metadata = {
 const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
 const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden xl:block';
 
-// Reference pages still live on the old site until they are rebuilt here.
+// Reference pages that still live on the old ITF site until they are rebuilt here (log items 7 and 8).
 const FOOTER_LINKS = [
   { label: 'Rulebook', href: 'https://itf1718.wordpress.com/itf-rulebook/' },
   { label: 'Trophy Cabinets', href: 'https://itf1718.wordpress.com/honours/' },
   { label: 'Club History', href: 'http://wp.me/P8LnIt-6e' },
-  { label: 'Table Archives', href: 'https://itf1718.wordpress.com/tables-archive/' },
 ];
 
 // 1. We extract the Navbar into its own async component

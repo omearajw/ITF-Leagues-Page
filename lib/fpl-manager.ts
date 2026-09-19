@@ -26,18 +26,18 @@ async function fplJson<T>(path: string): Promise<T> {
   return res.json();
 }
 
-export type Player = { id: number; name: string; team: string; teamName: string; position: 'GKP' | 'DEF' | 'MID' | 'FWD'; price: number };
+export type Player = { id: number; code: number; name: string; team: string; teamName: string; teamCode: number; position: 'GKP' | 'DEF' | 'MID' | 'FWD'; price: number };
 
 export const getPlayers = cache(async (): Promise<Record<number, Player> | null> =>
   memoized('players', 10 * 60_000, async () => {
     const boot = await fplJson<any>('/bootstrap-static/');
-    const teams: Record<number, { short: string; name: string }> = {};
-    boot.teams.forEach((t: any) => { teams[t.id] = { short: t.short_name, name: t.name }; });
+    const teams: Record<number, { short: string; name: string; code: number }> = {};
+    boot.teams.forEach((t: any) => { teams[t.id] = { short: t.short_name, name: t.name, code: t.code }; });
     const positions: Record<number, Player['position']> = {};
     boot.element_types.forEach((p: any) => { positions[p.id] = p.singular_name_short; });
     const players: Record<number, Player> = {};
     boot.elements.forEach((e: any) => {
-      players[e.id] = { id: e.id, name: e.web_name, team: teams[e.team]?.short || '', teamName: teams[e.team]?.name || '', position: positions[e.element_type], price: e.now_cost / 10 };
+      players[e.id] = { id: e.id, code: e.code, name: e.web_name, team: teams[e.team]?.short || '', teamName: teams[e.team]?.name || '', teamCode: teams[e.team]?.code || 0, position: positions[e.element_type], price: e.now_cost / 10 };
     });
     return players;
   })
