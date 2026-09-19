@@ -185,7 +185,7 @@ export function FlipPitch({ front, back, flipped }: { front: React.ReactNode; ba
 
 export function FlipButton({ flipped, onToggle, label }: { flipped: boolean; onToggle: () => void; label: string }) {
   return (
-    <button type="button" onClick={onToggle} aria-pressed={flipped} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${flipped ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-surface border-line text-dim hover:text-ink'}`}>
+    <button type="button" onClick={onToggle} aria-pressed={flipped} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition whitespace-nowrap truncate max-w-[70vw] sm:max-w-xs ${flipped ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-surface border-line text-dim hover:text-ink'}`}>
       {flipped ? '↺ Back to this team' : `⇄ Flip to ${label}`}
     </button>
   );

@@ -107,7 +107,7 @@ async function DivisionContent() {
           <GameweekChip gw={gw} />
         )}
         actions={(
-          <Link href="/form" className="text-xs sm:text-sm bg-brand-2/10 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/15 transition">
+          <Link href="/form" className="text-xs sm:text-sm bg-brand-2/10 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/15 transition whitespace-nowrap">
             View Form Guide &rarr;
           </Link>
         )}

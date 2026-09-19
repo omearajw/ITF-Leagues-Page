@@ -95,7 +95,7 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
           <select id="gw-select" name="gw" defaultValue={currentGw} className="border border-brand-2/30 rounded px-2 py-1 bg-surface text-sm">
             {editableWeeks.map(week => <option key={week} value={week}>Gameweek {week}{week === latestGw ? ' (latest)' : ''}</option>)}
           </select>
-          <button type="submit" className="text-xs bg-brand text-white px-2.5 py-1.5 rounded hover:bg-brand/90">Go</button>
+          <button type="submit" className="text-xs bg-brand text-white px-2.5 py-1.5 rounded hover:bg-brand/90 whitespace-nowrap">Go</button>
         </form>
         <GameweekBadge provisional={!!gw.liveGw}>
           {gw.liveGw ? `GW${gw.liveGw} in progress · latest completed GW${latestGw}` : `Latest completed GW${latestGw}`}
@@ -132,7 +132,7 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
                 
                 <button 
                   type="submit"
-                  className="mt-auto bg-panel text-white py-2 px-4 rounded-lg font-medium hover:bg-surface-2 transition"
+                  className="mt-auto bg-panel text-white py-2 px-4 rounded-lg font-medium hover:bg-surface-2 transition whitespace-nowrap"
                 >
                   Save GW{currentGw} Write-Up
                 </button>

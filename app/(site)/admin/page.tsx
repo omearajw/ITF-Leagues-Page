@@ -166,7 +166,7 @@ async function AdminContent() {
               </div>
             </div>
 
-            <button type="submit" className="w-full bg-brand text-white py-3 rounded-lg font-bold hover:bg-brand/90 transition">
+            <button type="submit" className="w-full bg-brand text-white py-3 rounded-lg font-bold hover:bg-brand/90 transition whitespace-nowrap">
               Save Active Timelines
             </button>
           </form>
@@ -191,7 +191,7 @@ async function AdminContent() {
                 </label>
               ))}
             </div>
-            <button type="submit" className="w-full bg-panel text-white py-3 rounded-lg font-bold hover:bg-surface-2 transition">
+            <button type="submit" className="w-full bg-panel text-white py-3 rounded-lg font-bold hover:bg-surface-2 transition whitespace-nowrap">
               Save Entrants
             </button>
           </form>

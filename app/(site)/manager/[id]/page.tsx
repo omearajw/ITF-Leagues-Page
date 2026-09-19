@@ -105,16 +105,16 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
             {manager.division}
           </Link>
         )}
-        badge={<GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />}
-        actions={(
-          // FPL's own pages always open the logged-in user's team, so these read "your team" rather than this manager's.
-          <span className="flex items-center gap-2">
-            <Link href={`/manager/${managerId}/plan`} className="text-xs sm:text-sm bg-brand text-white px-3 py-1.5 rounded-full font-semibold hover:bg-brand/90 transition">Plan next week &rarr;</Link>
-            <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="text-xs sm:text-sm bg-brand-2/15 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/25 transition">Pick your team on FPL &rarr;</a>
-            <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="text-xs sm:text-sm bg-brand-2/15 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/25 transition">Transfers &rarr;</a>
-          </span>
-        )}
       >
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />
+          <Link href={`/manager/${managerId}/plan`} className="whitespace-nowrap text-xs sm:text-sm bg-brand text-white px-3 py-1.5 rounded-full font-semibold hover:bg-brand/90 transition">Plan next week &rarr;</Link>
+          <span className="flex items-center gap-3 text-xs sm:text-sm sm:ml-auto">
+            <span className="text-faint hidden sm:inline">On FPL:</span>
+            <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Pick team &rarr;</a>
+            <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Transfers &rarr;</a>
+          </span>
+        </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dim">
           <span className="font-semibold text-ink-2">{manager.managers.real_name}</span>
           {entry && <span>Overall rank {entry.summary_overall_rank?.toLocaleString('en-GB') ?? '–'}</span>}
@@ -179,7 +179,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
                 <div key={i} className="p-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                   <span className="text-red-400 font-semibold">{players?.[t.element_out]?.name || t.element_out}</span>
                   <span className="text-faint text-xs">£{(t.element_out_cost / 10).toFixed(1)}</span>
-                  <span className="text-faint">→</span>
+                  <span className="text-faint whitespace-nowrap">→</span>
                   <span className="text-green-400 font-semibold">{players?.[t.element_in]?.name || t.element_in}</span>
                   <span className="text-faint text-xs">£{(t.element_in_cost / 10).toFixed(1)}</span>
                 </div>
@@ -197,7 +197,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
                   <div key={i} className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                     <span className="w-10 text-xs font-bold text-faint">GW{t.event}</span>
                     <span className="text-red-400">{players?.[t.element_out]?.name || t.element_out}</span>
-                    <span className="text-faint">→</span>
+                    <span className="text-faint whitespace-nowrap">→</span>
                     <span className="text-green-400">{players?.[t.element_in]?.name || t.element_in}</span>
                     <span className="ml-auto text-[11px] text-faint">{formatUk(t.time, false)}</span>
                   </div>

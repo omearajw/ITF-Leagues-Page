@@ -230,7 +230,7 @@ export default function Planner(props: PlannerProps) {
       <div>
         <div className="flex gap-1 border-b border-line mb-4">
           {([['matchup', opponent ? `GW${planGw} match-up v ${opponent.name}` : 'Match-up'], ['stakes', 'What it means'], ['apply', changed ? `Apply (${transfersIn.length + (captain !== baseCaptain ? 1 : 0)})` : 'Apply on FPL']] as const).map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setTab(key)} className={`px-3 sm:px-4 py-2 text-sm font-bold border-b-2 -mb-px truncate max-w-[45%] ${tab === key ? 'border-brand text-ink' : 'border-transparent text-dim hover:text-ink'}`}>{label}</button>
+            <button key={key} type="button" onClick={() => setTab(key)} className={`px-3 sm:px-4 py-2 text-sm font-bold border-b-2 -mb-px whitespace-nowrap truncate max-w-[45%] ${tab === key ? 'border-brand text-ink' : 'border-transparent text-dim hover:text-ink'}`}>{label}</button>
           ))}
         </div>
 
@@ -243,7 +243,7 @@ export default function Planner(props: PlannerProps) {
                 <MatchupLanes mine={mine} shared={shared} theirs={theirs} byId={byId} view={view} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} />
                 <div className="mt-4 pt-3 border-t border-line text-sm text-dim flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span>Captains: you <span className="text-ink-2 font-semibold">{captain ? byId[captain]?.name : '—'}</span>, them <span className="text-ink-2 font-semibold">{oppCaptain ? byId[oppCaptain]?.name : '—'}</span>{captain && captain === oppCaptain && <span className="text-amber-300"> · same captain, it cancels out</span>}</span>
-                  <Link href={`/manager/${opponent.id}`} className="text-brand-2 hover:underline text-xs sm:ml-auto">See {opponent.name}&apos;s team &rarr;</Link>
+                  <Link href={`/manager/${opponent.id}`} className="text-brand-2 hover:underline text-xs sm:ml-auto whitespace-nowrap">See {opponent.name}&apos;s team &rarr;</Link>
                 </div>
               </>
             )}
@@ -288,7 +288,7 @@ export default function Planner(props: PlannerProps) {
             ) : (
               <ol className="space-y-2 text-sm">
                 {transfersOut.map((out, i) => (
-                  <li key={out} className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-surface-3 text-[10px] font-black flex items-center justify-center text-ink">{i + 1}</span><span className="text-red-400 font-semibold">{byId[out]?.name}</span><span className="text-faint">→</span><span className="text-green-400 font-semibold">{byId[transfersIn[i]]?.name}</span><span className="text-faint text-xs">£{byId[transfersIn[i]]?.price.toFixed(1)}m</span></li>
+                  <li key={out} className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-surface-3 text-[10px] font-black flex items-center justify-center text-ink">{i + 1}</span><span className="text-red-400 font-semibold">{byId[out]?.name}</span><span className="text-faint whitespace-nowrap">→</span><span className="text-green-400 font-semibold">{byId[transfersIn[i]]?.name}</span><span className="text-faint text-xs">£{byId[transfersIn[i]]?.price.toFixed(1)}m</span></li>
                 ))}
                 {captain !== baseCaptain && captain && <li className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-brand text-[10px] font-black flex items-center justify-center text-white">C</span>Captain {byId[captain]?.name}</li>}
                 {vice !== baseVice && vice && <li className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-white text-[10px] font-black flex items-center justify-center text-slate-900">V</span>Vice-captain {byId[vice]?.name}</li>}
@@ -296,8 +296,8 @@ export default function Planner(props: PlannerProps) {
               </ol>
             )}
             <div className="flex flex-wrap items-center gap-2 mt-4">
-              <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="text-xs bg-brand text-white px-3 py-2 rounded-lg font-bold">Make transfers on FPL &rarr;</a>
-              <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="text-xs bg-surface-3 text-ink px-3 py-2 rounded-lg font-bold">Pick team on FPL &rarr;</a>
+              <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="text-xs bg-brand text-white px-3 py-2 rounded-lg font-bold whitespace-nowrap">Make transfers on FPL &rarr;</a>
+              <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="text-xs bg-surface-3 text-ink px-3 py-2 rounded-lg font-bold whitespace-nowrap">Pick team on FPL &rarr;</a>
               {props.deadline && <span className="text-[11px] text-faint sm:ml-auto">Deadline {props.deadline}</span>}
             </div>
           </div>

@@ -244,7 +244,7 @@ async function DashboardContent() {
               <h2 className="text-xl font-bold">Manager of the Month</h2>
               <div className="flex items-center gap-3 text-sm">
                 <span className="text-dim">{motmLatest.label} · {motmLatest.complete ? 'awarded' : 'in progress'}</span>
-                <Link href="/motm" className="text-brand-2 hover:underline">All months &rarr;</Link>
+                <Link href="/motm" className="text-brand-2 hover:underline whitespace-nowrap">All months &rarr;</Link>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -278,7 +278,7 @@ async function DashboardContent() {
             <h2 className="text-xl font-bold">ITF Open - Top 10</h2>
             <div className="flex flex-wrap items-center gap-3">
               <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
-              <Link href="/itf-open" className="text-sm text-brand-2 hover:underline">View Full Table &rarr;</Link>
+              <Link href="/itf-open" className="text-sm text-brand-2 hover:underline whitespace-nowrap">View Full Table &rarr;</Link>
             </div>
           </div>
           <div className="bg-surface shadow rounded-lg border overflow-hidden">
@@ -346,7 +346,7 @@ function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: {
   return (
     <div className="bg-surface border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition">
       <Link href={link} className="p-4 border-b bg-surface-2 rounded-t-xl hover:bg-surface-2 transition group cursor-pointer">
-        <h3 className="font-bold text-lg group-hover:text-brand-2 transition-colors">{name} &rarr;</h3>
+        <h3 className="font-bold text-lg group-hover:text-brand-2 transition-colors">{name}&nbsp;&rarr;</h3>
       </Link>
       <div className="p-4 flex-grow text-sm text-dim flex flex-col justify-between">
         <Snippet preview={snippet?.slice(0, 180)} full={fullSnippet} link={link} />
@@ -390,7 +390,7 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
       {/* 2. THE HEADER (Always completely visible) */}
       <Link href={link} className={`p-4 border-b rounded-t-xl transition ${isPending ? 'bg-surface-2/50' : 'bg-surface-2 hover:bg-surface-2 group'}`}>
         <h3 className={`font-bold text-lg transition-colors pr-16 ${isPending ? 'text-dim' : 'group-hover:text-brand-2'}`}>
-          {name} {!isPending && <span>&rarr;</span>}
+          {name}{!isPending && <>&nbsp;&rarr;</>}
         </h3>
         <p className="text-xs font-semibold text-dim uppercase tracking-wider mt-1">{stage}</p>
         {nextLine && <p className="text-xs text-dim mt-1">{nextLine}</p>}
