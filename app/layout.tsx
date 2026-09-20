@@ -42,6 +42,10 @@ async function Navbar() {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4">
+              <div className="hidden md:flex items-center gap-1 text-xs font-medium uppercase tracking-wider">
+                <Link href="/my-team" className="whitespace-nowrap text-dim hover:text-white transition px-2 py-2 rounded-md">My team</Link>
+                <Link href="/plan" className="whitespace-nowrap bg-brand/15 text-brand hover:bg-brand/25 transition px-2.5 py-1.5 rounded-md font-bold">Plan</Link>
+              </div>
               <TickerSwitch />
               {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
               <div className="hidden md:flex space-x-6 text-xs font-medium uppercase tracking-wider">

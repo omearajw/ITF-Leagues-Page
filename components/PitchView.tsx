@@ -16,6 +16,12 @@ export type PitchPlayer = {
   isVice: boolean;
   subbedIn: boolean;
   subbedOut: boolean;
+  // Live-week detail: has their match happened yet, and is an auto-sub projected?
+  fixtureState?: 'none' | 'pending' | 'playing' | 'finished';
+  minutes?: number;
+  projectedOut?: boolean;
+  projectedIn?: boolean;
+  projectedCaptain?: boolean;
 };
 
 export type View = 'photo' | 'shirt' | 'plain';
@@ -57,25 +63,32 @@ export function Visual({ player, view }: { player: VisualPlayer; view: View }) {
 }
 
 function PlayerCard({ player, view, live, onGrass }: { player: PitchPlayer; view: View; live: boolean; onGrass: boolean }) {
-  const scored = player.points === null ? null : player.points * (player.multiplier || 1);
+  const yetToPlay = player.fixtureState === 'pending' || player.fixtureState === 'none';
+  const playing = player.fixtureState === 'playing';
+  const scored = player.points === null || yetToPlay ? null : player.points * (player.multiplier || 1);
+  const faded = player.subbedOut || player.projectedOut;
+  const leftTag = player.projectedOut ? { text: '✕', cls: 'bg-red-500 text-white', title: 'Did not play: due to be auto-subbed out' }
+    : player.projectedIn ? { text: 'DUE ON', cls: 'bg-green-500 text-white', title: 'Due to come on as an auto-sub' }
+    : player.subbedIn ? { text: 'IN', cls: 'bg-green-500 text-white', title: 'Auto-subbed in' }
+    : player.subbedOut ? { text: 'OUT', cls: 'bg-red-500 text-white', title: 'Auto-subbed out' }
+    : yetToPlay ? { text: '🕗', cls: 'bg-white/90 text-slate-900', title: player.fixtureState === 'none' ? 'No fixture this week' : 'Yet to play' }
+    : null;
   return (
-    <div className={`relative w-full flex flex-col items-center ${player.subbedOut ? 'opacity-50' : ''}`} title={player.subbedIn ? 'Auto-subbed in' : player.subbedOut ? 'Auto-subbed out' : undefined}>
-      {(player.isCaptain || player.isVice) && (
-        <span className={`absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 ${player.isCaptain ? 'bg-brand text-white' : 'bg-white text-slate-900'}`}>
-          {player.isCaptain ? 'C' : 'V'}
+    <div className={`relative w-full flex flex-col items-center ${faded ? 'opacity-50' : ''}`} title={leftTag?.title}>
+      {(player.isCaptain || player.isVice || player.projectedCaptain) && (
+        <span className={`absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 ${player.isCaptain || player.projectedCaptain ? 'bg-brand text-white' : 'bg-white text-slate-900'}`} title={player.projectedCaptain ? 'Takes the armband: captain did not play' : undefined}>
+          {player.isCaptain || player.projectedCaptain ? 'C' : 'V'}
         </span>
       )}
-      {(player.subbedIn || player.subbedOut) && (
-        <span className={`absolute top-0 left-0 sm:left-2 z-10 text-[9px] font-black rounded-full px-1.5 h-5 flex items-center text-white ring-2 ring-black/30 ${player.subbedIn ? 'bg-green-500' : 'bg-red-500'}`}>
-          {player.subbedIn ? 'IN' : 'OUT'}
-        </span>
+      {leftTag && (
+        <span className={`absolute top-0 left-0 sm:left-2 z-10 text-[9px] font-black rounded-full px-1.5 h-5 flex items-center ring-2 ring-black/30 ${leftTag.cls}`}>{leftTag.text}</span>
       )}
       <Visual player={player} view={view} />
       <div className="mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center">
         <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onGrass ? 'bg-[#0b1f14] text-white' : 'bg-surface-3 text-ink'}`}>{player.name}</div>
-        <div className={`px-1.5 py-0.5 text-xs font-black ${live ? 'bg-amber-300 text-slate-900' : 'bg-white text-slate-900'}`}>
+        <div className={`px-1.5 py-0.5 text-xs font-black ${live && playing ? 'bg-amber-300 text-slate-900' : yetToPlay ? 'bg-white/70 text-slate-500' : 'bg-white text-slate-900'}`}>
           {scored === null ? '–' : scored}
-          {player.multiplier > 1 && <span className="ml-1 text-[10px] font-bold text-slate-500 align-middle">×{player.multiplier}</span>}
+          {player.multiplier > 1 && scored !== null && <span className="ml-1 text-[10px] font-bold text-slate-500 align-middle">×{player.multiplier}</span>}
         </div>
       </div>
     </div>

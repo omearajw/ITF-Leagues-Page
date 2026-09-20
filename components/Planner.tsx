@@ -19,6 +19,8 @@ export type PlanStakes = {
 export type PlannerProps = {
   managerId: number;
   teamName: string;
+  isMine: boolean;
+  myTeamId: number | null;
   planGw: number;
   deadline: string | null;
   baseSquad: PlanSlot[];
@@ -56,7 +58,12 @@ function statusText(p: PlanPlayer) {
 }
 
 export default function Planner(props: PlannerProps) {
-  const { managerId, planGw, players, fixtures, ownership, leagueSize, opponent, stakes } = props;
+  const { managerId, planGw, players, fixtures, ownership, leagueSize, opponent, stakes, isMine, teamName } = props;
+  // Wording flips between "you" and the team's name depending on whose plan this is.
+  const You = isMine ? 'You' : teamName;
+  const you = isMine ? 'you' : teamName;
+  const your = isMine ? 'your' : `${teamName}'s`;
+  const Your = isMine ? 'Your' : `${teamName}'s`;
   const byId = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])) as Record<number, PlanPlayer>, [players]);
   const storageKey = `itf-plan-${managerId}-${planGw}`;
   const [view, setView] = usePitchViewPreference();
@@ -175,6 +182,12 @@ export default function Planner(props: PlannerProps) {
 
   return (
     <div className="space-y-5">
+      {!isMine && (
+        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-200 rounded-xl px-4 py-3 text-sm flex flex-wrap items-center justify-between gap-2">
+          <span>You are planning <strong>{teamName}</strong>&apos;s week, not your own. Nothing here changes their real team.</span>
+          <Link href={props.myTeamId ? `/manager/${props.myTeamId}/plan` : '/my-team?next=plan'} className="whitespace-nowrap text-xs font-bold bg-amber-400 text-slate-900 px-3 py-1.5 rounded-lg">{props.myTeamId ? 'Plan my team →' : 'Pick my team →'}</Link>
+        </div>
+      )}
       {/* Plan bar */}
       <div className="bg-surface border border-line rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <div><span className="text-[10px] font-bold uppercase tracking-widest text-faint mr-2">Bank</span><span className={`font-black ${bank < 0 ? 'text-red-400' : 'text-ink'}`}>£{bank.toFixed(1)}m</span></div>
@@ -199,7 +212,7 @@ export default function Planner(props: PlannerProps) {
 
       {/* Pitch */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm font-bold text-ink">{flipped && opponent ? <>{opponent.name} <span className="text-faint font-normal">(your GW{planGw} opponent)</span></> : 'Your squad'}</div>
+        <div className="text-sm font-bold text-ink">{flipped && opponent ? <>{opponent.name} <span className="text-faint font-normal">({your} GW{planGw} opponent)</span></> : `${Your} squad`}</div>
         {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`${opponent.name} (GW${planGw} opponent)`} />}
       </div>
       {(() => {
@@ -224,7 +237,7 @@ export default function Planner(props: PlannerProps) {
         ) : null;
         return back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front;
       })()}
-      <p className="text-[11px] text-faint -mt-2">Tap a player for fixtures, league ownership and to swap or captain them. Blue outline = only you have them; on the flipped side, amber = only your opponent does. Budget uses current prices; FPL only shows selling prices when logged in.</p>
+      <p className="text-[11px] text-faint -mt-2">Tap a player for fixtures, league ownership and to swap or captain them. Blue outline = only {you} {isMine ? 'have' : 'has'} them; on the flipped side, amber = only the opponent does. Budget uses current prices; FPL only shows selling prices when logged in.</p>
 
       {/* Tabs */}
       <div>
@@ -240,9 +253,9 @@ export default function Planner(props: PlannerProps) {
               <div className="text-sm text-dim">No H2H fixture found for GW{planGw} yet.</div>
             ) : (
               <>
-                <MatchupLanes mine={mine} shared={shared} theirs={theirs} byId={byId} view={view} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} />
+                <MatchupLanes mine={mine} shared={shared} theirs={theirs} byId={byId} view={view} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} ownLabel={isMine ? 'Only you' : `Only ${teamName}`} />
                 <div className="mt-4 pt-3 border-t border-line text-sm text-dim flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span>Captains: you <span className="text-ink-2 font-semibold">{captain ? byId[captain]?.name : '—'}</span>, them <span className="text-ink-2 font-semibold">{oppCaptain ? byId[oppCaptain]?.name : '—'}</span>{captain && captain === oppCaptain && <span className="text-amber-300"> · same captain, it cancels out</span>}</span>
+                  <span>Captains: {you} <span className="text-ink-2 font-semibold">{captain ? byId[captain]?.name : '—'}</span>, {opponent.name} <span className="text-ink-2 font-semibold">{oppCaptain ? byId[oppCaptain]?.name : '—'}</span>{captain && captain === oppCaptain && <span className="text-amber-300"> · same captain, it cancels out</span>}</span>
                   <Link href={`/manager/${opponent.id}`} className="text-brand-2 hover:underline text-xs sm:ml-auto whitespace-nowrap">See {opponent.name}&apos;s team &rarr;</Link>
                 </div>
               </>
@@ -258,7 +271,7 @@ export default function Planner(props: PlannerProps) {
                 {stakes.eliminator.alive ? (
                   <>
                     <div className="text-2xl font-black text-ink">{stakes.eliminator.myPoints !== null && stakes.eliminator.lowestAlive ? `+${stakes.eliminator.myPoints - stakes.eliminator.lowestAlive.points}` : '–'}</div>
-                    <div className="text-xs text-dim">clear of the lowest survivor last week{stakes.eliminator.lowestAlive ? ` (${stakes.eliminator.lowestAlive.name}, ${stakes.eliminator.lowestAlive.points})` : ''}. {stakes.eliminator.aliveCount} alive; the lowest net score in GW{planGw} goes.</div>
+                    <div className="text-xs text-dim">{You} {isMine ? 'were' : 'was'} clear of the lowest survivor last week{stakes.eliminator.lowestAlive ? ` (${stakes.eliminator.lowestAlive.name}, ${stakes.eliminator.lowestAlive.points})` : ''}. {stakes.eliminator.aliveCount} alive; the lowest net score in GW{planGw} goes.</div>
                   </>
                 ) : (
                   <div className="text-sm text-dim">Out since GW{stakes.eliminator.eliminatedGw}.</div>
@@ -269,7 +282,7 @@ export default function Planner(props: PlannerProps) {
               <div className="rounded-xl p-4 border bg-surface border-line">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1">Manager of the Month · {stakes.motm.month}</div>
                 <div className="text-2xl font-black text-ink">{ordinal(stakes.motm.position)}</div>
-                <div className="text-xs text-dim">on {stakes.motm.points}{stakes.motm.leader && stakes.motm.position !== 1 ? `, ${stakes.motm.leader.points - stakes.motm.points} behind ${stakes.motm.leader.name}` : stakes.motm.position === 1 ? ', leading' : ''}.{stakes.motm.complete ? ' Awarded.' : ''}</div>
+                <div className="text-xs text-dim">{You} {isMine ? 'are' : 'is'} on {stakes.motm.points}{stakes.motm.leader && stakes.motm.position !== 1 ? `, ${stakes.motm.leader.points - stakes.motm.points} behind ${stakes.motm.leader.name}` : stakes.motm.position === 1 ? ', leading' : ''}.{stakes.motm.complete ? ' Awarded.' : ''}</div>
               </div>
             )}
             {stakes.obCup && (
@@ -283,6 +296,7 @@ export default function Planner(props: PlannerProps) {
 
         {tab === 'apply' && (
           <div className="bg-surface border border-line rounded-xl p-4 sm:p-5">
+            {!isMine && <div className="mb-3 text-xs text-amber-300">Only {teamName}&apos;s manager can make these changes on FPL. This is a what-if.</div>}
             {!changed ? (
               <div className="text-sm text-dim">No changes planned yet. Tap a player on the pitch to start.</div>
             ) : (
@@ -381,12 +395,12 @@ function Avatar({ player, view }: { player: PlanPlayer; view: 'photo' | 'shirt' 
 
 // Three lanes: only yours, shared, only theirs. Shared players cancel out in the tie,
 // so the outer lanes are where the match-up is decided.
-function MatchupLanes({ mine, shared, theirs, byId, view, captain, oppCaptain, opponentName }: {
-  mine: number[]; shared: number[]; theirs: number[]; byId: Record<number, PlanPlayer>; view: 'photo' | 'shirt' | 'plain'; captain: number | null; oppCaptain: number | null; opponentName: string;
+function MatchupLanes({ mine, shared, theirs, byId, view, captain, oppCaptain, opponentName, ownLabel }: {
+  mine: number[]; shared: number[]; theirs: number[]; byId: Record<number, PlanPlayer>; view: 'photo' | 'shirt' | 'plain'; captain: number | null; oppCaptain: number | null; opponentName: string; ownLabel: string;
 }) {
   const sorted = (ids: number[]) => [...ids].sort((a, b) => LANE_ORDER[byId[a]?.position || 'MID'] - LANE_ORDER[byId[b]?.position || 'MID']);
   const lanes = [
-    { key: 'mine', label: 'Only you', ids: sorted(mine), cls: 'bg-brand-2/10 border-brand-2/30', head: 'text-brand-2' },
+    { key: 'mine', label: ownLabel, ids: sorted(mine), cls: 'bg-brand-2/10 border-brand-2/30', head: 'text-brand-2' },
     { key: 'shared', label: 'Both', ids: sorted(shared), cls: 'bg-surface-2 border-line', head: 'text-dim' },
     { key: 'theirs', label: `Only ${opponentName}`, ids: sorted(theirs), cls: 'bg-amber-500/10 border-amber-500/30', head: 'text-amber-300' },
   ];

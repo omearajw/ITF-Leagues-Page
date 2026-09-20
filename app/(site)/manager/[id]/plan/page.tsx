@@ -12,6 +12,7 @@ import { getPlayers, getManagerPicks, getFixtureRuns } from '@/lib/fpl-manager';
 import { getLeagueOwnership, getNextOpponent } from '@/lib/planner-data';
 import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
+import { getMyTeamId } from '@/lib/my-team';
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -33,7 +34,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
 
 async function PlanContent({ managerId, manager }: { managerId: number; manager: any }) {
   const supabase = await createClient();
-  const [gw, events] = await Promise.all([getGameweekStatus(), getFplEvents()]);
+  const [gw, events, myTeamId] = await Promise.all([getGameweekStatus(), getFplEvents(), getMyTeamId()]);
+  const isMine = myTeamId === managerId;
 
   // Plan for the next deadline; the base squad is the latest one FPL exposes
   const latestGw = Math.max(1, gw.liveGw ?? gw.syncedThroughGw);
@@ -117,12 +119,14 @@ async function PlanContent({ managerId, manager }: { managerId: number; manager:
         badge={<GameweekBadge provisional={false}>GW{planGw} · deadline {formatUk(deadlineIso)}</GameweekBadge>}
         actions={<Link href={`/manager/${managerId}`} className="text-xs sm:text-sm bg-surface-3 text-ink px-3 py-1.5 rounded-full font-semibold hover:bg-surface-2">&larr; Team page</Link>}
       >
-        <p className="text-sm text-dim">Plan GW{planGw} against your real opponent. Changes save in this browser until you apply them on FPL.</p>
+        <p className="text-sm text-dim">{isMine ? `Plan GW${planGw} against your real opponent. Changes save in this browser until you apply them on FPL.` : `A what-if for ${manager.team_name}'s GW${planGw} against their real opponent. Nothing here touches their FPL team.`}</p>
       </PageHeader>
 
       <Planner
         managerId={managerId}
         teamName={manager.team_name}
+        isMine={isMine}
+        myTeamId={myTeamId}
         planGw={planGw}
         deadline={deadlineIso ? formatUk(deadlineIso) : null}
         baseSquad={toSlots(picks.picks)}

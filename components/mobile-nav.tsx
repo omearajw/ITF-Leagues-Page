@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 
 const LINKS = [
   { href: '/', label: 'ITF Hub' },
+  { href: '/my-team', label: 'My team' },
+  { href: '/plan', label: 'Plan next week' },
   { group: 'League' },
   { href: '/divisions/premier-league', label: 'Premier' },
   { href: '/divisions/championship', label: 'Championship' },

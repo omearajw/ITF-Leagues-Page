@@ -112,3 +112,19 @@ export function getFixtureRuns(fromGw: number, count: number) {
     return runs;
   });
 }
+
+export type TeamGwFixture = { started: boolean; finished: boolean; kickoff: string | null };
+
+// Each club's fixtures in one gameweek with their live state, keyed by team id.
+export function getGwFixtureStatus(gw: number, isFinal: boolean) {
+  return memoized<Record<number, TeamGwFixture[]>>(`gwfix:${gw}`, isFinal ? FINAL_TTL : LIVE_TTL, async () => {
+    const fixtures = await fplJson<any[]>(`/fixtures/?event=${gw}`);
+    const out: Record<number, TeamGwFixture[]> = {};
+    for (const f of fixtures) {
+      const entry = { started: !!f.started, finished: !!(f.finished || f.finished_provisional), kickoff: f.kickoff_time };
+      (out[f.team_h] ||= []).push(entry);
+      (out[f.team_a] ||= []).push(entry);
+    }
+    return out;
+  });
+}

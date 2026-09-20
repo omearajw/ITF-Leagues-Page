@@ -13,6 +13,7 @@ type TeamNameProps = {
   badgeSize?: number;
   hideBadge?: boolean;
   showStars?: boolean;
+  noLink?: boolean;
 };
 
 function parseTeamName(name: string) {
@@ -30,7 +31,7 @@ export function getTeamNameDisplayText(name?: string | null, showStars = false) 
   return showStars && starCount > 0 ? `${cleanName} ${'★'.repeat(starCount)}` : cleanName;
 }
 
-export default async function TeamName({ name, className, inline = false, starSize = 8, managerId, badgeSize = 18, hideBadge = false, showStars = false }: TeamNameProps) {
+export default async function TeamName({ name, className, inline = false, starSize = 8, managerId, badgeSize = 18, hideBadge = false, showStars = false, noLink = false }: TeamNameProps) {
   if (!name) return null;
 
   const { cleanName, starCount } = parseTeamName(name);
@@ -56,7 +57,7 @@ export default async function TeamName({ name, className, inline = false, starSi
     </span>
   );
 
-  if (!managerId) return body;
+  if (!managerId || noLink) return body;
   return (
     <Link href={`/manager/${managerId}`} className="min-w-0 max-w-full hover:underline decoration-brand-2/60 underline-offset-2">
       {body}

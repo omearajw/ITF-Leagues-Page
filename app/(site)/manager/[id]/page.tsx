@@ -8,7 +8,9 @@ import { GameweekChip } from '@/components/GameweekBadge';
 import PitchView, { type PitchPlayer, type PitchOpponent } from '@/components/PitchView';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
-import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry } from '@/lib/fpl-manager';
+import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, getGwFixtureStatus, type ManagerPicks, type LiveStats, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
+import { projectAutoSubs, type FixtureState } from '@/lib/autosubs';
+import { getMyTeamId } from '@/lib/my-team';
 import { DIVISIONS } from '@/lib/divisions';
 import TeamBadge from '@/components/TeamBadge';
 
@@ -47,7 +49,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   const isLiveWeek = selectedGw === gw.liveGw;
   const isFinal = selectedGw <= gw.syncedThroughGw || !!events?.find(e => e.id === selectedGw)?.finished;
 
-  const [players, picks, live, transfers, entry, { data: scoreRow }, { data: h2h }, { data: elim }, { data: recent }] = await Promise.all([
+  const [players, picks, live, transfers, entry, { data: scoreRow }, { data: h2h }, { data: elim }, { data: recent }, fixtureStatus, myTeamId] = await Promise.all([
     getPlayers(),
     getManagerPicks(managerId, selectedGw, isFinal),
     getLivePoints(selectedGw, isFinal),
@@ -57,7 +59,10 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
     supabase.from('h2h_fixtures').select('opponent_fpl_id, manager_score, opponent_score, result').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).eq('gw_number', selectedGw).maybeSingle(),
     supabase.from('eliminator_status').select('is_eliminated, eliminated_gw').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).maybeSingle(),
     supabase.from('h2h_fixtures').select('gw_number, result').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).lte('gw_number', gw.syncedThroughGw).order('gw_number', { ascending: false }).limit(5),
+    getGwFixtureStatus(selectedGw, isFinal),
+    getMyTeamId(),
   ]);
+  const isUnprocessed = !isFinal;
 
   const opponentId = h2h ? Number((h2h as any).opponent_fpl_id) : null;
   const [opponentRow, opponentPicks] = opponentId
@@ -72,24 +77,54 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   const gross = picks?.entry_history.points ?? null;
   const cost = picks?.entry_history.event_transfers_cost ?? scoreRow?.transfers_cost ?? 0;
   const net = scoreRow?.points ?? (gross !== null ? gross - cost : null);
-  const subsIn = new Set((picks?.automatic_subs || []).map(s => s.element_in));
-  const subsOut = new Set((picks?.automatic_subs || []).map(s => s.element_out));
-  const toPitch = (p: { element: number; multiplier: number; is_captain: boolean; is_vice_captain: boolean }): PitchPlayer => {
-    const pl = players?.[p.element];
+  const fixtureStateFor = (pl: Player | undefined): FixtureState => {
+    const list: TeamGwFixture[] = pl ? (fixtureStatus?.[pl.teamId] || []) : [];
+    if (!fixtureStatus) return 'finished';
+    if (list.length === 0) return 'none';
+    if (list.some(f => f.started && !f.finished)) return 'playing';
+    if (list.some(f => !f.started)) return 'pending';
+    return 'finished';
+  };
+
+  // Turn FPL picks into pitch players, projecting auto-subs while the week is unprocessed.
+  const decorate = (set: ManagerPicks, liveStats: LiveStats | null) => {
+    const base = set.picks.map(p => {
+      const pl = players?.[p.element];
+      return {
+        element: p.element, name: pl?.name || `#${p.element}`, team: pl?.team || '', teamCode: pl?.teamCode || 0, code: pl?.code || 0,
+        position: pl?.position || 'MID' as const, slot: p.position,
+        points: liveStats ? (liveStats[p.element]?.total_points ?? 0) : null,
+        minutes: liveStats ? (liveStats[p.element]?.minutes ?? 0) : 0,
+        multiplier: p.multiplier, isCaptain: p.is_captain, isVice: p.is_vice_captain,
+        subbedIn: set.automatic_subs.some(a => a.element_in === p.element), subbedOut: set.automatic_subs.some(a => a.element_out === p.element),
+        fixtureState: isUnprocessed ? fixtureStateFor(pl) : 'finished' as FixtureState,
+      };
+    });
+    const projection = isUnprocessed && liveStats
+      ? projectAutoSubs(base.map(b => ({ element: b.element, position: b.slot, role: b.position, minutes: b.minutes, points: b.points ?? 0, fixtureState: b.fixtureState, isCaptain: b.isCaptain, isVice: b.isVice })))
+      : null;
+    const toPitch = (b: typeof base[number]): PitchPlayer => ({
+      element: b.element, name: b.name, team: b.team, teamCode: b.teamCode, code: b.code, position: b.position,
+      points: b.points, multiplier: b.multiplier, isCaptain: b.isCaptain, isVice: b.isVice,
+      subbedIn: b.subbedIn, subbedOut: b.subbedOut,
+      fixtureState: isUnprocessed ? b.fixtureState : undefined, minutes: b.minutes,
+      projectedOut: !!projection?.out.includes(b.element), projectedIn: !!projection?.in.includes(b.element),
+      projectedCaptain: !!projection?.captainToVice && b.isVice,
+    });
     return {
-      element: p.element, name: pl?.name || `#${p.element}`, team: pl?.team || '', teamCode: pl?.teamCode || 0, code: pl?.code || 0, position: pl?.position || 'MID',
-      points: live ? (live[p.element]?.total_points ?? 0) : null, multiplier: p.multiplier, isCaptain: p.is_captain, isVice: p.is_vice_captain,
-      subbedIn: subsIn.has(p.element), subbedOut: subsOut.has(p.element),
+      starters: base.filter(b => b.slot <= 11).map(toPitch),
+      bench: base.filter(b => b.slot > 11).sort((a, b) => a.slot - b.slot).map(toPitch),
+      projection,
     };
   };
-  const starters = (picks?.picks || []).filter(p => p.position <= 11).map(toPitch);
-  const bench = (picks?.picks || []).filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(toPitch);
-  const pitchOpponent: PitchOpponent | null = opponentPicks && opponentName ? {
-    name: opponentName,
-    week: selectedGw,
-    starters: opponentPicks.picks.filter(p => p.position <= 11).map(p => ({ ...toPitch(p), subbedIn: false, subbedOut: false })),
-    bench: opponentPicks.picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(p => ({ ...toPitch(p), subbedIn: false, subbedOut: false })),
-    benchPoints: opponentPicks.entry_history.points_on_bench,
+
+  const mine = picks ? decorate(picks, live) : null;
+  const starters = mine?.starters || [];
+  const bench = mine?.bench || [];
+  const benchDue = (mine?.projection?.benchDue || 0) + (mine?.projection?.captainExtra || 0);
+  const theirs = opponentPicks ? decorate(opponentPicks, live) : null;
+  const pitchOpponent: PitchOpponent | null = theirs && opponentName ? {
+    name: opponentName, week: selectedGw, starters: theirs.starters, bench: theirs.bench, benchPoints: opponentPicks!.entry_history.points_on_bench,
   } : null;
   const weekTransfers = (transfers || []).filter(t => t.event === selectedGw);
   // Newest first so the current week is visible without scrolling on a phone
@@ -108,6 +143,11 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
       >
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />
+          {myTeamId === managerId ? (
+            <span className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-green-500/15 text-green-400">Your team</span>
+          ) : (
+            <a href={`/api/my-team?id=${managerId}&next=${encodeURIComponent(`/manager/${managerId}`)}`} className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-surface-3 text-dim hover:text-ink">Set as my team</a>
+          )}
           <Link href={`/manager/${managerId}/plan`} className="whitespace-nowrap text-xs sm:text-sm bg-brand text-white px-3 py-1.5 rounded-full font-semibold hover:bg-brand/90 transition">Plan next week &rarr;</Link>
           <span className="flex items-center gap-3 text-xs sm:text-sm sm:ml-auto">
             <span className="text-faint hidden sm:inline">On FPL:</span>
@@ -153,7 +193,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
           {/* Summary tiles */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
             {[
-              { label: 'Score', value: net ?? '–', sub: isLiveWeek ? 'live · net of hits' : 'net of hits' },
+              { label: 'Score', value: net ?? '–', sub: benchDue > 0 && net !== null ? `+${benchDue} due from the bench → ${net + benchDue}` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
               { label: 'Team points', value: gross ?? '–', sub: 'before hits' },
               { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
               { label: 'On bench', value: picks.entry_history.points_on_bench, sub: 'points' },
