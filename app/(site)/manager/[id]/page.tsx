@@ -193,7 +193,8 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
           {/* Summary tiles */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
             {[
-              { label: 'Score', value: net ?? '–', sub: benchDue > 0 && net !== null ? `+${benchDue} due from the bench → ${net + benchDue}` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
+              // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
+              { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
               { label: 'Team points', value: gross ?? '–', sub: 'before hits' },
               { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
               { label: 'On bench', value: picks.entry_history.points_on_bench, sub: 'points' },
