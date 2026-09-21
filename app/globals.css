@@ -88,10 +88,15 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+    max-width: 100%;
   }
   body {
     @apply bg-bg text-ink;
     overflow-x: hidden;
+    overflow-x: clip;
+    max-width: 100%;
     color-scheme: dark;
   }
 

@@ -186,7 +186,7 @@ export function PitchBoard<T>({ starters, bench, positionOf, renderPlayer, bench
 // 3D flip between two boards of the same shape.
 export function FlipPitch({ front, back, flipped }: { front: React.ReactNode; back: React.ReactNode; flipped: boolean }) {
   return (
-    <div style={{ perspective: '2000px' }}>
+    <div className="overflow-x-clip" style={{ perspective: '2000px' }}>
       <div className="relative transition-transform duration-700" style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
         {/* Absolutely positioned badges ignore the face's backface-visibility, so the hidden face is also made invisible once the turn completes. */}
         <div className={`flip-face transition-[visibility] duration-0 ${flipped ? 'invisible delay-300' : 'visible delay-0'}`} aria-hidden={flipped}>{front}</div>

@@ -201,7 +201,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
               { label: 'Chip', value: picks.active_chip ? (chipLabel[picks.active_chip] || picks.active_chip) : 'None', sub: picks.active_chip ? 'played' : '' },
               { label: 'H2H tie', value: h2h ? `${(h2h as any).manager_score} - ${(h2h as any).opponent_score}` : '–', sub: h2h ? `${(h2h as any).result === 'W' ? 'Won' : (h2h as any).result === 'L' ? 'Lost' : 'Drew'} v ${opponentName || 'opponent'}` : 'no tie recorded' },
             ].map(tile => (
-              <div key={tile.label} className="bg-surface border border-line rounded-xl p-3">
+              <div key={tile.label} className="bg-surface border border-line rounded-xl p-3 min-w-0 break-words">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-faint">{tile.label}</div>
                 <div className="text-xl font-black text-ink leading-tight">{tile.value}</div>
                 {tile.sub && <div className="text-[11px] text-dim">{tile.sub}</div>}
