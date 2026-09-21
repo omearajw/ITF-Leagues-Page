@@ -111,6 +111,16 @@
   }
 }
 
+@layer components {
+  .writeup h2 { @apply text-xl font-black text-ink mt-3 mb-1; }
+  .writeup h3 { @apply text-base font-bold text-ink mt-2 mb-1; }
+  .writeup p { @apply mb-2 last:mb-0; }
+  .writeup ul { @apply list-disc pl-5 mb-2; }
+  .writeup ol { @apply list-decimal pl-5 mb-2; }
+  .writeup a { @apply text-brand-2 underline; }
+  .writeup blockquote { @apply border-l-4 border-line pl-3 text-dim; }
+}
+
 @layer utilities {
   .flip-face,
   .flip-face * {

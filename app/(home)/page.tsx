@@ -9,6 +9,7 @@ import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getWeekProjection, dueFor } from '@/lib/projection';
+import { toPlainText } from '@/lib/richtext';
 import DueMark from '@/components/DueMark';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
@@ -54,7 +55,7 @@ async function DashboardContent() {
 
   // B. Fetch CMS content
   const { data: contentData } = await supabase.from('page_content').select('id, content');
-  const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = item.content; return acc; }, {}) || {};
+  const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = toPlainText(item.content); return acc; }, {}) || {};
 
   // F. Fetch tournament configs to display status/stage
   const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }, { data: elStatus }] = await Promise.all([

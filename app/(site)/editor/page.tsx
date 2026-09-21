@@ -1,6 +1,8 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import SaveToast from '@/components/SaveToast';
+import WriteUpEditor from '@/components/WriteUpEditor';
+import { toPlainText } from '@/lib/richtext';
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -64,6 +66,7 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
     const id = formData.get('id') as string;
     const title = formData.get('title') as string;
     const content = formData.get('content') as string;
+    if (!toPlainText(content).trim()) redirect(`/editor?gw=${parseInt(formData.get('gw_number') as string)}`);
     const gwNumber = parseInt(formData.get('gw_number') as string);
     
     const supabaseClient = await createClient();
@@ -121,14 +124,7 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
                 <input type="hidden" name="id" value={page.id} />
                 <input type="hidden" name="title" value={page.title} />
                 <input type="hidden" name="gw_number" value={currentGw} />
-                
-                <textarea 
-                  name="content"
-                  defaultValue={entry?.content || ''}
-                  className="w-full h-32 p-3 border rounded-lg bg-surface-2 focus:ring-2 focus:ring-brand-2 focus:outline-none resize-none text-sm mb-4"
-                  placeholder={`Write the summary for Gameweek ${currentGw}...`}
-                  required
-                />
+                <WriteUpEditor name="content" initialHtml={entry?.content || ''} placeholder={`Write the summary for Gameweek ${currentGw}...`} />
                 
                 <button 
                   type="submit"

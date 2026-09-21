@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { OnionBaggersSkeleton } from '@/components/Skeletons';
 import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
+import RichText from '@/components/RichText';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { onionBaggersNextLine } from '@/lib/tournament-next';
 import { getWeekProjection, dueFor, type WeekProjection, type WeekDue } from '@/lib/projection';
@@ -113,8 +114,8 @@ async function OnionBaggersContent() {
           <span className={isKnockouts ? 'text-orange-300 border-b-2 border-orange-500 pb-0.5' : 'text-faint'}>Knockouts · GW{kStart}+</span>
         </div>
         {contentData?.content && (
-          <div className="bg-surface border-l-4 border-orange-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
-            {contentData.content}
+          <div className="bg-surface border-l-4 border-orange-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">
+            <RichText content={contentData.content} />
           </div>
         )}
         <p className="text-sm text-dim mt-3">

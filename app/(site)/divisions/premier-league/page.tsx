@@ -5,6 +5,7 @@ import TeamName from '@/components/TeamName';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
+import RichText from '@/components/RichText';
 import DivisionFixtures from '@/components/DivisionFixtures';
 import { DIVISIONS } from '@/lib/divisions';
 import MovementArrow from '@/components/MovementArrow';
@@ -113,8 +114,8 @@ async function DivisionContent() {
         )}
       >
         {contentData?.content && (
-          <div className="bg-surface border-l-4 border-brand p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
-            {contentData.content}
+          <div className="bg-surface border-l-4 border-brand p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">
+            <RichText content={contentData.content} />
           </div>
         )}
       </PageHeader>

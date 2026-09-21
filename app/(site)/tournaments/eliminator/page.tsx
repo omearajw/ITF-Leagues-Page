@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { EliminatorSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
+import RichText from '@/components/RichText';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { eliminatorNextLine } from '@/lib/tournament-next';
 import { getWeekProjection, dueFor } from '@/lib/projection';
@@ -115,8 +116,8 @@ async function EliminatorContent() {
         )}
       >
         {contentData?.content && (
-          <div className="bg-surface border-l-4 border-red-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed whitespace-pre-line">
-            {contentData.content}
+          <div className="bg-surface border-l-4 border-red-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">
+            <RichText content={contentData.content} />
           </div>
         )}
         <p className="text-sm text-dim mt-3">
