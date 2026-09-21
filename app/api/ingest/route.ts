@@ -9,6 +9,7 @@ const supabase = createClient(
 );
 
 import { DIVISIONS } from '@/lib/divisions';
+import { loadTieFacts, resolveEliminatorTie } from '@/lib/eliminator-tiebreak';
 
 const SEASON_ID = '2026-27';
 
@@ -79,20 +80,26 @@ async function runEliminator() {
     if (processedGws.has(gw_number) || alive.size <= 1) continue;
 
     const { data: scores } = await supabase.from('manager_gw_scores').select('manager_fpl_id, points').eq('season_id', SEASON_ID).eq('gw_number', gw_number);
-    let lowestScore = 999;
-    let managerToEliminate: number | null = null;
-    for (const s of scores || []) {
-      const id = Number(s.manager_fpl_id);
-      if (!alive.has(id)) continue;
-      if (s.points < lowestScore) { lowestScore = s.points; managerToEliminate = id; }
-    }
+    const survivors = (scores || []).map(s => ({ id: Number(s.manager_fpl_id), points: s.points })).filter(s => alive.has(s.id));
     // No scores ingested for this week yet; leave it for the next run.
-    if (managerToEliminate === null) continue;
+    if (survivors.length === 0) continue;
+    const lowestScore = Math.min(...survivors.map(s => s.points));
+    const tied = survivors.filter(s => s.points === lowestScore).map(s => s.id);
+
+    // Tied lowest scores go to the league's tie-break (lib/eliminator-tiebreak.ts)
+    let managerToEliminate = tied[0];
+    let rule = 'lowest score';
+    if (tied.length > 1) {
+      const facts = await loadTieFacts(tied, gw_number);
+      const result = resolveEliminatorTie(facts);
+      managerToEliminate = result.loser; rule = result.rule;
+      console.log(`⚖️ Eliminator: GW${gw_number} tie on ${lowestScore} between ${tied.join(', ')} → ${managerToEliminate} out (${rule})`, JSON.stringify(facts));
+    }
 
     await supabase.from('eliminator_status').update({ is_eliminated: true, eliminated_gw: gw_number }).eq('season_id', SEASON_ID).eq('manager_fpl_id', managerToEliminate);
     alive.delete(managerToEliminate);
     processedGws.add(gw_number);
-    console.log(`💀 Eliminator: GW${gw_number} eliminated ${managerToEliminate} (${lowestScore} pts)`);
+    console.log(`💀 Eliminator: GW${gw_number} eliminated ${managerToEliminate} (${lowestScore} pts, ${rule})`);
   }
 }
 
