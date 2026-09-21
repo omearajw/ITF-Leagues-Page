@@ -5,6 +5,8 @@ import { ITFOpenSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
+import { getWeekProjection, dueFor } from '@/lib/projection';
+import DueMark from '@/components/DueMark';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 
 export default function Index() {
@@ -56,6 +58,10 @@ async function ITFOpenContent() {
     ({ data: managers, error } = await fetchScores(scoresGw));
   }
   const showingLive = scoresGw === gw.liveGw;
+  const projection = showingLive ? await getWeekProjection() : null;
+  const dueOf = (id: number) => (projection ? dueFor(projection, scoresGw, Number(id)) : null);
+  const withDue = (id: number, value: number) => value + (dueOf(id)?.due || 0);
+  if (projection) managers?.sort((a: any, b: any) => withDue(b.manager_fpl_id, b.classic_total_points) - withDue(a.manager_fpl_id, a.classic_total_points));
 
   // Live totals move against the last confirmed week; a confirmed week moves against the one before.
   const previousGw = showingLive ? currentGw : currentGw - 1;
@@ -76,7 +82,7 @@ async function ITFOpenContent() {
         <span>Season totals after <strong>GW{scoresGw}</strong></span>
         <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
       </div>
-      <p className="text-xs text-dim mb-4">{showingLive ? `Includes GW${scoresGw} points so far; final once FPL confirms the week.` : 'Confirmed totals.'}</p>
+      <p className="text-xs text-dim mb-4">{showingLive ? `Includes GW${scoresGw} points so far and any subs due from the bench (marked +n); final once FPL confirms the week.` : 'Confirmed totals.'}</p>
       <div className="overflow-x-auto hidden md:block">
       <table className="w-full text-left border-collapse">
         <thead>
@@ -104,9 +110,9 @@ async function ITFOpenContent() {
                   {manager.season_managers.division}
                 </span>
               </td>
-              <td className={`p-3 text-right font-semibold ${showingLive ? 'text-amber-300' : 'text-ink-2'}`}>{manager.points}</td>
+              <td className={`p-3 text-right font-semibold ${showingLive ? 'text-amber-300' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
               <td className="p-3 text-right font-bold text-lg">
-                {manager.classic_total_points}
+                {withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} />
               </td>
             </tr>
           ))}
@@ -124,8 +130,8 @@ async function ITFOpenContent() {
                 <div className="text-xs text-dim">{manager.season_managers.managers.real_name}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-black text-ink">{manager.classic_total_points}</div>
-                <div className={`text-xs ${showingLive ? 'text-amber-300' : 'text-dim'}`}>GW{scoresGw}: {manager.points}</div>
+                <div className="text-sm font-black text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></div>
+                <div className={`text-xs ${showingLive ? 'text-amber-300' : 'text-dim'}`}>GW{scoresGw}: {withDue(manager.manager_fpl_id, manager.points)}</div>
                 <div className="text-xs mt-1"><span className="px-2 py-1 bg-brand-2/15 text-brand-2 text-xs rounded-full">{manager.season_managers.division}</span></div>
               </div>
             </div>

@@ -6,6 +6,8 @@ import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { eliminatorNextLine } from '@/lib/tournament-next';
+import { getWeekProjection, dueFor } from '@/lib/projection';
+import DueMark from '@/components/DueMark';
 
 export default async function EliminatorPage() {
   const supabase = await createClient();
@@ -40,6 +42,8 @@ async function EliminatorContent() {
   const gw = await getGameweekStatus();
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
+  const projection = displayGw === gw.liveGw ? await getWeekProjection() : null;
+  const dueOf = (id: number) => (projection ? dueFor(projection, displayGw, Number(id)) : null);
 
   // 2. Fetch Config & Content
   const { data: contentData } = await supabase
@@ -71,7 +75,8 @@ async function EliminatorContent() {
 
   // Helper to find a specific week's score
   const getScore = (managerId: number, gw: number) => {
-    return allScores?.find(s => s.manager_fpl_id === managerId && s.gw_number === gw)?.points || 0;
+    const base = allScores?.find(s => s.manager_fpl_id === managerId && s.gw_number === gw)?.points || 0;
+    return base + (gw === displayGw ? (dueOf(managerId)?.due || 0) : 0);
   };
 
   // 4. Split, Sort, and Check Status
@@ -194,7 +199,7 @@ async function EliminatorContent() {
                     <div className="text-xs text-dim">{mgr.season_managers.managers.real_name}</div>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-xl font-black text-ink">{getScore(mgr.manager_fpl_id, displayGw)}</span>
+                    <span className="text-xl font-black text-ink">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} /></span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">Points</span>
                   </div>
                 </div>

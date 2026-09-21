@@ -100,7 +100,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
         fixtureState: isUnprocessed ? fixtureStateFor(pl) : 'finished' as FixtureState,
       };
     });
-    const projection = isUnprocessed && liveStats
+    const projection = isUnprocessed && liveStats && set.automatic_subs.length === 0
       ? projectAutoSubs(base.map(b => ({ element: b.element, position: b.slot, role: b.position, minutes: b.minutes, points: b.points ?? 0, fixtureState: b.fixtureState, isCaptain: b.isCaptain, isVice: b.isVice })), set.active_chip)
       : null;
     const toPitch = (b: typeof base[number]): PitchPlayer => ({

@@ -5,6 +5,7 @@ import { getDivisionFixtures } from '@/lib/h2h-fixtures';
 import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
 import { getTeamNameDisplayText } from '@/components/TeamName';
+import { getWeekProjection, dueFor } from '@/lib/projection';
 
 export type TickerLive = {
   gw: number;
@@ -40,8 +41,12 @@ export const getTickerData = cache(async (): Promise<{ motm: TickerMotm; live: T
   }
 
   const weekGw = gw.displayGw;
+  const projection = weekGw === gw.liveGw ? await getWeekProjection() : null;
   const weekScores: Record<number, number> = {};
-  (scoreRows || []).filter((s: any) => s.gw_number === weekGw).forEach((s: any) => { weekScores[Number(s.manager_fpl_id)] = s.points; });
+  (scoreRows || []).filter((s: any) => s.gw_number === weekGw).forEach((s: any) => {
+    const id = Number(s.manager_fpl_id);
+    weekScores[id] = s.points + (projection ? (dueFor(projection, weekGw, id)?.due || 0) : 0);
+  });
   const fixtureLists = await Promise.all(DIVISIONS.map(d => getDivisionFixtures(d.fplId, weekGw)));
   const live: TickerLive = {
     gw: weekGw,

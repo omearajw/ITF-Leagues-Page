@@ -8,6 +8,8 @@ import GameweekTimeline from '@/components/GameweekTimeline';
 import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
+import { getWeekProjection, dueFor } from '@/lib/projection';
+import DueMark from '@/components/DueMark';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { buildMotm } from '@/lib/motm';
@@ -96,6 +98,9 @@ async function DashboardContent() {
     ({ data: scores, error } = await fetchScores(scoresGw));
   }
   const showingLive = scoresGw === gw.liveGw;
+  const projection = showingLive ? await getWeekProjection() : null;
+  const dueOf = (id: number) => (projection ? dueFor(projection, scoresGw, Number(id)) : null);
+  const withDue = (id: number, value: number) => value + (dueOf(id)?.due || 0);
 
   if (error) return <div className="p-10 text-red-500">Error: {error.message}</div>;
 
@@ -127,7 +132,7 @@ async function DashboardContent() {
   const leagueOneTeams = processedTeams.filter((s: any) => s.season_managers.division === 'League One');
   
   // ITF Open still uses raw total points
-  const topTenITF = [...processedTeams].sort((a, b) => b.classic_total_points - a.classic_total_points).slice(0, 10);
+  const topTenITF = [...processedTeams].sort((a, b) => withDue(b.manager_fpl_id, b.classic_total_points) - withDue(a.manager_fpl_id, a.classic_total_points)).slice(0, 10);
 
   // Movement: divisions compare with last week's confirmed standings; the ITF Open
   // compares live totals with the last confirmed week (or last week when nothing is live).
@@ -296,7 +301,7 @@ async function DashboardContent() {
                       <div className="text-xs text-faint">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
                     </div>
                   </div>
-                  <span className="shrink-0 font-bold text-brand-2">{manager.classic_total_points}</span>
+                  <span className="shrink-0 font-bold text-brand-2">{withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></span>
                 </div>
               ))}
             </div>
@@ -325,7 +330,7 @@ async function DashboardContent() {
                         {manager.season_managers.division}
                       </span>
                     </td>
-                    <td className="p-3 text-right font-bold text-brand-2">{manager.classic_total_points}</td>
+                    <td className="p-3 text-right font-bold text-brand-2">{withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
                   </tr>
                 ))}
               </tbody>

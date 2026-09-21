@@ -6,6 +6,8 @@ import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { onionBaggersNextLine } from '@/lib/tournament-next';
+import { getWeekProjection, dueFor, type WeekProjection, type WeekDue } from '@/lib/projection';
+import DueMark from '@/components/DueMark';
 
 export default async function OnionBaggersPage() {
   const supabase = await createClient();
@@ -42,6 +44,8 @@ async function OnionBaggersContent() {
   const gw = await getGameweekStatus();
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
+  const projection = displayGw === gw.liveGw ? await getWeekProjection() : null;
+  const dueOf = (id: number) => (projection ? dueFor(projection, displayGw, Number(id)) : null);
 
   const { data: contentData } = await supabase
     .from('page_content')
@@ -78,7 +82,7 @@ async function OnionBaggersContent() {
 
   const getScore = (mgrId: number, gw: number) => {
     const s = allScores?.find(score => score.manager_fpl_id === mgrId && score.gw_number === gw);
-    return s ? s.points : '-';
+    return s ? s.points + (gw === displayGw ? (dueOf(mgrId)?.due || 0) : 0) : '-';
   };
 
   // Generate Gameweek Columns for the Matrix (e.g. GW1 to GW8)
@@ -259,7 +263,7 @@ async function OnionBaggersContent() {
                             <div className="text-xs text-dim">{teamMap[manager.manager_fpl_id]?.realName}</div>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="text-lg font-black text-ink leading-6">{getScore(manager.manager_fpl_id, displayGw)}</div>
+                            <div className="text-lg font-black text-ink leading-6">{getScore(manager.manager_fpl_id, displayGw)} <DueMark due={dueOf(manager.manager_fpl_id)} /></div>
                             <div className="text-[10px] font-bold uppercase tracking-wider text-faint">GW{displayGw}</div>
                           </div>
                         </div>
@@ -287,10 +291,10 @@ async function OnionBaggersContent() {
           <div className="hidden md:block bg-surface rounded-xl shadow-sm border border-line p-6 overflow-x-auto">
             <div className="flex gap-8 min-w-[1000px]">
               
-              <BracketColumn title="Round of 16" fixtures={fixtures?.filter(f => f.stage === 'Round of 16')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} />
-              <BracketColumn title="Quarter-Finals" fixtures={fixtures?.filter(f => f.stage === 'Quarter-Final')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} />
-              <BracketColumn title="Semi-Finals" fixtures={fixtures?.filter(f => f.stage === 'Semi-Final')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} />
-              <BracketColumn title="The Final" fixtures={fixtures?.filter(f => f.stage === 'Final')} teamMap={teamMap} isFinal={true} liveGw={gw.liveGw} />
+              <BracketColumn title="Round of 16" fixtures={fixtures?.filter(f => f.stage === 'Round of 16')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} projection={projection} />
+              <BracketColumn title="Quarter-Finals" fixtures={fixtures?.filter(f => f.stage === 'Quarter-Final')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} projection={projection} />
+              <BracketColumn title="Semi-Finals" fixtures={fixtures?.filter(f => f.stage === 'Semi-Final')} teamMap={teamMap} isFinal={false} liveGw={gw.liveGw} projection={projection} />
+              <BracketColumn title="The Final" fixtures={fixtures?.filter(f => f.stage === 'Final')} teamMap={teamMap} isFinal={true} liveGw={gw.liveGw} projection={projection} />
               
             </div>
           </div>
@@ -311,7 +315,7 @@ async function OnionBaggersContent() {
                     <div className="border-2 border-line border-dashed rounded-xl text-center text-faint font-bold text-sm italic py-6 bg-surface-2/50">TBD</div>
                   ) : (
                     <div className="space-y-3">
-                      {roundFixtures.map(fix => <BracketMatch key={fix.id} fix={fix} teamMap={teamMap} isFinal={round.isFinal} liveGw={gw.liveGw} />)}
+                      {roundFixtures.map(fix => <BracketMatch key={fix.id} fix={fix} teamMap={teamMap} isFinal={round.isFinal} liveGw={gw.liveGw} projection={projection} />)}
                     </div>
                   )}
                 </div>
@@ -334,7 +338,7 @@ async function OnionBaggersContent() {
 // ==========================================
 // BRACKET UI COMPONENT (LIGHT THEME)
 // ==========================================
-function BracketColumn({ title, fixtures, teamMap, isFinal, liveGw }: { title: string, fixtures: any[] | undefined, teamMap: any, isFinal: boolean, liveGw: number | null }) {
+function BracketColumn({ title, fixtures, teamMap, isFinal, liveGw, projection }: { title: string, fixtures: any[] | undefined, teamMap: any, isFinal: boolean, liveGw: number | null, projection: WeekProjection | null }) {
   if (!fixtures || fixtures.length === 0) {
     return (
       <div className="flex-1 flex flex-col gap-4">
@@ -350,15 +354,17 @@ function BracketColumn({ title, fixtures, teamMap, isFinal, liveGw }: { title: s
     <div className={`flex flex-col gap-6 ${isFinal ? 'w-80' : 'flex-1'}`}>
       <h3 className={`font-bold uppercase tracking-widest text-xs text-center mb-2 ${isFinal ? 'text-orange-600 text-sm' : 'text-dim'}`}>{title}</h3>
       <div className="flex flex-col justify-around h-full gap-4">
-        {fixtures.map(fix => <BracketMatch key={fix.id} fix={fix} teamMap={teamMap} isFinal={isFinal} liveGw={liveGw} />)}
+        {fixtures.map(fix => <BracketMatch key={fix.id} fix={fix} teamMap={teamMap} isFinal={isFinal} liveGw={liveGw} projection={projection} />)}
       </div>
     </div>
   );
 }
 
-function BracketMatch({ fix, teamMap, isFinal, liveGw }: { fix: any, teamMap: any, isFinal: boolean, liveGw: number | null }) {
+function BracketMatch({ fix, teamMap, isFinal, liveGw, projection }: { fix: any, teamMap: any, isFinal: boolean, liveGw: number | null, projection: WeekProjection | null }) {
   const isPlayed = fix.manager_1_score !== null;
   const isLiveFix = isPlayed && fix.gw_number === liveGw;
+  const d1 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_1_id) : null;
+  const d2 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_2_id) : null;
   return (
     <div className={`flex flex-col rounded-lg border bg-surface shadow-sm overflow-hidden ${isFinal ? 'border-orange-500/40 ring-2 ring-orange-500/20' : 'border-line'}`}>
       <div className="bg-surface-2 px-3 py-1.5 flex justify-between items-center border-b border-line">
@@ -366,15 +372,15 @@ function BracketMatch({ fix, teamMap, isFinal, liveGw }: { fix: any, teamMap: an
         {fix.winner_id && isFinal && !isLiveFix && <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded font-black uppercase tracking-widest">Champion</span>}
       </div>
       <div className="flex flex-col">
-        <MatchRow managerId={fix.manager_1_id} score={fix.manager_1_score} isWinner={!isLiveFix && fix.winner_id === fix.manager_1_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
+        <MatchRow managerId={fix.manager_1_id} score={isPlayed ? fix.manager_1_score + (d1?.due || 0) : fix.manager_1_score} due={d1} isWinner={!isLiveFix && fix.winner_id === fix.manager_1_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
         <div className="border-t border-line"></div>
-        <MatchRow managerId={fix.manager_2_id} score={fix.manager_2_score} isWinner={!isLiveFix && fix.winner_id === fix.manager_2_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
+        <MatchRow managerId={fix.manager_2_id} score={isPlayed ? fix.manager_2_score + (d2?.due || 0) : fix.manager_2_score} due={d2} isWinner={!isLiveFix && fix.winner_id === fix.manager_2_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
       </div>
     </div>
   );
 }
 
-function MatchRow({ managerId, score, isWinner, isPlayed, isLive, teamMap }: { managerId: number, score: number | null, isWinner: boolean, isPlayed: boolean, isLive: boolean, teamMap: any }) {
+function MatchRow({ managerId, score, due, isWinner, isPlayed, isLive, teamMap }: { managerId: number, score: number | null, due?: WeekDue | null, isWinner: boolean, isPlayed: boolean, isLive: boolean, teamMap: any }) {
   if (!managerId) {
     return (
       <div className="px-3 py-2 flex justify-between items-center opacity-50 bg-surface-2">
@@ -393,7 +399,7 @@ function MatchRow({ managerId, score, isWinner, isPlayed, isLive, teamMap }: { m
       />
       {isPlayed && (
         <span className={`font-mono text-sm font-black ${isWinner ? 'text-green-400' : 'text-ink-2'}`}>
-          {score}
+          {score} <DueMark due={due} />
         </span>
       )}
     </div>

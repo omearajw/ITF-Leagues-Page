@@ -8,6 +8,8 @@ import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { championsLeagueNextLine } from '@/lib/tournament-next';
+import { getWeekProjection, dueFor, type WeekProjection } from '@/lib/projection';
+import DueMark from '@/components/DueMark';
 
 export default function ChampionsLeaguePage() {
   return (
@@ -26,6 +28,7 @@ async function ChampionsLeagueContent() {
   const gw = await getGameweekStatus();
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
+  const projection = gw.liveGw ? await getWeekProjection() : null;
 
   const { data: contentData } = await supabase
     .from('page_content')
@@ -248,7 +251,7 @@ async function ChampionsLeagueContent() {
               <span className="text-xs text-faint text-right">{fixtures?.filter(f => f.stage !== 'Final').length || 0} fixtures · tap to expand</span>
             </summary>
             <div className="p-3 space-y-3">
-              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} />
+              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} projection={projection} />
             </div>
           </details>
           <div className="hidden xl:block bg-panel rounded-xl shadow-xl overflow-hidden sticky top-8">
@@ -257,7 +260,7 @@ async function ChampionsLeagueContent() {
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             </div>
             <div className="p-4 space-y-3 max-h-[800px] overflow-y-auto">
-              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} />
+              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} projection={projection} />
             </div>
           </div>
         </div>
@@ -270,7 +273,7 @@ async function ChampionsLeagueContent() {
 // ==========================================
 // FIXTURE LOG (shared by the sticky desktop panel and the mobile accordion)
 // ==========================================
-function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | undefined, entrants: Record<number, any>, liveGw: number | null }) {
+function FixtureLog({ fixtures, entrants, liveGw, projection }: { fixtures: any[] | null | undefined, entrants: Record<number, any>, liveGw: number | null, projection: WeekProjection | null }) {
   const list = fixtures?.filter(f => f.stage !== 'Final') || [];
   if (list.length === 0) return <div className="text-center text-dim italic py-8">Schedule pending.</div>;
 
@@ -279,6 +282,10 @@ function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | u
       {list.map((fix) => {
         const isPlayed = fix.manager_1_score !== null;
         const isLiveFix = isPlayed && fix.gw_number === liveGw;
+        const d1 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_1_id) : null;
+        const d2 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_2_id) : null;
+        const s1 = isPlayed ? fix.manager_1_score + (d1?.due || 0) : null;
+        const s2 = isPlayed ? fix.manager_2_score + (d2?.due || 0) : null;
 
         return (
           <div key={fix.id} className={`rounded p-3 text-sm flex flex-col gap-2 border ${isPlayed ? 'bg-surface-2 border-line' : 'bg-surface-2/40 border-line/50 border-dashed'}`}>
@@ -293,7 +300,7 @@ function FixtureLog({ fixtures, entrants, liveGw }: { fixtures: any[] | null | u
 
               {isPlayed ? (
                 <span className="bg-panel-2 text-white font-mono px-2 py-1 rounded text-xs shadow-inner shrink-0">
-                  {fix.manager_1_score} - {fix.manager_2_score}
+                  <DueMark due={d1} className="mr-1" />{s1} - {s2}<DueMark due={d2} className="ml-1" />
                 </span>
               ) : (
                 <span className="bg-surface-3 text-faint font-bold px-2 py-1 rounded text-[10px] uppercase tracking-widest shrink-0">
