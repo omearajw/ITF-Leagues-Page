@@ -101,7 +101,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
       };
     });
     const projection = isUnprocessed && liveStats
-      ? projectAutoSubs(base.map(b => ({ element: b.element, position: b.slot, role: b.position, minutes: b.minutes, points: b.points ?? 0, fixtureState: b.fixtureState, isCaptain: b.isCaptain, isVice: b.isVice })))
+      ? projectAutoSubs(base.map(b => ({ element: b.element, position: b.slot, role: b.position, minutes: b.minutes, points: b.points ?? 0, fixtureState: b.fixtureState, isCaptain: b.isCaptain, isVice: b.isVice })), set.active_chip)
       : null;
     const toPitch = (b: typeof base[number]): PitchPlayer => ({
       element: b.element, name: b.name, team: b.team, teamCode: b.teamCode, code: b.code, position: b.position,
@@ -109,7 +109,9 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
       subbedIn: b.subbedIn, subbedOut: b.subbedOut,
       fixtureState: isUnprocessed ? b.fixtureState : undefined, minutes: b.minutes,
       projectedOut: !!projection?.out.includes(b.element), projectedIn: !!projection?.in.includes(b.element),
+      projectedUndecided: !!projection?.undecided.includes(b.element),
       projectedCaptain: !!projection?.captainToVice && b.isVice,
+      benchBoost: !!projection?.benchBoost,
     });
     return {
       starters: base.filter(b => b.slot <= 11).map(toPitch),
@@ -122,6 +124,8 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   const starters = mine?.starters || [];
   const bench = mine?.bench || [];
   const benchDue = (mine?.projection?.benchDue || 0) + (mine?.projection?.captainExtra || 0);
+  const undecidedSubs = mine?.projection?.undecided.length || 0;
+  const benchBoostOn = !!mine?.projection?.benchBoost;
   const theirs = opponentPicks ? decorate(opponentPicks, live) : null;
   const pitchOpponent: PitchOpponent | null = theirs && opponentName ? {
     name: opponentName, week: selectedGw, starters: theirs.starters, bench: theirs.bench, benchPoints: opponentPicks!.entry_history.points_on_bench,
@@ -194,7 +198,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
             {[
               // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
-              { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
+              { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs${undecidedSubs ? ` · ${undecidedSubs} more sub to settle` : ''}` : undecidedSubs ? `${undecidedSubs} sub still to settle` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
               { label: 'Team points', value: gross ?? '–', sub: 'before hits' },
               { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
               { label: 'On bench', value: picks.entry_history.points_on_bench, sub: 'points' },

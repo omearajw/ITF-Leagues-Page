@@ -21,7 +21,9 @@ export type PitchPlayer = {
   minutes?: number;
   projectedOut?: boolean;
   projectedIn?: boolean;
+  projectedUndecided?: boolean;
   projectedCaptain?: boolean;
+  benchBoost?: boolean;
 };
 
 export type View = 'photo' | 'shirt' | 'plain';
@@ -66,8 +68,9 @@ function PlayerCard({ player, view, live, onGrass }: { player: PitchPlayer; view
   const yetToPlay = player.fixtureState === 'pending' || player.fixtureState === 'none';
   const playing = player.fixtureState === 'playing';
   const scored = player.points === null || yetToPlay ? null : player.points * (player.multiplier || 1);
-  const faded = player.subbedOut || player.projectedOut;
+  const faded = player.subbedOut || player.projectedOut || player.projectedUndecided;
   const leftTag = player.projectedOut ? { text: '✕', cls: 'bg-red-500 text-white', title: 'Did not play: due to be auto-subbed out' }
+    : player.projectedUndecided ? { text: '✕ ?', cls: 'bg-red-500/80 text-white', title: 'Did not play: which substitute comes on depends on matches still to be played' }
     : player.projectedIn ? { text: 'DUE ON', cls: 'bg-green-500 text-white', title: 'Due to come on as an auto-sub' }
     : player.subbedIn ? { text: 'IN', cls: 'bg-green-500 text-white', title: 'Auto-subbed in' }
     : player.subbedOut ? { text: 'OUT', cls: 'bg-red-500 text-white', title: 'Auto-subbed out' }
@@ -227,7 +230,8 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
     />
   );
 
-  const front = board(starters, bench, `Bench · ${benchPoints} pts`, theirIds);
+  const boost = starters[0]?.benchBoost;
+  const front = board(starters, bench, boost ? `Bench · ${benchPoints} pts · Bench Boost, all count` : `Bench · ${benchPoints} pts`, theirIds);
   const back = opponent ? board(opponent.starters, opponent.bench, `${opponent.name} bench · ${opponent.benchPoints} pts`, mineIds) : null;
 
   return (
