@@ -125,14 +125,13 @@ export default function RootLayout({
         {/* Route groups supply the page body: (site) adds the gameweek strip, (home) has the timeline card instead */}
         {children}
 
-        {/* Bottom ticker (desktop); the spacer keeps the footer clear of it */}
+        {/* Bottom ticker (desktop) */}
         <Suspense fallback={null}>
           <TickerServer />
         </Suspense>
-        <div className="hidden md:block h-12" aria-hidden="true" />
 
         {/* GLOBAL FOOTER */}
-        <footer className="bg-panel text-dim text-center py-8 text-sm mt-auto pb-10 relative z-30">
+        <footer className="bg-panel text-dim text-center py-8 text-sm mt-auto relative z-30">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-3">
             {FOOTER_LINKS.map(link => (
               <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="text-faint hover:text-white transition">
@@ -142,6 +141,8 @@ export default function RootLayout({
           </div>
           © 2026 ITF League. Data sourced from official FPL API.
         </footer>
+        {/* Clears the fixed ticker (48px tall) so it never covers the end of the page */}
+        <div className="hidden md:block h-12 bg-panel" aria-hidden="true" />
       </body>
     </html>
   );
