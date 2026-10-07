@@ -11,33 +11,41 @@ import { DIVISIONS } from '@/lib/divisions';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus } from '@/lib/gameweek-status';
+import GameweekSelector from '@/components/GameweekSelector';
 
-export default function ChampionshipPage() {
+export default async function ChampionshipPage({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
+  const { gw } = await searchParams;
+  const requested = gw ? parseInt(gw, 10) : NaN;
+
   return (
     <div className="max-w-5xl mx-auto py-2 sm:py-8 font-sans">
       <Suspense fallback={<DivisionSkeleton />}>
-        <DivisionContent />
+        <DivisionContent requestedGw={Number.isFinite(requested) ? requested : null} />
       </Suspense>
     </div>
   );
 }
 
-async function DivisionContent() {
+async function DivisionContent({ requestedGw }: { requestedGw: number | null }) {
   const supabase = await createClient();
   const SEASON_ID = '2026-27';
   const gw = await getGameweekStatus();
-  const currentGw = gw.syncedThroughGw;
+  // Any confirmed week can be viewed; the latest is the default and keeps live totals.
+  const latestGw = Math.max(1, gw.syncedThroughGw);
+  const selectedGw = requestedGw && requestedGw >= 1 && requestedGw <= latestGw ? requestedGw : latestGw;
+  const isLatest = selectedGw === latestGw;
   
   const DIVISION_NAME = 'Championship';
   const CMS_SLUG = 'championship';
 
   const { data: contentData } = await supabase
     .from('page_content')
-    .select('content')
-    .eq('id', CMS_SLUG) // or respective slug
+    .select('content, gw_number')
+    .eq('id', CMS_SLUG)
+    .lte('gw_number', selectedGw)
     .order('gw_number', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   const { data: managers, error } = await supabase
     .from('season_managers')
@@ -93,11 +101,11 @@ async function DivisionContent() {
     return rows;
   };
 
-  const tableData = buildTable(currentGw, null);
+  const tableData = buildTable(selectedGw, isLatest ? null : selectedGw);
   const teamNames: Record<number, string> = Object.fromEntries((managers || []).map((m: any) => [Number(m.manager_fpl_id), m.team_name]));
   const division = DIVISIONS.find(d => d.name === DIVISION_NAME);
-  const movement = currentGw > 1
-    ? positionDeltas(tableData.map(t => t.id), buildTable(currentGw - 1, currentGw - 1).map(t => t.id))
+  const movement = selectedGw > 1
+    ? positionDeltas(tableData.map(t => t.id), buildTable(selectedGw - 1, selectedGw - 1).map(t => t.id))
     : {};
 
   return (
@@ -105,7 +113,7 @@ async function DivisionContent() {
       <PageHeader
         title={DIVISION_NAME}
         badge={(
-          <GameweekChip gw={gw} />
+          <GameweekChip gw={gw} week={isLatest ? undefined : selectedGw} live={isLatest ? undefined : false} />
         )}
         actions={(
           <Link href="/form" className="text-xs sm:text-sm bg-brand-2/10 text-brand-2 px-3 py-1.5 rounded-full font-semibold hover:bg-brand-2/15 transition whitespace-nowrap">
@@ -113,15 +121,27 @@ async function DivisionContent() {
           </Link>
         )}
       >
+        {latestGw > 1 && (
+          <div className="mb-4">
+            <GameweekSelector basePath="/divisions/championship" latestGw={latestGw} selected={selectedGw} liveGw={gw.liveGw} />
+          </div>
+        )}
+
         {contentData?.content && (
           <div className="bg-surface border-l-4 border-brand p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">
+            {contentData.gw_number !== selectedGw && (
+              <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-2">Write-up from GW{contentData.gw_number}</div>
+            )}
             <RichText content={contentData.content} />
           </div>
         )}
       </PageHeader>
 
-      {gw.liveGw && (
+      {isLatest && gw.liveGw && (
         <p className="text-xs text-dim mb-2">Total updates live. W/D/L, Pts and positions update once GW{gw.liveGw} is confirmed.</p>
+      )}
+      {!isLatest && (
+        <p className="text-xs text-dim mb-2">The table as it stood after GW{selectedGw}. Arrows and movement compare with GW{selectedGw - 1}.</p>
       )}
 
       <div className="bg-surface rounded-xl shadow-sm border overflow-hidden">
@@ -204,7 +224,7 @@ async function DivisionContent() {
         </div>
       </div>
 
-      {division && <DivisionFixtures leagueId={division.fplId} gw={gw} teamNames={teamNames} />}
+      {division && <DivisionFixtures leagueId={division.fplId} gw={gw} teamNames={teamNames} week={isLatest ? undefined : selectedGw} />}
     </>
   );
 }

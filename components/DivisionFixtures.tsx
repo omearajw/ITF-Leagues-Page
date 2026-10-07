@@ -10,6 +10,7 @@ type Props = {
   leagueId: string;
   gw: GameweekStatus;
   teamNames: Record<number, string>;
+  week?: number; // defaults to the week the rest of the site is showing
 };
 
 function FixtureRow({ fix, scores, teamNames, live, projection }: { fix: H2HFixture; scores: Record<number, number> | null; teamNames: Record<number, string>; live: boolean; projection: WeekProjection | null }) {
@@ -40,8 +41,8 @@ function FixtureRow({ fix, scores, teamNames, live, projection }: { fix: H2HFixt
   );
 }
 
-export default async function DivisionFixtures({ leagueId, gw, teamNames }: Props) {
-  const thisGw = gw.displayGw;
+export default async function DivisionFixtures({ leagueId, gw, teamNames, week }: Props) {
+  const thisGw = week ?? gw.displayGw;
   const nextGw = thisGw + 1;
   const isLive = thisGw === gw.liveGw;
 
