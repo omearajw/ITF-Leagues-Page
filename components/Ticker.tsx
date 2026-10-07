@@ -50,6 +50,22 @@ const DIVISION_LABEL: Record<string, string> = { 'Premier League': 'PREMIER LEAG
 
 function Dot() { return <span>•</span>; }
 
+// The league and the pipes between its entries carry the brand colour; the managers,
+// fixtures and scores stay white so they are what you read.
+function DivisionLine({ label, items, empty }: { label: string; items: string[]; empty: string }) {
+  return (
+    <span>
+      <span className="text-brand font-bold">{label}:</span>{' '}
+      {items.length === 0 ? empty : items.map((item, i) => (
+        <span key={i}>
+          {i > 0 && <span className="text-brand font-bold">{'\u00a0|\u00a0'}</span>}
+          {item}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function MotmContent({ motm }: { motm: TickerMotm }) {
   if (!motm) return <><span className="text-brand-2 font-bold">MANAGER OF THE MONTH</span><Dot /><span>Awaiting the first confirmed gameweek</span><Dot /></>;
   return (
@@ -58,7 +74,7 @@ function MotmContent({ motm }: { motm: TickerMotm }) {
       <Dot />
       {motm.divisions.map(d => (
         <span key={d.name} className="flex items-center gap-12">
-          <span>{DIVISION_LABEL[d.name] || d.name.toUpperCase()}: {d.podium.length ? d.podium.join(' | ') : 'Awaiting Data'}</span>
+          <DivisionLine label={DIVISION_LABEL[d.name] || d.name.toUpperCase()} items={d.podium} empty="Awaiting Data" />
           <Dot />
         </span>
       ))}
@@ -73,9 +89,11 @@ function LiveContent({ live }: { live: TickerLive }) {
       <Dot />
       {live.divisions.map(d => (
         <span key={d.name} className="flex items-center gap-12">
-          <span>
-            {DIVISION_LABEL[d.name] || d.name.toUpperCase()}: {d.ties.length === 0 ? 'No fixtures' : d.ties.map(t => `${t.home} ${t.homeScore ?? '–'}-${t.awayScore ?? '–'} ${t.away}`).join('  |  ')}
-          </span>
+          <DivisionLine
+            label={DIVISION_LABEL[d.name] || d.name.toUpperCase()}
+            items={d.ties.map(t => `${t.home} ${t.homeScore ?? '–'}-${t.awayScore ?? '–'} ${t.away}`)}
+            empty="No fixtures"
+          />
           <Dot />
         </span>
       ))}
