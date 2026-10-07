@@ -57,6 +57,7 @@ async function DashboardContent() {
   // Only this week's write-ups; an older one next to this week's table would mislead.
   const { data: contentData } = await supabase.from('page_content').select('id, content').eq('gw_number', currentGw);
   const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = toPlainText(item.content); return acc; }, {}) || {};
+  const noWriteUp = `No GW${currentGw} write-up yet.`;
 
   // F. Fetch tournament configs to display status/stage
   const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }, { data: elStatus }] = await Promise.all([
@@ -189,9 +190,9 @@ async function DashboardContent() {
           </div>
           <p className="text-xs text-dim mb-4">{gw.liveGw ? `Pts and positions update once GW${gw.liveGw} is confirmed.` : `Standings after GW${currentGw}.`}</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
-            <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} fullSnippet={snippets['championship']} teams={championshipTeams} movement={divisionMovement(championshipTeams, 'Championship')} />
-            <DivisionWidget name="League One" link="/divisions/league-one" snippet={snippets['league-one']} fullSnippet={snippets['league-one']} teams={leagueOneTeams} movement={divisionMovement(leagueOneTeams, 'League One')} />
+            <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} placeholder={noWriteUp} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
+            <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} fullSnippet={snippets['championship']} teams={championshipTeams} placeholder={noWriteUp} movement={divisionMovement(championshipTeams, 'Championship')} />
+            <DivisionWidget name="League One" link="/divisions/league-one" snippet={snippets['league-one']} fullSnippet={snippets['league-one']} teams={leagueOneTeams} placeholder={noWriteUp} movement={divisionMovement(leagueOneTeams, 'League One')} />
           </div>
         </section>
 
@@ -209,6 +210,7 @@ async function DashboardContent() {
               snippet={snippets['onion-baggers-cup']} 
               fullSnippet={snippets['onion-baggers-cup']}
               startGw={`GW${obQual}`} 
+              placeholder={noWriteUp}
             />
             <TournamentWidget 
               name="Champions League" 
@@ -220,6 +222,7 @@ async function DashboardContent() {
               snippet={snippets['champions-league']} 
               fullSnippet={snippets['champions-league']}
               startGw={`GW${clS1}`} 
+              placeholder={noWriteUp}
             />
             <TournamentWidget 
               name="Eliminator" 
@@ -240,6 +243,7 @@ async function DashboardContent() {
               snippet={snippets['eliminator']} 
               fullSnippet={snippets['eliminator']}
               startGw={`GW${elStart}`} 
+              placeholder={noWriteUp}
             />
           </div>
         </section>
@@ -349,14 +353,14 @@ async function DashboardContent() {
 // 3. HELPER COMPONENTS
 // =========================================
 
-function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: { name: string, link: string, snippet: string, fullSnippet?: string, teams: any[], movement: Record<number, number | null> }) {
+function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement, placeholder }: { name: string, link: string, snippet: string, fullSnippet?: string, teams: any[], movement: Record<number, number | null>, placeholder?: string }) {
   return (
     <div className="bg-surface border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition">
       <Link href={link} className="p-4 border-b bg-surface-2 rounded-t-xl hover:bg-surface-2 transition group cursor-pointer">
         <h3 className="font-bold text-lg group-hover:text-brand-2 transition-colors">{name}&nbsp;&rarr;</h3>
       </Link>
       <div className="p-4 flex-grow text-sm text-dim flex flex-col justify-between">
-        <Snippet preview={snippet?.slice(0, 180)} full={fullSnippet} link={link} />
+        <Snippet preview={snippet?.slice(0, 180)} full={fullSnippet} link={link} placeholder={placeholder} />
         <div className="border rounded overflow-hidden bg-surface-2">
           <table className="w-full text-xs text-left border-collapse">
             <tbody>
@@ -383,7 +387,7 @@ function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement }: {
   );
 }
 
-function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw, nextLine, summary }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string, nextLine?: string, summary?: React.ReactNode }) {
+function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw, nextLine, summary, placeholder }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string, nextLine?: string, summary?: React.ReactNode, placeholder?: string }) {
   const isPending = status === 'Pending';
 
   return (
@@ -399,8 +403,9 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
         <h3 className={`font-bold text-lg transition-colors pr-16 ${isPending ? 'text-dim' : 'group-hover:text-brand-2'}`}>
           {name}{!isPending && <>&nbsp;&rarr;</>}
         </h3>
-        <p className="text-xs font-semibold text-dim uppercase tracking-wider mt-1">{stage}</p>
-        {nextLine && <p className="text-xs text-dim mt-1">{nextLine}</p>}
+        {/* While pending, the overlay below already says when it starts, so neither line is repeated here. */}
+        {!isPending && <p className="text-xs font-semibold text-dim uppercase tracking-wider mt-1">{stage}</p>}
+        {!isPending && nextLine && <p className="text-xs text-dim mt-1">{nextLine}</p>}
       </Link>
 
       {/* 3. THE BODY (With the overlay applied ONLY here if pending). Minimum height keeps the
@@ -424,7 +429,7 @@ function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, sta
         {/* THE WIDGET CONTENT (Greyed out if pending) */}
         <div className={`p-4 flex-grow text-sm text-dim ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
           {summary && <div className="mb-3 text-sm leading-snug">{summary}</div>}
-          <Snippet preview={snippet?.slice(0, 160)} full={fullSnippet} link={link} />
+          <Snippet preview={snippet?.slice(0, 160)} full={fullSnippet} link={link} placeholder={placeholder} />
         </div>
       </div>
       
