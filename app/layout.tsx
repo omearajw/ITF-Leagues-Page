@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import MobileNav from '@/components/mobile-nav';
+import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
 import { TickerSwitch } from '@/components/Ticker';
 
@@ -142,6 +143,7 @@ export default function RootLayout({
         </footer>
         {/* Clears the fixed ticker (48px tall) so it never covers the end of the page */}
         <div className="hidden md:block h-12 bg-panel" aria-hidden="true" />
+        <Analytics />
       </body>
     </html>
   );
