@@ -12,7 +12,7 @@ export const metadata = {
 };
 
 const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
-const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block';
+const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden xl:block';
 
 // Reference pages that still live on the old ITF site until they are rebuilt here (log items 7 and 8).
 const FOOTER_LINKS = [
@@ -71,10 +71,8 @@ async function Navbar() {
             {/* Desktop nav groups: never wrap; spacing tightens at narrower widths and the
                 group labels only appear when there is room, so the row stays on one line. */}
             <div className="hidden lg:flex flex-nowrap items-center">
-              <Link href="/" className="whitespace-nowrap text-[13px] xl:text-sm font-black text-brand hover:text-brand/80 transition py-2 px-1.5 xl:px-2 rounded-md mr-3 xl:mr-5 border-r border-line pr-3 xl:pr-5">ITF Hub</Link>
-
               {/* GROUP 1: LEAGUE */}
-              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-line pr-3 xl:pr-5">
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-1.5 mr-3 xl:mr-4 border-r border-line pr-3 xl:pr-4">
                 <span className={navGroup}>League</span>
                 <Link href="/divisions/premier-league" className={navLink}>Premier</Link>
                 <Link href="/divisions/championship" className={navLink}>Championship</Link>
@@ -82,7 +80,7 @@ async function Navbar() {
               </div>
 
               {/* GROUP 2: TOURNAMENTS */}
-              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2 mr-3 xl:mr-5 border-r border-line pr-3 xl:pr-5">
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-1.5 mr-3 xl:mr-4 border-r border-line pr-3 xl:pr-4">
                 <span className={navGroup}>Tournaments</span>
                 <Link href="/tournaments/eliminator" className={navLink}>Eliminator</Link>
                 <Link href="/tournaments/onion-baggers-cup" className={navLink}>OB Cup</Link>
@@ -90,7 +88,7 @@ async function Navbar() {
               </div>
 
               {/* GROUP 3: PERFORMANCE */}
-              <div className="flex items-center shrink-0 space-x-1 xl:space-x-2">
+              <div className="flex items-center shrink-0 space-x-1 xl:space-x-1.5">
                 <span className={navGroup}>Performance</span>
                 <Link href="/itf-open" className={navLink}>The Open</Link>
                 <Link href="/motm" className={navLink}>MotM</Link>
