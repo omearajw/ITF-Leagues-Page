@@ -12,7 +12,7 @@ export const metadata = {
 };
 
 const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
-const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden xl:block';
+const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden xl:block pl-1.5 xl:pl-2';
 
 // Reference pages that still live on the old ITF site until they are rebuilt here (log items 7 and 8).
 const FOOTER_LINKS = [
@@ -30,7 +30,7 @@ async function Navbar() {
   const isEditor = role === process.env.EDITOR_SECRET_TOKEN;
 
   return (
-    <nav className="bg-panel text-white shadow-md">
+    <nav className="bg-panel text-white shadow-md sticky top-0 z-50">
       {/* TOP TIER: Logo and Tools */}
       <div className="border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -70,7 +70,7 @@ async function Navbar() {
           <div className="flex-1 min-w-0">
             {/* Desktop nav groups: never wrap; spacing tightens at narrower widths and the
                 group labels only appear when there is room, so the row stays on one line. */}
-            <div className="hidden lg:flex flex-nowrap items-center">
+            <div className="hidden lg:flex flex-nowrap items-center -ml-1.5 xl:-ml-2">
               {/* GROUP 1: LEAGUE */}
               <div className="flex items-center shrink-0 space-x-1 xl:space-x-1.5 mr-3 xl:mr-4 border-r border-line pr-3 xl:pr-4">
                 <span className={navGroup}>League</span>

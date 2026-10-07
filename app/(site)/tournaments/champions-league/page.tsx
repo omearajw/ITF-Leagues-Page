@@ -255,7 +255,7 @@ async function ChampionsLeagueContent() {
               <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} projection={projection} />
             </div>
           </details>
-          <div className="hidden xl:block bg-panel rounded-xl shadow-xl overflow-hidden sticky top-8">
+          <div className="hidden xl:block bg-panel rounded-xl shadow-xl overflow-hidden sticky top-28">
             <div className="p-4 bg-panel-2 border-b border-line flex justify-between items-center">
               <h2 className="font-bold text-white tracking-widest uppercase text-sm">Fixtures & Results</h2>
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
