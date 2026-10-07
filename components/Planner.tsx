@@ -150,8 +150,8 @@ export default function Planner(props: PlannerProps) {
         {isNew && <span className="absolute top-0 left-0 sm:left-2 z-10 text-[9px] font-black rounded-full px-1.5 h-5 flex items-center text-white ring-2 ring-black/30 bg-green-500">IN</span>}
         {flag && !isNew && <span className={`absolute top-0 left-0 sm:left-2 z-10 w-2.5 h-2.5 rounded-full ring-2 ring-black/30 ${p.status === 'd' ? 'bg-amber-400' : 'bg-red-500'}`} title={flag} />}
         <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
-        <div className={`mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center transition group-hover:ring-2 group-hover:ring-white/60 ${differential ? 'ring-1 ring-brand-2/70' : ''}`}>
-          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
+        <div className="mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center transition group-hover:ring-2 group-hover:ring-white/60">
+          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : differential ? 'bg-brand-2 text-slate-900' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
           <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-slate-900">£{p.price.toFixed(1)}m</div>
         </div>
       </button>
@@ -166,9 +166,9 @@ export default function Planner(props: PlannerProps) {
       <div className="relative w-full flex flex-col items-center" aria-label={`${p.name}, ${p.team}`}>
         {slot.isCaptain && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-amber-400 text-slate-900">C</span>}
         <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
-        <div className={`mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center ${!both && !onBench ? 'ring-1 ring-amber-400/70' : ''}`}>
-          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
-          <div className={`px-1.5 py-0.5 text-[10px] font-bold ${both ? 'bg-surface-3 text-dim' : 'bg-white text-slate-900'}`}>{both ? 'both own' : `£${p.price.toFixed(1)}m`}</div>
+        <div className="mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center">
+          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : !both ? 'bg-amber-400 text-slate-900' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
+          <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-slate-900">£{p.price.toFixed(1)}m</div>
         </div>
       </div>
     );
@@ -235,7 +235,16 @@ export default function Planner(props: PlannerProps) {
         ) : null;
         return back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front;
       })()}
-      <p className="text-[11px] text-faint -mt-2">Tap a player for fixtures, league ownership and to swap or captain them. Blue outline = only {you} {isMine ? 'have' : 'has'} them; on the flipped side, amber = only the opponent does. Budget uses current prices; FPL only shows selling prices when logged in.</p>
+      <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-dim">
+        {opponent && (
+          <>
+            <span className="flex items-center gap-1.5"><span className={`w-3.5 h-3.5 rounded ${flipped ? 'bg-amber-400' : 'bg-brand-2'}`} /> Only {flipped ? opponent.name : you}</span>
+            <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-[#0b1f14] border border-white/25" /> Both own</span>
+          </>
+        )}
+        <span className="text-faint">Tap a player to swap, captain or see their fixtures.</span>
+        <span className="text-faint">Bank uses today&apos;s prices.</span>
+      </div>
 
       {/* Tabs */}
       <div>
