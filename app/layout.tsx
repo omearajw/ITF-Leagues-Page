@@ -48,14 +48,14 @@ async function Navbar() {
               </div>
               <TickerSwitch />
               {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
-              <div className="hidden lg:flex space-x-6 text-xs font-medium uppercase tracking-wider">
-                {(isAdmin || isEditor) && (
+              {(isAdmin || isEditor) && (
+                <div className="hidden lg:flex space-x-4 text-xs font-medium uppercase tracking-wider -mr-2">
                   <Link href="/editor" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
-                )}
-                {isAdmin && (
-                  <Link href="/admin" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
-                )}
-              </div>
+                  {isAdmin && (
+                    <Link href="/admin" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
+                  )}
+                </div>
+              )}
               <div className="lg:hidden">
                 <MobileNav isAdmin={isAdmin} isEditor={isEditor} />
               </div>
