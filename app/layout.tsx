@@ -12,7 +12,7 @@ export const metadata = {
 };
 
 const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
-const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden xl:block';
+const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden 2xl:block';
 
 // Reference pages that still live on the old ITF site until they are rebuilt here (log items 7 and 8).
 const FOOTER_LINKS = [
@@ -42,13 +42,13 @@ async function Navbar() {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden md:flex items-center gap-1 text-xs font-medium uppercase tracking-wider">
+              <div className="hidden lg:flex items-center gap-1 text-xs font-medium uppercase tracking-wider">
                 <Link href="/my-team" className="whitespace-nowrap text-dim hover:text-white transition px-2 py-2 rounded-md">My team</Link>
                 <Link href="/plan" className="whitespace-nowrap bg-brand/15 text-brand hover:bg-brand/25 transition px-2.5 py-1.5 rounded-md font-bold">Plan</Link>
               </div>
               <TickerSwitch />
               {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
-              <div className="hidden md:flex space-x-6 text-xs font-medium uppercase tracking-wider">
+              <div className="hidden lg:flex space-x-6 text-xs font-medium uppercase tracking-wider">
                 {(isAdmin || isEditor) && (
                   <Link href="/editor" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
                 )}
@@ -56,7 +56,7 @@ async function Navbar() {
                   <Link href="/admin" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
                 )}
               </div>
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <MobileNav isAdmin={isAdmin} isEditor={isEditor} />
               </div>
             </div>
@@ -65,12 +65,12 @@ async function Navbar() {
       </div>
 
       {/* BOTTOM TIER: Grouped Navigation (desktop only; phones use the hamburger above) */}
-      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="hidden lg:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center py-3">
           <div className="flex-1 min-w-0">
             {/* Desktop nav groups: never wrap; spacing tightens at narrower widths and the
                 group labels only appear when there is room, so the row stays on one line. */}
-            <div className="hidden md:flex flex-nowrap items-center overflow-x-auto no-scrollbar">
+            <div className="hidden lg:flex flex-nowrap items-center">
               <Link href="/" className="whitespace-nowrap text-[13px] xl:text-sm font-black text-brand hover:text-brand/80 transition py-2 px-1.5 xl:px-2 rounded-md mr-3 xl:mr-5 border-r border-line pr-3 xl:pr-5">ITF Hub</Link>
 
               {/* GROUP 1: LEAGUE */}
@@ -119,7 +119,7 @@ export default function RootLayout({
       <body className="bg-bg text-ink font-sans min-h-screen flex flex-col">
         
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
-        <Suspense fallback={<div className="h-14 md:h-[104px] bg-panel w-full animate-pulse" />}>
+        <Suspense fallback={<div className="h-14 lg:h-[104px] bg-panel w-full animate-pulse" />}>
           <Navbar />
         </Suspense>
 
