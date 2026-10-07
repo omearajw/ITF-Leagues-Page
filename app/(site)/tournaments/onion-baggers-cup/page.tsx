@@ -129,7 +129,7 @@ async function OnionBaggersContent() {
       {isPreTournament && (
         <section className="mb-12 text-center bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
           <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">Qualifiers Pending</h2>
-          <p className="text-dim">The scramble for the 16 Onion Baggers Cup seeds begins in <strong>Gameweek {qStart}</strong>.</p>
+          <p className="text-dim">The scramble for the 16 Onion Baggers Cup seeds begins in <strong>{qStart - currentGw} Gameweek{qStart - currentGw === 1 ? '' : 's'}</strong>.</p>
         </section>
       )}
 

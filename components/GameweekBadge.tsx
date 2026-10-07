@@ -36,8 +36,10 @@ export function LiveChip({ label = 'Live' }: { label?: string }) {
 // The one badge every page uses: which week the numbers cover and whether they are final.
 // Pages add a sentence of detail below the table where it matters.
 export function GameweekChip({ gw, startGw, week, live }: { gw: GameweekStatus; startGw?: number; week?: number; live?: boolean }) {
+  // Before a tournament starts the page's schedule and its pending card both give the
+  // week, so the chip says status only.
   if (startGw && gw.syncedThroughGw + 1 < startGw && !(gw.liveGw && gw.liveGw >= startGw)) {
-    return <GameweekBadge provisional={false}>Starts GW{startGw}</GameweekBadge>;
+    return <GameweekBadge provisional={false}>Pending</GameweekBadge>;
   }
   const isLive = live ?? !!gw.liveGw;
   const shown = week ?? (isLive ? (gw.liveGw as number) : gw.syncedThroughGw);

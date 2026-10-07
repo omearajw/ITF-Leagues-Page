@@ -140,7 +140,7 @@ async function ChampionsLeagueContent() {
             <div className="bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
               <div className="text-center mb-8">
                 <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">Elite Group Locked In</h2>
-                <p className="text-dim">Campaign begins in <strong>{s1Start - currentGw} Gameweeks</strong>.</p>
+                <p className="text-dim">Campaign begins in <strong>{s1Start - currentGw} Gameweek{s1Start - currentGw === 1 ? '' : 's'}</strong>.</p>
               </div>
               {Object.keys(entrants).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
