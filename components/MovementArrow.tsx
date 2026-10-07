@@ -1,6 +1,6 @@
 export default function MovementArrow({ delta, className = '' }: { delta: number | null | undefined; className?: string }) {
-  if (delta === null || delta === undefined) return null;
-  if (delta === 0) return <span className={`text-[10px] font-bold text-faint ${className}`} title="No change">–</span>;
+  // Nothing is drawn for a team that has not moved; only changes are worth marking.
+  if (!delta) return null;
   const up = delta > 0;
   return (
     <span

@@ -123,10 +123,11 @@ async function ChampionsLeagueContent() {
           <span className={isStage2Active || isWaitingForFinal ? 'text-indigo-300 border-b-2 border-indigo-500 pb-0.5' : 'text-faint'}>Stage 2 · GW{s2Start}</span>
           <span className={isFinalLive ? 'text-indigo-300 border-b-2 border-indigo-500 pb-0.5' : 'text-faint'}>Final · GW{finalStart}</span>
         </div>
-        <p className="text-sm text-dim">
+        {/* Before it starts the chip and the stage pills already say when; no need to say it again. */}
+        {!isPreTournament && <p className="text-sm text-dim">
           {championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}
-          {gw.liveGw && !isPreTournament ? ` · GW${gw.liveGw} ties are live in Fixtures & Results; standings update once the week is confirmed.` : ''}
-        </p>
+          {gw.liveGw ? ` · GW${gw.liveGw} ties are live in Fixtures & Results; standings update once the week is confirmed.` : ''}
+        </p>}
       </PageHeader>
 
       {/* TWO COLUMN LAYOUT */}

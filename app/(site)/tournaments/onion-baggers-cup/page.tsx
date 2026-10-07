@@ -118,10 +118,11 @@ async function OnionBaggersContent() {
             <RichText content={contentData.content} />
           </div>
         )}
-        <p className="text-sm text-dim mt-3">
+        {/* Before it starts the chip and the phase labels already say when. */}
+        {!isPreTournament && <p className="text-sm text-dim mt-3">
           {nextLine}
-          {gw.liveGw && !isPreTournament ? ` · GW${gw.liveGw} points update live; qualification is decided once the week is confirmed.` : ''}
-        </p>
+          {gw.liveGw ? ` · GW${gw.liveGw} points update live; qualification is decided once the week is confirmed.` : ''}
+        </p>}
       </PageHeader>
 
       {/* PHASE 0: PRE-TOURNAMENT */}

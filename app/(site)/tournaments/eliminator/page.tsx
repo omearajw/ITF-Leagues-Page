@@ -120,10 +120,11 @@ async function EliminatorContent() {
             <RichText content={contentData.content} />
           </div>
         )}
-        <p className="text-sm text-dim mt-3">
+        {/* Before it starts the chip and the card below already say when. */}
+        {!isPreTournament && <p className="text-sm text-dim mt-3">
           {nextLine}
-          {gw.liveGw && !isPreTournament ? ` · Survivors show GW${gw.liveGw} points so far; the cut is made once the week is confirmed.` : ''}
-        </p>
+          {gw.liveGw ? ` · Survivors show GW${gw.liveGw} points so far; the cut is made once the week is confirmed.` : ''}
+        </p>}
       </PageHeader>
 
       {/* CONDITIONAL RENDER: PRE-TOURNAMENT VS ACTIVE TOURNAMENT */}
@@ -131,8 +132,7 @@ async function EliminatorContent() {
         <>
           <section className="mb-12 text-center bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
             <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">The Purge is Pending</h2>
-            <p className="text-dim">The battle for survival begins in <strong>Gameweek {startGw}</strong>. Until then, everyone is safe.</p>
-            <p className="text-faint text-sm mt-2">The first elimination is applied once Gameweek {startGw} is finished and the scores are confirmed by FPL.</p>
+            <p className="text-dim">The battle for survival begins in <strong>Gameweek {startGw}</strong>, once the scores are confirmed. Until then, everyone is safe.</p>
           </section>
 
           <section className="mb-16">
