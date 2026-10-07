@@ -94,6 +94,7 @@ async function Navbar() {
                 <span className={navGroup}>Performance</span>
                 <Link href="/itf-open" className={navLink}>The Open</Link>
                 <Link href="/motm" className={navLink}>MotM</Link>
+                <Link href="/team-of-the-week" className={navLink}>TOTW</Link>
                 <Link href="/form" className={navLink}>Form</Link>
               </div>
             </div>

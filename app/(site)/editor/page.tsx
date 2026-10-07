@@ -46,6 +46,7 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
     { id: 'champions-league', title: 'Champions League' },
     { id: 'onion-baggers-cup', title: 'Onion Baggers Cup' },
     { id: 'eliminator', title: 'Eliminator' },
+    { id: 'team-of-the-week', title: 'Team of the Week' },
   ];
 
   // 3. Fetch existing content for the current gameweek

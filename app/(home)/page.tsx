@@ -10,6 +10,7 @@ import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getWeekProjection, dueFor } from '@/lib/projection';
 import { toPlainText } from '@/lib/richtext';
+import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
 import DueMark from '@/components/DueMark';
 import { GameweekTimelineSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
@@ -182,6 +183,9 @@ async function DashboardContent() {
   return (
     <>
       <div className="flex flex-col gap-10">
+        {/* TEAM OF THE WEEK */}
+        <TeamOfTheWeekBanner gw={currentGw} />
+
         {/* ROW 1: THE DIVISIONS */}
         <section>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-1 border-b pb-2">
@@ -202,7 +206,7 @@ async function DashboardContent() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <TournamentWidget 
               name="Onion Baggers Cup" 
-              stage={`Qualifiers GW${obQual}`} 
+              stage={currentGw < obKnock ? `Qualifiers, since GW${obQual}` : `Knockouts, since GW${obKnock}`} 
               status={currentGw < obQual ? 'Pending' : currentGw < obKnock ? 'Qualifying' : 'Knockouts'} 
               nextLine={nextLines.ob}
               summary={`16 places · the two highest scorers each week qualify from GW${obQual} · knockouts from GW${obKnock}`}
@@ -214,7 +218,7 @@ async function DashboardContent() {
             />
             <TournamentWidget 
               name="Champions League" 
-              stage={`Stage 1 GW${clS1}`} 
+              stage={`Stage 1, since GW${clS1}`} 
               status={currentGw < clS1 ? 'Pending' : 'Active'} 
               nextLine={nextLines.cl}
               summary={clEntrants > 0 ? `${clEntrants} entrants confirmed · round robin from GW${clS1}` : 'Entrants not yet selected'}
@@ -226,7 +230,7 @@ async function DashboardContent() {
             />
             <TournamentWidget 
               name="Eliminator" 
-              stage={`Gameweek ${elStart}`} 
+              stage={`Running since GW${elStart}`} 
               status={currentGw < elStart ? 'Pending' : 'Active'} 
               nextLine={nextLines.el}
               summary={elStatus && elStatus.length > 0 ? (

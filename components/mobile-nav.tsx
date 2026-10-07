@@ -18,6 +18,7 @@ const LINKS = [
   { group: 'Performance' },
   { href: '/itf-open', label: 'The Open' },
   { href: '/motm', label: 'MotM' },
+  { href: '/team-of-the-week', label: 'Team of the Week' },
   { href: '/form', label: 'Form' },
 ] as NavItem[];
 
