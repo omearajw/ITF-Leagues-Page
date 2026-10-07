@@ -30,13 +30,13 @@ async function ChampionsLeagueContent() {
   const displayGw = gw.displayGw;
   const projection = gw.liveGw ? await getWeekProjection() : null;
 
+  // A week shows only its own write-up; an older one would be misleading.
   const { data: contentData } = await supabase
     .from('page_content')
     .select('content')
-    .eq('id', 'champions-league') // or respective slug
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
+    .eq('id', 'champions-league')
+    .eq('gw_number', currentGw)
+    .maybeSingle();
   const { data: config } = await supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single();
   const { data: entrantsData } = await supabase.from('champions_league_entrants').select(`manager_fpl_id, season_managers!inner (team_name, managers!inner (real_name))`).eq('season_id', SEASON_ID);
   

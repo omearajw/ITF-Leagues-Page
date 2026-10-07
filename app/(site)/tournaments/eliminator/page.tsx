@@ -47,13 +47,13 @@ async function EliminatorContent() {
   const dueOf = (id: number) => (projection ? dueFor(projection, displayGw, Number(id)) : null);
 
   // 2. Fetch Config & Content
+  // A week shows only its own write-up; an older one would be misleading.
   const { data: contentData } = await supabase
     .from('page_content')
     .select('content')
-    .eq('id', 'eliminator') 
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
+    .eq('id', 'eliminator')
+    .eq('gw_number', currentGw)
+    .maybeSingle();
   const { data: config } = await supabase.from('eliminator_config').select('start_gw').eq('season_id', SEASON_ID).single();
 
   // 3. Fetch Eliminator Status, the full league roster, and all GW Scores

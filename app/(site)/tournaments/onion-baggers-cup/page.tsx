@@ -48,13 +48,13 @@ async function OnionBaggersContent() {
   const projection = displayGw === gw.liveGw ? await getWeekProjection() : null;
   const dueOf = (id: number) => (projection ? dueFor(projection, displayGw, Number(id)) : null);
 
+  // A week shows only its own write-up; an older one would be misleading.
   const { data: contentData } = await supabase
     .from('page_content')
     .select('content')
     .eq('id', 'onion-baggers-cup')
-    .order('gw_number', { ascending: false })
-    .limit(1)
-    .single();
+    .eq('gw_number', currentGw)
+    .maybeSingle();
   const { data: config } = await supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single();
   
   const { data: entrantsData } = await supabase.from('onion_baggers_entrants').select('*').eq('season_id', SEASON_ID);

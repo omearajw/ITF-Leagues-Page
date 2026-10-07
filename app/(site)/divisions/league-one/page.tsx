@@ -38,13 +38,12 @@ async function DivisionContent({ requestedGw }: { requestedGw: number | null }) 
   const DIVISION_NAME = 'League One';
   const CMS_SLUG = 'league-one';
 
+  // A week shows only its own write-up; an older one would be misleading.
   const { data: contentData } = await supabase
     .from('page_content')
-    .select('content, gw_number')
+    .select('content')
     .eq('id', CMS_SLUG)
-    .lte('gw_number', selectedGw)
-    .order('gw_number', { ascending: false })
-    .limit(1)
+    .eq('gw_number', selectedGw)
     .maybeSingle();
 
   const { data: managers, error } = await supabase
@@ -129,9 +128,6 @@ async function DivisionContent({ requestedGw }: { requestedGw: number | null }) 
 
         {contentData?.content && (
           <div className="bg-surface border-l-4 border-brand p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">
-            {contentData.gw_number !== selectedGw && (
-              <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-2">Write-up from GW{contentData.gw_number}</div>
-            )}
             <RichText content={contentData.content} />
           </div>
         )}

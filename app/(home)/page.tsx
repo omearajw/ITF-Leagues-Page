@@ -54,7 +54,8 @@ async function DashboardContent() {
   const currentGw = gw.syncedThroughGw;
 
   // B. Fetch CMS content
-  const { data: contentData } = await supabase.from('page_content').select('id, content');
+  // Only this week's write-ups; an older one next to this week's table would mislead.
+  const { data: contentData } = await supabase.from('page_content').select('id, content').eq('gw_number', currentGw);
   const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = toPlainText(item.content); return acc; }, {}) || {};
 
   // F. Fetch tournament configs to display status/stage
