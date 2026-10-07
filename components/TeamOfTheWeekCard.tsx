@@ -5,14 +5,14 @@ import { getLeagueBadges } from '@/lib/badges';
 import type { TotwTeam } from '@/lib/team-of-the-week';
 
 // One winner, sized for the hub band or the full page.
-export default async function TeamOfTheWeekCard({ team, gw, size = 'lg' }: { team: TotwTeam; gw: number; size?: 'md' | 'lg' }) {
+export default async function TeamOfTheWeekCard({ team, gw, size = 'lg', href }: { team: TotwTeam; gw: number; size?: 'md' | 'lg'; href?: string }) {
   const badges = await getLeagueBadges();
   const badge = badges[team.id];
   const big = size === 'lg';
 
   return (
     <Link
-      href={`/manager/${team.id}?gw=${gw}`}
+      href={href ?? `/manager/${team.id}?gw=${gw}`}
       className="group flex items-center gap-4 sm:gap-5 min-w-0 rounded-xl p-3 -m-3 hover:bg-amber-400/5 transition"
     >
       {badge && <TeamBadge src={badge} size={big ? 64 : 48} className="rounded-lg shrink-0" />}

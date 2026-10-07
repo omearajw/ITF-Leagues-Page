@@ -20,7 +20,7 @@ export default async function TeamOfTheWeekBanner({ gw }: { gw: number }) {
         </div>
 
         <div className={many ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : ''}>
-          {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} size={many ? 'md' : 'lg'} />)}
+          {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} size={many ? 'md' : 'lg'} href="/team-of-the-week" />)}
         </div>
 
         <div className="mt-4 pt-3 border-t border-amber-500/20 flex flex-wrap gap-x-6 gap-y-1 text-xs text-dim">
