@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Visual, ViewSwitch, usePitchViewPreference, PitchBoard, FlipPitch, FlipButton } from '@/components/PitchView';
+import { Visual, shirtUrl, PitchBoard, FlipPitch, FlipButton } from '@/components/PitchView';
 
 export type PlanPlayer = {
   id: number; code: number; name: string; team: string; teamId: number; teamCode: number; position: 'GKP' | 'DEF' | 'MID' | 'FWD';
@@ -66,7 +66,6 @@ export default function Planner(props: PlannerProps) {
   const Your = isMine ? 'Your' : `${teamName}'s`;
   const byId = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])) as Record<number, PlanPlayer>, [players]);
   const storageKey = `itf-plan-${managerId}-${planGw}`;
-  const [view, setView] = usePitchViewPreference();
 
   const baseIds = props.baseSquad.map(s => s.element);
   const baseCaptain = props.baseSquad.find(s => s.isCaptain)?.element ?? null;
@@ -150,7 +149,7 @@ export default function Planner(props: PlannerProps) {
         {s.isVice && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-white text-slate-900">V</span>}
         {isNew && <span className="absolute top-0 left-0 sm:left-2 z-10 text-[9px] font-black rounded-full px-1.5 h-5 flex items-center text-white ring-2 ring-black/30 bg-green-500">IN</span>}
         {flag && !isNew && <span className={`absolute top-0 left-0 sm:left-2 z-10 w-2.5 h-2.5 rounded-full ring-2 ring-black/30 ${p.status === 'd' ? 'bg-amber-400' : 'bg-red-500'}`} title={flag} />}
-        <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} view={view} />
+        <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
         <div className={`mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center transition group-hover:ring-2 group-hover:ring-white/60 ${differential ? 'ring-1 ring-brand-2/70' : ''}`}>
           <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
           <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-slate-900">£{p.price.toFixed(1)}m</div>
@@ -166,7 +165,7 @@ export default function Planner(props: PlannerProps) {
     return (
       <div className="relative w-full flex flex-col items-center" aria-label={`${p.name}, ${p.team}`}>
         {slot.isCaptain && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-amber-400 text-slate-900">C</span>}
-        <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} view={view} />
+        <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
         <div className={`mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center ${!both && !onBench ? 'ring-1 ring-amber-400/70' : ''}`}>
           <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
           <div className={`px-1.5 py-0.5 text-[10px] font-bold ${both ? 'bg-surface-3 text-dim' : 'bg-white text-slate-900'}`}>{both ? 'both own' : `£${p.price.toFixed(1)}m`}</div>
@@ -200,7 +199,6 @@ export default function Planner(props: PlannerProps) {
         <div><span className="text-[10px] font-bold uppercase tracking-widest text-faint mr-2">Transfers</span><span className="font-black text-ink">{transfersIn.length}</span>{hit > 0 && <span className="ml-1 font-bold text-red-400">−{hit} pts</span>}</div>
         <div className="ml-auto flex items-center gap-2">
           {changed && <button type="button" onClick={reset} className="text-xs px-3 py-1.5 rounded-lg border border-line text-dim hover:text-ink">Reset</button>}
-          <ViewSwitch view={view} onChange={setView} />
         </div>
         {(bank < 0 || overClub.length > 0) && (
           <div className="w-full text-xs text-red-400 font-semibold">
@@ -253,7 +251,7 @@ export default function Planner(props: PlannerProps) {
               <div className="text-sm text-dim">No H2H fixture found for GW{planGw} yet.</div>
             ) : (
               <>
-                <MatchupLanes mine={mine} shared={shared} theirs={theirs} byId={byId} view={view} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} ownLabel={isMine ? 'Only you' : `Only ${teamName}`} />
+                <MatchupLanes mine={mine} shared={shared} theirs={theirs} byId={byId} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} ownLabel={isMine ? 'Only you' : `Only ${teamName}`} />
                 <div className="mt-4 pt-3 border-t border-line text-sm text-dim flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span>Captains: {you} <span className="text-ink-2 font-semibold">{captain ? byId[captain]?.name : '—'}</span>, {opponent.name} <span className="text-ink-2 font-semibold">{oppCaptain ? byId[oppCaptain]?.name : '—'}</span>{captain && captain === oppCaptain && <span className="text-amber-300"> · same captain, it cancels out</span>}</span>
                   <Link href={`/manager/${opponent.id}`} className="text-brand-2 hover:underline text-xs sm:ml-auto whitespace-nowrap">See {opponent.name}&apos;s team &rarr;</Link>
@@ -322,7 +320,7 @@ export default function Planner(props: PlannerProps) {
       {selectedSlot && selectedPlayer && swapping === null && (
         <Sheet onClose={() => setSelected(null)}>
           <div className="flex items-start gap-4">
-            <Visual player={{ element: selectedPlayer.id, team: selectedPlayer.team, teamCode: selectedPlayer.teamCode, code: selectedPlayer.code, position: selectedPlayer.position }} view={view === 'plain' ? 'shirt' : view} />
+            <Visual player={{ element: selectedPlayer.id, team: selectedPlayer.team, teamCode: selectedPlayer.teamCode, code: selectedPlayer.code, position: selectedPlayer.position }} />
             <div className="min-w-0 flex-1">
               <div className="text-lg font-black text-ink leading-tight">{selectedPlayer.name}</div>
               <div className="text-xs text-dim">{selectedPlayer.team} · {selectedPlayer.position} · £{selectedPlayer.price.toFixed(1)}m{selectedPlayer.priceChange ? <span className={selectedPlayer.priceChange > 0 ? ' text-green-400' : ' text-red-400'}> {selectedPlayer.priceChange > 0 ? '▲' : '▼'} {Math.abs(selectedPlayer.priceChange).toFixed(1)}</span> : ''}</div>
@@ -366,7 +364,6 @@ export default function Planner(props: PlannerProps) {
           fixtures={fixtures}
           ownPct={ownPct}
           oppIds={oppAll}
-          view={view}
           onPick={id => replace(swapping as number, id)}
           onClose={() => setSwapping(null)}
         />
@@ -378,25 +375,24 @@ export default function Planner(props: PlannerProps) {
 const LANE_ORDER: Record<PlanPlayer['position'], number> = { GKP: 0, DEF: 1, MID: 2, FWD: 3 };
 
 // Small round headshot (or shirt / initials) for compact lists.
-function Avatar({ player, view }: { player: PlanPlayer; view: 'photo' | 'shirt' | 'plain' }) {
+function Avatar({ player }: { player: PlanPlayer }) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => { setFailed(false); }, [view, player.id]);
-  const src = view === 'photo' ? `https://resources.premierleague.com/premierleague/photos/players/110x140/p${player.code}.png` : view === 'shirt' ? `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${player.teamCode}${player.position === 'GKP' ? '_1' : ''}-66.png` : null;
-  if (!src || failed) {
+  useEffect(() => { setFailed(false); }, [player.id]);
+  if (failed) {
     return <span className="w-8 h-8 shrink-0 rounded-full bg-surface-3 border border-line flex items-center justify-center text-[9px] font-black text-ink-2">{player.team}</span>;
   }
   return (
-    <span className={`w-8 h-8 shrink-0 rounded-full overflow-hidden flex items-end justify-center ${view === 'photo' ? 'bg-surface-3' : ''}`}>
+    <span className="w-8 h-8 shrink-0 flex items-end justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={view === 'photo' ? 'w-full h-full object-cover object-top' : 'h-7 w-auto'} />
+      <img src={shirtUrl(player)} alt="" loading="lazy" onError={() => setFailed(true)} className="h-7 w-auto" />
     </span>
   );
 }
 
 // Three lanes: only yours, shared, only theirs. Shared players cancel out in the tie,
 // so the outer lanes are where the match-up is decided.
-function MatchupLanes({ mine, shared, theirs, byId, view, captain, oppCaptain, opponentName, ownLabel }: {
-  mine: number[]; shared: number[]; theirs: number[]; byId: Record<number, PlanPlayer>; view: 'photo' | 'shirt' | 'plain'; captain: number | null; oppCaptain: number | null; opponentName: string; ownLabel: string;
+function MatchupLanes({ mine, shared, theirs, byId, captain, oppCaptain, opponentName, ownLabel }: {
+  mine: number[]; shared: number[]; theirs: number[]; byId: Record<number, PlanPlayer>; captain: number | null; oppCaptain: number | null; opponentName: string; ownLabel: string;
 }) {
   const sorted = (ids: number[]) => [...ids].sort((a, b) => LANE_ORDER[byId[a]?.position || 'MID'] - LANE_ORDER[byId[b]?.position || 'MID']);
   const lanes = [
@@ -418,7 +414,7 @@ function MatchupLanes({ mine, shared, theirs, byId, view, captain, oppCaptain, o
               const capCls = id === captain && id === oppCaptain ? 'bg-white text-slate-900' : id === captain ? 'bg-brand text-white' : id === oppCaptain ? 'bg-amber-400 text-slate-900' : null;
               return (
                 <li key={id} className="flex items-center gap-2 min-w-0">
-                  <Avatar player={p} view={view} />
+                  <Avatar player={p} />
                   <span className="min-w-0 flex-1 text-xs sm:text-sm font-semibold text-ink truncate">{p.name}</span>
                   {capCls && <span className={`shrink-0 text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center ${capCls}`} title="Captain">C</span>}
                 </li>
@@ -449,9 +445,9 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   );
 }
 
-function ReplaceDrawer({ outgoing, budget, players, squadIds, clubCounts, fixtures, ownPct, oppIds, view, onPick, onClose }: {
+function ReplaceDrawer({ outgoing, budget, players, squadIds, clubCounts, fixtures, ownPct, oppIds, onPick, onClose }: {
   outgoing: PlanPlayer; budget: number; players: PlanPlayer[]; squadIds: number[]; clubCounts: Record<number, number>;
-  fixtures: Record<number, PlanFixture[]>; ownPct: (id: number) => number; oppIds: Set<number>; view: 'photo' | 'shirt' | 'plain';
+  fixtures: Record<number, PlanFixture[]>; ownPct: (id: number) => number; oppIds: Set<number>;
   onPick: (id: number) => void; onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -499,7 +495,7 @@ function ReplaceDrawer({ outgoing, budget, players, squadIds, clubCounts, fixtur
             const flag = statusText(p);
             return (
               <button key={p.id} type="button" disabled={clubFull} onClick={() => onPick(p.id)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed">
-                <div className="w-12 shrink-0"><Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} view={view === 'plain' ? 'shirt' : view} /></div>
+                <div className="w-12 shrink-0"><Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} /></div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-ink">{p.name}</span>

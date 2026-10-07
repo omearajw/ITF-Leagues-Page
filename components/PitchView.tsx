@@ -26,45 +26,32 @@ export type PitchPlayer = {
   benchBoost?: boolean;
 };
 
-export type View = 'photo' | 'shirt' | 'plain';
-const VIEWS: { key: View; label: string }[] = [{ key: 'photo', label: 'Photos' }, { key: 'shirt', label: 'Shirts' }, { key: 'plain', label: 'Plain' }];
-const STORAGE_KEY = 'itf-pitch-view';
 const POSITION_ORDER: PitchPlayer['position'][] = ['GKP', 'DEF', 'MID', 'FWD'];
 
-// FPL's public artwork: club shirts (goalkeepers have their own kit), player headshots,
-// and the silhouette FPL shows for players without a photo.
+// FPL's club shirts; goalkeepers have their own kit.
 type VisualPlayer = Pick<PitchPlayer, 'element' | 'team' | 'teamCode' | 'code' | 'position'>;
-const shirtUrl = (p: VisualPlayer) => `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${p.teamCode}${p.position === 'GKP' ? '_1' : ''}-110.png`;
-const photoUrl = (p: VisualPlayer) => `https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png`;
-const MISSING_PHOTO = 'https://resources.premierleague.com/premierleague/photos/players/110x140/Photo-Missing.png';
+export const shirtUrl = (p: Pick<VisualPlayer, 'teamCode' | 'position'>) => `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${p.teamCode}${p.position === 'GKP' ? '_1' : ''}-110.png`;
 
-export function Visual({ player, view }: { player: VisualPlayer; view: View }) {
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    setSrc(view === 'photo' ? photoUrl(player) : view === 'shirt' ? shirtUrl(player) : null);
-  }, [view, player]);
+export function Visual({ player }: { player: VisualPlayer }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [player]);
 
-  const onError = () => {
-    if (view === 'photo' && src !== MISSING_PHOTO) setSrc(MISSING_PHOTO);
-    else setSrc(null);
-  };
-
-  // Fixed frame so rows keep the same height whichever view is chosen.
+  // Fixed frame so rows keep the same height even when a shirt is missing.
   return (
     <div className="mx-auto w-16 h-14 flex items-end justify-center">
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" loading="lazy" onError={onError} className={`max-h-14 w-auto object-contain object-bottom ${view === 'shirt' ? 'drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]' : 'drop-shadow-[0_2px_3px_rgba(0,0,0,0.5)]'}`} />
-      ) : (
+      {failed ? (
         <div className="w-12 h-12 mb-1 rounded-full bg-[#0f2a1a]/80 border border-white/20 flex items-center justify-center text-[11px] font-black text-white">
           {player.team}
         </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={shirtUrl(player)} alt="" loading="lazy" onError={() => setFailed(true)} className="max-h-14 w-auto object-contain object-bottom drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]" />
       )}
     </div>
   );
 }
 
-function PlayerCard({ player, view, live, onGrass }: { player: PitchPlayer; view: View; live: boolean; onGrass: boolean }) {
+function PlayerCard({ player, live, onGrass }: { player: PitchPlayer; live: boolean; onGrass: boolean }) {
   const yetToPlay = player.fixtureState === 'pending' || player.fixtureState === 'none';
   const playing = player.fixtureState === 'playing';
   const scored = player.points === null || yetToPlay ? null : player.points * (player.multiplier || 1);
@@ -86,7 +73,7 @@ function PlayerCard({ player, view, live, onGrass }: { player: PitchPlayer; view
       {leftTag && (
         <span className={`absolute top-0 left-0 sm:left-2 z-10 text-[9px] font-black rounded-full px-1.5 h-5 flex items-center ring-2 ring-black/30 ${leftTag.cls}`}>{leftTag.text}</span>
       )}
-      <Visual player={player} view={view} />
+      <Visual player={player} />
       <div className="mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center">
         <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onGrass ? 'bg-[#0b1f14] text-white' : 'bg-surface-3 text-ink'}`}>{player.name}</div>
         <div className={`px-1.5 py-0.5 text-xs font-black ${live && playing ? 'bg-amber-300 text-slate-900' : yetToPlay ? 'bg-white/70 text-slate-500' : 'bg-white text-slate-900'}`}>
@@ -122,34 +109,6 @@ export function PitchMarkings() {
         <div className="absolute -top-3 sm:-top-5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white/35" />
       </div>
       <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-[28%] h-6 sm:h-9 border-2 border-b-0 ${line}`} />
-    </div>
-  );
-}
-
-// Remembered Photos / Shirts / Plain preference, shared with the planner.
-export function usePitchViewPreference(): [View, (next: View) => void] {
-  const [view, setView] = useState<View>('photo');
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY) as View | null;
-      if (saved && VIEWS.some(v => v.key === saved)) setView(saved);
-    } catch {}
-  }, []);
-  const choose = (next: View) => {
-    setView(next);
-    try { window.localStorage.setItem(STORAGE_KEY, next); } catch {}
-  };
-  return [view, choose];
-}
-
-export function ViewSwitch({ view, onChange }: { view: View; onChange: (next: View) => void }) {
-  return (
-    <div className="flex rounded-lg border border-line overflow-hidden text-xs font-bold" role="group" aria-label="Player display">
-      {VIEWS.map(v => (
-        <button key={v.key} type="button" onClick={() => onChange(v.key)} aria-pressed={view === v.key} className={`px-3 py-1.5 ${view === v.key ? 'bg-brand text-white' : 'bg-surface text-dim hover:text-ink'}`}>
-          {v.label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -210,7 +169,6 @@ export function FlipButton({ flipped, onToggle, label }: { flipped: boolean; onT
 export type PitchOpponent = { name: string; week: number; starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number };
 
 export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, opponent }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; opponent?: PitchOpponent | null }) {
-  const [view, choose] = usePitchViewPreference();
   const [flipped, setFlipped] = useState(false);
   const mineIds = new Set([...starters, ...bench].map(p => p.element));
   const theirIds = new Set(opponent ? [...opponent.starters, ...opponent.bench].map(p => p.element) : []);
@@ -223,7 +181,7 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
       benchLabel={label}
       renderPlayer={(p, onBench) => (
         <div className={`w-full ${sharedWith.has(p.element) ? 'opacity-90' : ''}`}>
-          <PlayerCard player={onBench ? { ...p, multiplier: 1 } : p} view={view} live={live} onGrass={!onBench} />
+          <PlayerCard player={onBench ? { ...p, multiplier: 1 } : p} live={live} onGrass={!onBench} />
           {opponent && sharedWith.has(p.element) && <div className="text-center text-[9px] font-bold uppercase tracking-wider text-white/70 mt-0.5">both own</div>}
         </div>
       )}
@@ -243,7 +201,6 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
         </h2>
         <div className="flex items-center gap-2">
           {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`${opponent.name} (GW${opponent.week} opponent)`} />}
-          <ViewSwitch view={view} onChange={choose} />
         </div>
       </div>
       {back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front}
