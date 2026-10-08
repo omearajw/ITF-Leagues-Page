@@ -6,9 +6,8 @@ import MobileNav from '@/components/mobile-nav';
 import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
 import { TickerSwitch } from '@/components/Ticker';
-import IntroSplash from '@/components/IntroSplash';
 import { INTRO_HEAD_SCRIPT } from '@/lib/intro';
-import { wordmarkFont, displayFont } from '@/lib/fonts';
+import { wordmarkFont } from '@/lib/fonts';
 
 export const metadata = {
   title: 'ITF League Hub',
@@ -117,13 +116,12 @@ export default function RootLayout({
 }) {
   return (
     // The intro's head script sets data-intro on <html> before React hydrates.
-    <html lang="en" className={`${wordmarkFont.variable} ${displayFont.variable}`} suppressHydrationWarning>
+    <html lang="en" className={wordmarkFont.variable} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script dangerouslySetInnerHTML={{ __html: INTRO_HEAD_SCRIPT }} />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen flex flex-col">
-        <IntroSplash />
 
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
         <Suspense fallback={<div className="h-14 lg:h-[104px] bg-panel w-full animate-pulse" />}>
