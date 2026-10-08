@@ -1,13 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import BackPageMark from '@/components/BackPageMark';
 import { buildStage, CHOREOGRAPHY } from '@/components/intro-concepts';
 import { INTRO_DAY_KEY, introToday, REPLAY_INTRO_EVENT, DEFAULT_INTRO, introConceptFrom, type IntroConcept } from '@/lib/intro';
 
 const SCROLL_KEYS = new Set([' ', 'ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End']);
 const EASE = 'cubic-bezier(0.65, 0, 0.35, 1)';
+// Drawn at full screen size and shrunk on landing, never the banner's size enlarged: browsers
+// rasterise an animated element at its own size, so enlarging a small one blurs the lettering.
+function fitLettering(text: HTMLElement | null) {
+  const target = document.querySelector<HTMLElement>('[data-intro-lettering]');
+  if (!text || !target) return;
+  const { width, height } = target.getBoundingClientRect();
+  const k = Math.min(window.innerHeight * 0.62 / height, window.innerWidth * 0.84 / width);
+  text.style.height = `${height * k}px`;
+}
+
 const GRAIN = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`;
 
 // Full-screen intro on the hub. One of the performances in intro-concepts.ts plays over the goal
@@ -37,30 +46,30 @@ export default function IntroSplash() {
     const lettering = document.querySelector<HTMLElement>('[data-intro-lettering]');
     if (!overlay || !frame || !text || !photo || !lettering) { finish(); return; }
     overlay.getAnimations({ subtree: true }).forEach(a => a.finish());
+    if (!text.style.height) fitLettering(text);
+    // A skip while the photos are still loading arrives before the overlay is revealed.
+    overlay.dataset.ready = '1';
+    overlay.dataset.settled = '1';
     setPhase('landing');
 
     const from = frame.getBoundingClientRect();
     const to = photo.getBoundingClientRect();
     const box = photo.parentElement ? getComputedStyle(photo.parentElement) : null;
     const radius = box ? Math.max(0, parseFloat(box.borderTopLeftRadius) - parseFloat(box.borderTopWidth)) : 0;
-    // The intro mark is the banner's mark scaled up about its left edge, so it lands by scaling
-    // back to 1 and ends identical to the banner's.
-    const css = getComputedStyle(text).transform;
-    const scale = new DOMMatrixReadOnly(css === 'none' ? undefined : css);
-    const scaled = text.getBoundingClientRect();
-    const height = scaled.height / scale.a;
+    // The intro mark is the banner's mark at a larger size; it lands by shrinking onto it.
+    const textFrom = text.getBoundingClientRect();
     const textTo = lettering.getBoundingClientRect();
-    const img = frame.querySelector('img');
+    const target = getComputedStyle(photo).objectPosition;
     const timing = { duration, easing: EASE, fill: 'forwards' as const };
 
     frame.animate([
       { top: `${from.top}px`, left: `${from.left}px`, width: `${from.width}px`, height: `${from.height}px`, borderRadius: '0px' },
       { top: `${to.top}px`, left: `${to.left}px`, width: `${to.width}px`, height: `${to.height}px`, borderRadius: `${radius}px` },
     ], timing);
-    img?.animate([{ objectPosition: getComputedStyle(img).objectPosition }, { objectPosition: getComputedStyle(photo).objectPosition }], timing);
+    frame.querySelectorAll('img').forEach(img => img.animate([{ objectPosition: getComputedStyle(img).objectPosition }, { objectPosition: target }], timing));
     text.animate([
-      { transform: scale.toString() },
-      { transform: `translate(${textTo.left - scaled.left}px, ${textTo.top - (scaled.top + (scaled.height - height) / 2)}px)` },
+      { transform: 'none' },
+      { transform: `translate(${textTo.left - textFrom.left}px, ${textTo.top - textFrom.top}px) scale(${textTo.height / textFrom.height})` },
     ], timing).finished.then(finish, finish);
   }, [finish]);
 
@@ -95,16 +104,28 @@ export default function IntroSplash() {
 
   // The overlay stays hidden (see globals.css) until the performance's animations exist, so
   // their first frames are what appears. Take off a beat after it ends.
+  // Both photos are decoded first (for up to 2.5s) so the lights never come up on an empty frame.
   useEffect(() => {
     if (phase !== 'perform') return;
     const root = overlayRef.current;
     const stage = root && buildStage(root);
     if (!root || !stage) { finish(); return; }
-    const animations = CHOREOGRAPHY[concept](stage);
-    root.dataset.ready = '1';
     let live = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    Promise.all(animations.map(a => a.finished)).catch(() => {}).then(() => { if (live) timer = setTimeout(() => land(900), 280); });
+    let animations: Animation[] = [];
+    const photos = Array.from(root.querySelectorAll('img'), img => img.decode().catch(() => {}));
+    Promise.race([Promise.all(photos), new Promise(r => setTimeout(r, 2500))]).then(() => {
+      if (!live || landing.current) return;
+      fitLettering(textRef.current);
+      animations = CHOREOGRAPHY[concept](stage);
+      root.dataset.ready = '1';
+      return Promise.all(animations.map(a => a.finished)).catch(() => {}).then(() => {
+        if (!live) return;
+        // Letters at rest: swap them for the seamless single shape the banner uses.
+        root.dataset.settled = '1';
+        timer = setTimeout(() => land(900), 280);
+      });
+    });
     return () => {
       live = false;
       clearTimeout(timer);
@@ -138,15 +159,23 @@ export default function IntroSplash() {
       aria-hidden="true"
     >
       <div ref={frameRef} data-intro-frame className="fixed inset-0 overflow-hidden bg-panel-2">
-        {/* Not priority: a lazy image inside the hidden overlay is never fetched, so visitors who
-            don't get the intro don't download the full-screen photo. */}
+        {/* The same shot with the floodlights off and on, aligned pixel for pixel, so the lights
+            come on by fading the lit one in. Full resolution and not through the image optimiser:
+            cropped to fill a tall screen the photo is shown well beyond its width, so any smaller
+            copy turns blocky. Lazy images inside the hidden overlay are never fetched, so
+            visitors who don't get the intro don't download them. */}
         <div data-intro-photo-layer className="intro-photo absolute inset-0">
-          <Image src="/brand/the-back-page-blank.jpg" alt="" fill sizes="100vw" className="object-cover object-[65%_50%]" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/intro-night.jpg" alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-[65%_50%]" />
+          <div data-intro-lit className="absolute inset-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/intro-lit.jpg" alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-[65%_50%]" />
+          </div>
         </div>
       </div>
       <div data-intro-stage className="fixed inset-0 flex items-center px-[8vw] pointer-events-none">
-        <div ref={textRef} className="origin-left scale-[1.65] sm:scale-[2.6] lg:scale-[2.15]">
-          <BackPageMark />
+        <div ref={textRef} className="origin-top-left">
+          <BackPageMark id="intro" split />
         </div>
       </div>
       <div data-intro-grain className="fixed inset-0 pointer-events-none opacity-0 mix-blend-overlay" style={{ backgroundImage: GRAIN }} />

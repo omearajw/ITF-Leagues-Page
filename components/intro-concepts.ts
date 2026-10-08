@@ -1,46 +1,32 @@
-import { MARK_SHADOW } from '@/lib/back-page-mark';
 import type { IntroConcept } from '@/lib/intro';
 
 // The three intro performances. Each one animates the overlay's copy of BackPageMark and the
 // photo, returns its animations, and must finish with everything at rest (identity transforms,
-// shadows at their offsets, strokes hidden) because IntroSplash then flies the result into the
-// banner and swaps in the real one.
+// strokes hidden) because IntroSplash then flies the result into the banner and swaps in the
+// real one. The soft shadow is a filter on the whole mark, so it follows the letters as they move.
 
-type Layer = 'cream' | 'red' | 'dark';
-export type Glyph = { line: number; cream: SVGPathElement; red: SVGPathElement; dark: SVGPathElement };
+export type Glyph = { line: number; el: SVGPathElement };
 export type Stage = {
-  photo: HTMLElement;      // the photo inside the frame
+  photo: HTMLElement;      // both photos inside the frame (night underneath, lit on top)
+  lit: HTMLElement;        // the lit photo: its opacity is the floodlights
   frame: HTMLElement;      // the frame itself, nudged by kick-off impacts
   lettering: HTMLElement;  // the layer holding the mark, shaken by the press
   flash: HTMLElement;
   grain: HTMLElement;
   letters: Glyph[];        // reading order
-  spine: Glyph;
+  rule: SVGRectElement;    // the red rule above "THE"
 };
 
 export function buildStage(root: HTMLElement): Stage | null {
-  const pick = (layer: Layer, key: string) => root.querySelector<SVGPathElement>(`[data-layer="${layer}"] [data-glyph="${key}"]`);
-  const glyph = (key: string): Glyph | null => {
-    const cream = pick('cream', key), red = pick('red', key), dark = pick('dark', key);
-    return cream && red && dark ? { line: Number(cream.dataset.line ?? 1), cream, red, dark } : null;
-  };
-  const count = root.querySelectorAll('[data-layer="cream"] [data-glyph]:not([data-glyph="spine"])').length;
-  const letters = Array.from({ length: count }, (_, i) => glyph(String(i)));
-  const spine = glyph('spine');
+  const letters = Array.from(root.querySelectorAll<SVGPathElement>('[data-glyph]'), el => ({ line: Number(el.dataset.line ?? 0), el }));
+  const rule = root.querySelector<SVGRectElement>('[data-mark-rule]');
   const el = (name: string) => root.querySelector<HTMLElement>(`[data-intro-${name}]`);
-  const photo = el('photo-layer'), frame = el('frame'), lettering = el('stage'), flash = el('flash'), grain = el('grain');
-  if (!spine || letters.some(g => !g) || !photo || !frame || !lettering || !flash || !grain) return null;
-  return { photo, frame, lettering, flash, grain, letters: letters as Glyph[], spine };
+  const photo = el('photo-layer'), lit = el('lit'), frame = el('frame'), lettering = el('stage'), flash = el('flash'), grain = el('grain');
+  if (!letters.length || !rule || !photo || !lit || !frame || !lettering || !flash || !grain) return null;
+  return { photo, lit, frame, lettering, flash, grain, letters, rule };
 }
 
 const play = (el: Element, keyframes: Keyframe[], options: KeyframeAnimationOptions) => el.animate(keyframes, { fill: 'both', ...options });
-
-// Moves a shadow copy back under its letter: 1 = hidden beneath it, 0 = at rest, below 0 overshoots.
-const tuck = (layer: 'red' | 'dark', k: number) => {
-  const [x, y] = MARK_SHADOW[layer];
-  return `translate(${(-x * k).toFixed(2)}px, ${(-y * k).toFixed(2)}px)`;
-};
-const SHADOWS = ['red', 'dark'] as const;
 
 // A timeline of short events on one element, as a single animation so the events never
 // override each other. Each event is a list of [ms after its start, keyframe values]; `end`
@@ -55,60 +41,54 @@ function timeline(el: Element, total: number, rest: Keyframe, events: { at: numb
   return play(el, frames, { duration: total, fill: 'none' });
 }
 
-// Shadows slide out from beneath their letters with an overshoot, like the type being extruded.
-function extrude(g: Glyph, delay: number, duration = 520) {
-  return SHADOWS.map(layer => play(g[layer], [
-    { offset: 0, opacity: 0, transform: tuck(layer, 1) },
-    { offset: 0.001, opacity: 1, transform: tuck(layer, 1), easing: 'cubic-bezier(0.25, 1.6, 0.45, 1)' },
-    { offset: 1, opacity: 1, transform: tuck(layer, 0) },
-  ], { duration, delay }));
-}
-
-// Floodlights: the dark ground, a chalk line drawn upwards, the lights clunking on in banks,
-// the letters traced in outline around the spine and filled, then the shadows extruded.
+// Floodlights: the ground at night, the red rule drawn like a chalk line, the lights clunking on
+// in banks, then the letters traced in outline and filled.
 function floodlights(s: Stage): Animation[] {
   const out: Animation[] = [];
   out.push(play(s.photo, [
-    { offset: 0, opacity: 0, filter: 'brightness(0.6)', transform: 'scale(1.08)' },
-    { offset: 0.25, opacity: 0, filter: 'brightness(0.6)' },
-    { offset: 0.2501, opacity: 0.4, filter: 'brightness(0.7)' },
-    { offset: 0.29, opacity: 0.4, filter: 'brightness(0.7)' },
-    { offset: 0.2901, opacity: 0.12, filter: 'brightness(0.7)' },
-    { offset: 0.32, opacity: 0.12, filter: 'brightness(0.7)' },
-    { offset: 0.3201, opacity: 0.42, filter: 'brightness(0.75)' },
-    { offset: 0.42, opacity: 0.42, filter: 'brightness(0.75)' },
-    { offset: 0.4201, opacity: 0.78, filter: 'brightness(0.92)' },
-    { offset: 0.54, opacity: 0.78, filter: 'brightness(0.95)' },
-    { offset: 0.5401, opacity: 1, filter: 'brightness(1.55)', easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
-    { offset: 1, opacity: 1, filter: 'brightness(1)', transform: 'scale(1)' },
-  ], { duration: 1700 }));
+    { offset: 0, opacity: 0, transform: 'scale(1.08)' },
+    { offset: 0.25, opacity: 1, transform: 'scale(1.06)' },
+    { offset: 1, opacity: 1, transform: 'scale(1)' },
+  ], { duration: 1800, easing: 'cubic-bezier(0.3, 0, 0.3, 1)' }));
+  // Three banks, the first catching with a flicker, the last with a flare.
+  out.push(play(s.lit, [
+    { offset: 0, opacity: 0, filter: 'brightness(1)' },
+    { offset: 0.289, opacity: 0, filter: 'brightness(1)' },
+    { offset: 0.2891, opacity: 0.38, filter: 'brightness(1)' },
+    { offset: 0.328, opacity: 0.38, filter: 'brightness(1)' },
+    { offset: 0.3281, opacity: 0.1, filter: 'brightness(1)' },
+    { offset: 0.356, opacity: 0.1, filter: 'brightness(1)' },
+    { offset: 0.3561, opacity: 0.42, filter: 'brightness(1)' },
+    { offset: 0.444, opacity: 0.42, filter: 'brightness(1)' },
+    { offset: 0.4441, opacity: 0.74, filter: 'brightness(1)' },
+    { offset: 0.556, opacity: 0.74, filter: 'brightness(1)' },
+    { offset: 0.5561, opacity: 1, filter: 'brightness(1.45)', easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+    { offset: 1, opacity: 1, filter: 'brightness(1)' },
+  ], { duration: 1800 }));
 
-  // Thin and glowing while it draws, then thickening to full weight as the last bank catches.
-  s.spine.cream.style.transformOrigin = 'center bottom';
-  out.push(play(s.spine.cream, [
-    { offset: 0, transform: 'scale(0.12, 0)', filter: 'drop-shadow(0px 0px 3px rgba(255, 246, 230, 0.95))', easing: 'cubic-bezier(0.65, 0, 0.25, 1)' },
-    { offset: 0.5, transform: 'scale(0.12, 1)', filter: 'drop-shadow(0px 0px 3px rgba(255, 246, 230, 0.95))' },
-    { offset: 0.78, transform: 'scale(0.12, 1)', filter: 'drop-shadow(0px 0px 3px rgba(255, 246, 230, 0.95))', easing: 'cubic-bezier(0.3, 1.5, 0.5, 1)' },
-    { offset: 1, transform: 'scale(1, 1)', filter: 'drop-shadow(0px 0px 0px rgba(255, 246, 230, 0))' },
-  ], { duration: 1000, delay: 150 }));
+  // The rule draws left to right, glowing, and loses the glow as the last bank catches.
+  s.rule.style.transformOrigin = 'left center';
+  out.push(play(s.rule, [
+    { offset: 0, transform: 'scaleX(0)', filter: 'drop-shadow(0px 0px 3px rgba(255, 120, 140, 0.95))', easing: 'cubic-bezier(0.65, 0, 0.25, 1)' },
+    { offset: 0.6, transform: 'scaleX(1)', filter: 'drop-shadow(0px 0px 3px rgba(255, 120, 140, 0.95))' },
+    { offset: 1, transform: 'scaleX(1)', filter: 'drop-shadow(0px 0px 0px rgba(255, 120, 140, 0))' },
+  ], { duration: 1100, delay: 150 }));
 
   s.letters.forEach((g, i) => {
-    const length = g.cream.getTotalLength();
-    Object.assign(g.cream.style, { stroke: '#fdf6ee', strokeWidth: '1.4', strokeLinejoin: 'round', strokeDasharray: `${length}` });
-    // A soft dark halo keeps the thin outline readable against the bright fog while it traces.
-    out.push(play(g.cream, [
-      { offset: 0, strokeDashoffset: `${length}`, fillOpacity: 0, strokeOpacity: 1, filter: 'drop-shadow(0px 0px 1.5px rgba(20, 12, 6, 0.6))', easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
-      { offset: 0.6, strokeDashoffset: '0', fillOpacity: 0, strokeOpacity: 1, filter: 'drop-shadow(0px 0px 1.5px rgba(20, 12, 6, 0.6))', easing: 'cubic-bezier(0.3, 0, 0.2, 1)' },
-      { offset: 1, strokeDashoffset: '0', fillOpacity: 1, strokeOpacity: 0, filter: 'drop-shadow(0px 0px 0px rgba(20, 12, 6, 0))' },
-    ], { duration: 820, delay: 950 + i * 40 }));
+    const length = g.el.getTotalLength();
+    Object.assign(g.el.style, { stroke: '#fff', strokeWidth: '1.4', strokeLinejoin: 'round', strokeDasharray: `${length}` });
+    out.push(play(g.el, [
+      { offset: 0, strokeDashoffset: `${length}`, fillOpacity: 0, strokeOpacity: 1, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
+      { offset: 0.6, strokeDashoffset: '0', fillOpacity: 0, strokeOpacity: 1, easing: 'cubic-bezier(0.3, 0, 0.2, 1)' },
+      { offset: 1, strokeDashoffset: '0', fillOpacity: 1, strokeOpacity: 0 },
+    ], { duration: 820, delay: 1050 + i * 40 }));
   });
-
-  [s.spine, ...s.letters].forEach((g, i) => out.push(...extrude(g, 1900 + i * 16, 420)));
   return out;
 }
 
-// Kick-off: each letter is struck in from off screen on an arc, spinning, and thuds into place
-// with a squash; its shadow punches out on impact and the photo jolts like the net taking it.
+// Kick-off: under a dark sky the red rule slides in, then each letter is struck in from off screen
+// on an arc, spinning, and thuds into place with a squash while the photo jolts like the net
+// taking it. Each finished line switches on another bank of floodlights.
 const LAUNCH: [number, number, number][] = [
   [-430, 520, -320], [170, 660, 250], [560, 470, 380],
   [-620, 380, -420], [-150, 720, 300], [390, 640, -280], [730, 310, 440],
@@ -138,28 +118,21 @@ function kickoff(s: Stage): Animation[] {
       const scale = t < 0.6 ? 0.5 + (1.15 - 0.5) * (t / 0.6) : 1.15 - 0.15 * ((t - 0.6) / 0.4);
       return { offset: t * IMPACT, x, y, deg: spin * Math.pow(u, 1.5), scale, opacity: Math.min(1, t / 0.12) };
     });
-    // Shadow copies stay hidden in flight, where they would fringe the letter's edges.
-    const frames = (prefix: (k: number) => string, overshoot: number, shadow: boolean) => [
-      ...flight.map(f => ({ offset: f.offset, opacity: shadow ? 0 : f.opacity, transform: `${prefix(1)} ${motion(f.x, f.y, f.deg, f.scale, f.scale)}` })),
-      { offset: 0.92, opacity: 1, transform: `${prefix(overshoot)} ${motion(0, 1.5, 0, 1.07, 0.9)}`, easing: 'cubic-bezier(0.3, 0, 0.4, 1)' },
-      { offset: 1, opacity: 1, transform: `${prefix(0)} ${motion(0, 0, 0, 1, 1)}` },
-    ];
-    out.push(play(g.cream, frames(() => 'translate(0px, 0px)', 0, false), { duration: FLIGHT, delay }));
-    for (const layer of SHADOWS) out.push(play(g[layer], frames(k => tuck(layer, k), -0.3, true), { duration: FLIGHT, delay }));
+    out.push(play(g.el, [
+      ...flight.map(f => ({ offset: f.offset, opacity: f.opacity, transform: motion(f.x, f.y, f.deg, f.scale, f.scale) })),
+      { offset: 0.92, opacity: 1, transform: motion(0, 1.5, 0, 1.07, 0.9), easing: 'cubic-bezier(0.3, 0, 0.4, 1)' },
+      { offset: 1, opacity: 1, transform: motion(0, 0, 0, 1, 1) },
+    ], { duration: FLIGHT, delay }));
   };
+
+  s.rule.style.transformOrigin = 'left center';
+  out.push(play(s.rule, [
+    { offset: 0, opacity: 0, transform: 'translateX(-160px) scaleX(0.4)', easing: 'cubic-bezier(0.2, 0.8, 0.25, 1)' },
+    { offset: 1, opacity: 1, transform: 'translateX(0px) scaleX(1)' },
+  ], { duration: 520, delay: 120 }));
 
   const lines = [0, 1, 2].map(line => s.letters.map((g, i) => ({ g, i })).filter(({ g }) => g.line === line));
   lines[0].forEach(({ g, i }, n) => strike(g, i, n === lines[0].length - 1));
-
-  // The spine goes up like a goalpost before "back" arrives, then its shadow punches out.
-  const spineAt = START + slot++ * GAP + 60;
-  s.spine.cream.style.transformOrigin = 'center bottom';
-  out.push(play(s.spine.cream, [
-    { offset: 0, transform: 'scale(1, 0)', easing: 'cubic-bezier(0.2, 0.9, 0.3, 1.25)' },
-    { offset: 1, transform: 'scale(1, 1)' },
-  ], { duration: 420, delay: spineAt }));
-  out.push(...extrude(s.spine, spineAt + 380, 380));
-
   lines[1].forEach(({ g, i }, n) => strike(g, i, n === lines[1].length - 1));
   lines[2].forEach(({ g, i }, n) => strike(g, i, n === lines[2].length - 1));
 
@@ -168,53 +141,50 @@ function kickoff(s: Stage): Animation[] {
     at,
     steps: [[40, { transform: 'translate(0px, 4px) scale(1.008)' }], [200, { transform: 'translate(0px, 0px) scale(1)' }]],
   }))));
+
+  const banks = [0.42, 0.76, 1];
+  const lightsEnd = jolts[jolts.length - 1] + 700;
+  const lights: Keyframe[] = [{ offset: 0, opacity: 0, filter: 'brightness(1)' }];
+  jolts.forEach((at, i) => {
+    const before = i === 0 ? 0 : banks[i - 1];
+    lights.push({ offset: at / lightsEnd, opacity: before, filter: 'brightness(1)' });
+    lights.push({ offset: (at + 60) / lightsEnd, opacity: banks[i], filter: i === jolts.length - 1 ? 'brightness(1.4)' : 'brightness(1)', easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' });
+  });
+  lights.push({ offset: 1, opacity: 1, filter: 'brightness(1)' });
+  out.push(play(s.lit, lights, { duration: lightsEnd }));
   return out;
 }
 
-// Printing press: a flash of paper, the photo coming up like fresh ink, each line slammed down
-// with a jolt and its ink spreading, then the spine snapping down to lock b and p together.
+// Printing press: a night match covered by the press. Each line is slammed down with a jolt,
+// every slam firing a flashbulb that lights the scene for an instant, then the red rule is
+// stamped on last and the floodlights stay on.
 const PRESS_LINES = [420, 860, 1300];
-const PRESS_SPINE = 1720;
+const PRESS_RULE = 1720;
 const STAMP = 300, HIT = 0.72;
 
 function press(s: Stage): Animation[] {
   const out: Animation[] = [];
-  out.push(play(s.photo, [
-    { offset: 0, opacity: 0, filter: 'grayscale(1) contrast(1.45) brightness(1.08)' },
-    { offset: 0.12, opacity: 0, filter: 'grayscale(1) contrast(1.45) brightness(1.08)' },
-    { offset: 0.1201, opacity: 1, filter: 'grayscale(1) contrast(1.45) brightness(1.08)', easing: 'cubic-bezier(0.3, 0, 0.3, 1)' },
-    { offset: 1, opacity: 1, filter: 'grayscale(0) contrast(1) brightness(1)' },
-  ], { duration: 1400 }));
+  out.push(play(s.photo, [{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' }));
 
+  const stamp = (from: string, settle: string): Keyframe[] => [
+    { offset: 0, opacity: 0, transform: from, filter: 'blur(0px)', easing: 'cubic-bezier(0.6, 0, 1, 0.6)' },
+    { offset: HIT, opacity: 1, transform: 'translate(0px, 0px) scale(1, 1)', filter: 'blur(1.2px)', easing: 'cubic-bezier(0.2, 0.6, 0.35, 1)' },
+    { offset: 0.84, opacity: 1, transform: settle, filter: 'blur(0.4px)', easing: 'ease-out' },
+    { offset: 1, opacity: 1, transform: 'translate(0px, 0px) scale(1, 1)', filter: 'blur(0px)' },
+  ];
   s.letters.forEach(g => {
-    const line = s.letters.filter(o => o.line === g.line).map(o => o.cream.getBBox());
+    const line = s.letters.filter(o => o.line === g.line).map(o => o.el.getBBox());
     const x1 = Math.min(...line.map(b => b.x)), x2 = Math.max(...line.map(b => b.x + b.width));
     const y1 = Math.min(...line.map(b => b.y)), y2 = Math.max(...line.map(b => b.y + b.height));
     // Scale each letter about its line's centre, so the whole line comes down as one plate.
-    const own = g.cream.getBBox();
-    const origin = `${((x1 + x2) / 2 - own.x).toFixed(2)}px ${((y1 + y2) / 2 - own.y).toFixed(2)}px`;
-    const delay = PRESS_LINES[g.line];
-    // Shadow copies appear only when the plate hits; while the line fades in they would show through it.
-    const frames = (prefix: (k: number) => string, overshoot: number, blur: boolean, shadow: boolean) => [
-      { offset: 0, opacity: 0, transform: `${prefix(1)} translate(0px, -30px) scale(1.9, 1.9)`, ...(blur ? { filter: 'blur(0px)' } : {}), easing: 'cubic-bezier(0.6, 0, 1, 0.6)' },
-      { offset: HIT, opacity: shadow ? 0 : 1, transform: `${prefix(1)} translate(0px, 0px) scale(1, 1)`, ...(blur ? { filter: 'blur(1.6px)' } : {}), easing: 'cubic-bezier(0.2, 0.6, 0.35, 1)' },
-      { offset: 0.84, opacity: 1, transform: `${prefix(overshoot)} translate(0px, 1px) scale(1.025, 0.96)`, ...(blur ? { filter: 'blur(0.6px)' } : {}), easing: 'ease-out' },
-      { offset: 1, opacity: 1, transform: `${prefix(0)} translate(0px, 0px) scale(1, 1)`, ...(blur ? { filter: 'blur(0px)' } : {}) },
-    ];
-    for (const el of [g.cream, g.red, g.dark]) el.style.transformOrigin = origin;
-    out.push(play(g.cream, frames(() => 'translate(0px, 0px)', 0, false, false), { duration: STAMP, delay }));
-    out.push(play(g.red, frames(k => tuck('red', k), -0.2, false, true), { duration: STAMP, delay }));
-    out.push(play(g.dark, frames(k => tuck('dark', k), -0.2, true, true), { duration: STAMP, delay }));
+    const own = g.el.getBBox();
+    g.el.style.transformOrigin = `${((x1 + x2) / 2 - own.x).toFixed(2)}px ${((y1 + y2) / 2 - own.y).toFixed(2)}px`;
+    out.push(play(g.el, stamp('translate(0px, -30px) scale(1.9, 1.9)', 'translate(0px, 1px) scale(1.025, 0.96)'), { duration: STAMP, delay: PRESS_LINES[g.line] }));
   });
+  s.rule.style.transformOrigin = 'left center';
+  out.push(play(s.rule, stamp('translate(0px, -24px) scale(1.5, 2.4)', 'translate(0px, 0.5px) scale(1.01, 0.8)'), { duration: 220, delay: PRESS_RULE }));
 
-  s.spine.cream.style.transformOrigin = 'center top';
-  out.push(play(s.spine.cream, [
-    { offset: 0, transform: 'scale(1, 0)', easing: 'cubic-bezier(0.7, 0, 1, 0.5)' },
-    { offset: 1, transform: 'scale(1, 1)' },
-  ], { duration: 170, delay: PRESS_SPINE }));
-  out.push(...extrude(s.spine, PRESS_SPINE + 170, 280));
-
-  const impacts = [...PRESS_LINES.map(at => at + STAMP * HIT), PRESS_SPINE + 170];
+  const impacts = [...PRESS_LINES.map(at => at + STAMP * HIT), PRESS_RULE + 220 * HIT];
   const strength = [1, 1, 1.25, 0.6];
   const total = impacts[impacts.length - 1] + 240;
   const shake = (k: number): [number, Keyframe][] => [
@@ -226,16 +196,25 @@ function press(s: Stage): Animation[] {
   ];
   const jolts = impacts.map((at, i) => ({ at, steps: shake(strength[i]) }));
   out.push(timeline(s.lettering, total, { transform: 'translate(0px, 0px)' }, jolts));
-  // The photo shakes too, scaled up slightly so its edges never show inside the frame.
-  out.push(timeline(s.photo, total, { transform: 'translate(0px, 0px) scale(1.03)' }, jolts.map(j => ({ at: j.at, steps: j.steps.map(([t, v]) => [t, { transform: `${v.transform} scale(1.03)` }] as [number, Keyframe]) })), { transform: 'translate(0px, 0px) scale(1)' }));
-  out.push(timeline(s.flash, total, { opacity: 0 }, [
-    { at: 100, steps: [[50, { opacity: 0.55 }], [280, { opacity: 0 }]] },
-    ...impacts.map(at => ({ at, steps: [[30, { opacity: 0.14 }], [170, { opacity: 0 }]] as [number, Keyframe][] })),
-  ]));
-  out.push(timeline(s.grain, total, { opacity: 0 }, [
-    { at: 100, steps: [[60, { opacity: 0.5 }], [400, { opacity: 0 }]] },
-    ...impacts.map(at => ({ at, steps: [[20, { opacity: 0.35 }], [260, { opacity: 0 }]] as [number, Keyframe][] })),
-  ]));
+  // The photo shakes too, scaled up slightly so its edges never show inside the frame. After the
+  // last stamp it eases back to full size over half a second, like a camera settling; snapping
+  // back in a frame or two reads as a jitter.
+  const photoEnd = impacts[impacts.length - 1] + 760;
+  out.push(timeline(s.photo, photoEnd, { transform: 'translate(0px, 0px) scale(1.03)' }, jolts.map((j, i) => ({
+    at: j.at,
+    steps: j.steps.map(([t, v], n) => [t, {
+      transform: `${v.transform} scale(1.03)`,
+      ...(i === jolts.length - 1 && n === j.steps.length - 1 ? { easing: 'cubic-bezier(0.33, 0, 0.2, 1)' } : {}),
+    }] as [number, Keyframe]),
+  })), { transform: 'translate(0px, 0px) scale(1)' }));
+  out.push(timeline(s.flash, total, { opacity: 0 }, impacts.map(at => ({ at, steps: [[25, { opacity: 0.35 }], [160, { opacity: 0 }]] as [number, Keyframe][] }))));
+  out.push(timeline(s.grain, total, { opacity: 0 }, impacts.map(at => ({ at, steps: [[20, { opacity: 0.35 }], [260, { opacity: 0 }]] as [number, Keyframe][] }))));
+  // Each flashbulb shows the lit scene for an instant and lets it fall back to night; the
+  // rule's stamp brings the floodlights up for good.
+  const lightsEnd = impacts[impacts.length - 1] + 640;
+  const flashes = impacts.slice(0, -1).map(at => ({ at, steps: [[20, { opacity: 0.95, filter: 'brightness(1.25)' }], [300, { opacity: 0.06, filter: 'brightness(1)' }]] as [number, Keyframe][] }));
+  const floodlit = { at: impacts[impacts.length - 1], steps: [[20, { opacity: 1, filter: 'brightness(1.4)' }], [600, { opacity: 1, filter: 'brightness(1)' }]] as [number, Keyframe][] };
+  out.push(timeline(s.lit, lightsEnd, { opacity: 0, filter: 'brightness(1)' }, [...flashes, floodlit], { opacity: 1, filter: 'brightness(1)' }));
   return out;
 }
 

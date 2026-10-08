@@ -133,6 +133,9 @@ html[data-intro="play"] .intro-splash { display: block; animation: intro-failsaf
 html[data-intro="play"] .intro-splash.is-driven { animation: none; }
 .intro-splash:not([data-ready]) .intro-photo,
 .intro-splash:not([data-ready]) [data-intro-stage] { opacity: 0; }
+/* The lettering animates as separate letters, then becomes the banner's single shape at rest. */
+.intro-splash:not([data-settled]) [data-mark-union],
+.intro-splash[data-settled] [data-glyph] { display: none; }
 
 @layer utilities {
   .flip-face,

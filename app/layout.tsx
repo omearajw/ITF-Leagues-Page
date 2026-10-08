@@ -7,6 +7,7 @@ import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
 import { TickerSwitch } from '@/components/Ticker';
 import { INTRO_HEAD_SCRIPT } from '@/lib/intro';
+import Image from 'next/image';
 import { wordmarkFont } from '@/lib/fonts';
 
 export const metadata = {
@@ -39,10 +40,13 @@ async function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/" aria-label="ITF Fantasy Football home" className="font-wordmark font-semibold lowercase text-brand text-[15px] leading-[0.78] tracking-[-0.01em] hover:opacity-80 transition">
-                <span className="block pl-[0.4em]">itf</span>
-                <span className="block">fantasy</span>
-                <span className="block pl-[0.2em]">football</span>
+              <Link href="/" aria-label="ITF Fantasy Football home" className="flex items-center gap-2.5 hover:opacity-80 transition">
+                <Image src="/brand/itf-logo.png" alt="" width={40} height={40} priority className="h-10 w-10" />
+                <span className="font-wordmark font-semibold lowercase text-brand text-[15px] leading-[0.78] tracking-[-0.01em]" aria-hidden="true">
+                  <span className="block pl-[0.4em]">itf</span>
+                  <span className="block">fantasy</span>
+                  <span className="block pl-[0.2em]">football</span>
+                </span>
               </Link>
             </div>
             

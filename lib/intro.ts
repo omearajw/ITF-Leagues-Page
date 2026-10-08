@@ -9,7 +9,7 @@ export const introToday = () => new Date().toDateString();
 // that one every time. Without it, visitors get the default.
 export const INTRO_CONCEPTS = ['floodlights', 'kickoff', 'press'] as const;
 export type IntroConcept = (typeof INTRO_CONCEPTS)[number];
-export const DEFAULT_INTRO: IntroConcept = 'floodlights';
+export const DEFAULT_INTRO: IntroConcept = 'press';
 
 export function introConceptFrom(search: string): IntroConcept | null {
   const value = new URLSearchParams(search).get('intro');
