@@ -211,7 +211,7 @@ export default function Planner(props: PlannerProps) {
       {/* Pitch */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-bold text-ink">{flipped && opponent ? <>{opponent.name} <span className="text-faint font-normal">({your} GW{planGw} opponent)</span></> : `${Your} squad`}</div>
-        {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`${opponent.name} (GW${planGw} opponent)`} />}
+        {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`View GW${planGw} opponent (${opponent.name})`} />}
       </div>
       {(() => {
         const indexed = squad.map((s, i) => ({ s, i }));
@@ -278,7 +278,7 @@ export default function Planner(props: PlannerProps) {
                 {stakes.eliminator.alive ? (
                   <>
                     <div className="text-2xl font-black text-ink">{stakes.eliminator.myPoints !== null && stakes.eliminator.lowestAlive ? `+${stakes.eliminator.myPoints - stakes.eliminator.lowestAlive.points}` : '–'}</div>
-                    <div className="text-xs text-dim">{You} {isMine ? 'were' : 'was'} clear of the lowest survivor last week{stakes.eliminator.lowestAlive ? ` (${stakes.eliminator.lowestAlive.name}, ${stakes.eliminator.lowestAlive.points})` : ''}. {stakes.eliminator.aliveCount} alive; the lowest net score in GW{planGw} goes.</div>
+                    <div className="text-xs text-dim">{You} {isMine ? 'were' : 'was'} clear of the lowest survivor last week{stakes.eliminator.lowestAlive ? ` (${stakes.eliminator.lowestAlive.name}, ${stakes.eliminator.lowestAlive.points})` : ''}. {stakes.eliminator.aliveCount} remain; the lowest net score in GW{planGw} goes.</div>
                   </>
                 ) : (
                   <div className="text-sm text-dim">Out since GW{stakes.eliminator.eliminatedGw}.</div>

@@ -1,6 +1,8 @@
 import { cache } from 'react';
 import { createClient } from '@/utils/supabase/server';
 import { SEASON_ID } from '@/lib/gameweek-status';
+import { getPlayers, getManagerPicks, getLivePoints, type Pick } from '@/lib/fpl-manager';
+import type { PitchPlayer } from '@/components/PitchView';
 
 export type TotwTeam = {
   id: number;
@@ -54,5 +56,27 @@ export const getTeamOfTheWeek = cache(async (gw: number): Promise<TeamOfTheWeek 
     nextBest: below ? below.points : null,
     average: Math.round(data.reduce((s: number, r: any) => s + r.points, 0) / data.length),
     entries: data.length,
+  };
+});
+
+// A winner's line-up for the pitch. Only confirmed weeks are shown, so FPL has already made
+// the auto-subs and moved the armband; nothing is projected.
+export const getFinalLineup = cache(async (managerId: number, gw: number) => {
+  const [players, picks, live] = await Promise.all([getPlayers(), getManagerPicks(managerId, gw, true), getLivePoints(gw, true)]);
+  if (!picks) return null;
+  const toPitch = (p: Pick): PitchPlayer => {
+    const pl = players?.[p.element];
+    return {
+      element: p.element, name: pl?.name || `#${p.element}`, team: pl?.team || '', teamCode: pl?.teamCode || 0, code: pl?.code || 0,
+      position: pl?.position || 'MID', points: live ? (live[p.element]?.total_points ?? 0) : null,
+      multiplier: p.multiplier, isCaptain: p.is_captain, isVice: p.is_vice_captain,
+      subbedIn: picks.automatic_subs.some(a => a.element_in === p.element), subbedOut: picks.automatic_subs.some(a => a.element_out === p.element),
+    };
+  };
+  return {
+    starters: picks.picks.filter(p => p.position <= 11).map(toPitch),
+    bench: picks.picks.filter(p => p.position > 11).sort((a, b) => a.position - b.position).map(toPitch),
+    benchPoints: picks.entry_history.points_on_bench,
+    pointsUnavailable: live === null,
   };
 });

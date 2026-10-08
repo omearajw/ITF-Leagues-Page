@@ -43,5 +43,5 @@ export function GameweekChip({ gw, startGw, week, live }: { gw: GameweekStatus; 
   }
   const isLive = live ?? !!gw.liveGw;
   const shown = week ?? (isLive ? (gw.liveGw as number) : gw.syncedThroughGw);
-  return <GameweekBadge provisional={isLive}>GW{shown} · {isLive ? 'Live' : 'Final'}</GameweekBadge>;
+  return <GameweekBadge provisional={isLive}>{isLive ? `GW${shown} · Live` : `GW${shown} Complete`}</GameweekBadge>;
 }

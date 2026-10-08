@@ -7,7 +7,9 @@ import GameweekSelector from '@/components/GameweekSelector';
 import TeamOfTheWeekCard from '@/components/TeamOfTheWeekCard';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus } from '@/lib/gameweek-status';
-import { getTeamOfTheWeek } from '@/lib/team-of-the-week';
+import { getTeamOfTheWeek, getFinalLineup } from '@/lib/team-of-the-week';
+import PitchView from '@/components/PitchView';
+import { getTeamNameDisplayText } from '@/components/TeamName';
 
 export default async function TeamOfTheWeekPage({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
   const { gw } = await searchParams;
@@ -34,6 +36,7 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
     supabase.from('page_content').select('content').eq('id', 'team-of-the-week').eq('gw_number', selectedGw).maybeSingle(),
   ]);
   const many = (totw?.winners.length ?? 0) > 1;
+  const lineups = totw ? await Promise.all(totw.winners.map(w => getFinalLineup(w.id, totw.gw))) : [];
 
   return (
     <>
@@ -82,6 +85,22 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
               </div>
             ))}
           </div>
+
+          {totw.winners.map((team, i) => {
+            const lineup = lineups[i];
+            if (!lineup) return null;
+            return (
+              <PitchView
+                key={team.id}
+                title={many ? `${getTeamNameDisplayText(team.teamName)} line-up` : 'Line-up'}
+                starters={lineup.starters}
+                bench={lineup.bench}
+                benchPoints={lineup.benchPoints}
+                live={false}
+                pointsUnavailable={lineup.pointsUnavailable}
+              />
+            );
+          })}
 
           {contentData?.content ? (
             <div className="bg-surface border-l-4 border-amber-400 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">

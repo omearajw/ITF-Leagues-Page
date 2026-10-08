@@ -10,6 +10,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        wordmark: ["var(--font-wordmark)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
       colors: {
         // Site palette, defined once in app/globals.css
         bg: "rgb(var(--color-bg) / <alpha-value>)",

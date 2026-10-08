@@ -11,3 +11,10 @@ export default function MovementArrow({ delta, className = '' }: { delta: number
     </span>
   );
 }
+
+// Marks a team that has just entered a top-N list; shown in place of its arrow.
+export function NewEntryMark({ className = '' }: { className?: string }) {
+  return (
+    <span className={`text-[10px] font-bold tracking-wide text-brand-2 ${className}`} title="New to the top ten since last gameweek">NEW</span>
+  );
+}

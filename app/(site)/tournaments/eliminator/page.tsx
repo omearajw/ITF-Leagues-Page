@@ -85,6 +85,13 @@ async function EliminatorContent() {
     return getScore(b.manager_fpl_id, displayGw) - getScore(a.manager_fpl_id, displayGw);
   }) || [];
 
+  // While a week is live, whoever is on the lowest score (projected subs included) is pinned
+  // to the top. Before kickoff everyone is level, so nobody is singled out.
+  const lowestLive = displayGw === gw.liveGw && alive.length > 1 ? Math.min(...alive.map((m) => getScore(m.manager_fpl_id, displayGw))) : null;
+  const atRisk = new Set(lowestLive === null ? [] : alive.filter((m) => getScore(m.manager_fpl_id, displayGw) === lowestLive).map((m) => m.manager_fpl_id));
+  if (atRisk.size === alive.length) atRisk.clear();
+  const survivors = [...alive.filter((m) => atRisk.has(m.manager_fpl_id)), ...alive.filter((m) => !atRisk.has(m.manager_fpl_id))];
+
   const dead = managers?.filter((m: any) => m.is_eliminated).sort((a: any, b: any) => (b.eliminated_gw || 0) - (a.eliminated_gw || 0)) || [];
 
   // Determine which phase the tournament is in
@@ -96,7 +103,7 @@ async function EliminatorContent() {
   // week hasn't produced one yet, the cron simply hasn't run since it finished.
   const awaitingElimination = !isPreTournament && hasEntrants && alive.length > 1 && lastEliminationGw < currentGw;
 
-  const statusLabel = isPreTournament ? 'Pending' : !hasEntrants ? 'Awaiting Entrants' : `${alive.length} Alive`;
+  const statusLabel = isPreTournament ? 'Pending' : !hasEntrants ? 'Awaiting Entrants' : `${alive.length} Remain`;
   const statusMuted = isPreTournament || !hasEntrants;
   const nextLine = eliminatorNextLine(gw, startGw, { aliveCount: hasEntrants ? alive.length : undefined, awaitingElimination });
 
@@ -174,7 +181,7 @@ async function EliminatorContent() {
               <div>
                 <div className="font-bold">Gameweek {currentGw} elimination pending</div>
                 <p className="text-sm text-amber-300/90">
-                  Gameweek {currentGw} is finished, but the lowest scorer has not been cut yet. The next data sync will send them to the Graveyard.
+                  Gameweek {currentGw} is finished, but the lowest scorer has not been cut yet. The next data sync will eliminate them.
                 </p>
               </div>
             </div>
@@ -188,30 +195,33 @@ async function EliminatorContent() {
             </h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {alive.map((mgr: any, idx: number) => (
-                <div key={mgr.season_managers.team_name} className="bg-surface border border-green-500/20 p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition">
+              {survivors.map((mgr: any) => (
+                <div key={mgr.season_managers.team_name} className={`p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition border ${atRisk.has(mgr.manager_fpl_id) ? 'bg-red-500/10 border-red-500/50' : 'bg-surface border-green-500/20'}`}>
                   <div>
                     <div className="flex items-center gap-2">
                       <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink" />
-                      {displayGw === gw.liveGw && alive.length > 1 && idx === alive.length - 1 && (
-                        <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-bold uppercase">Lowest</span>
+                      {atRisk.has(mgr.manager_fpl_id) && (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] bg-red-500/15 text-red-400 border border-red-500/40 px-2 py-0.5 rounded font-bold uppercase animate-pulse" title="On the lowest live score: out if it stays this way when the week is confirmed">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          At risk
+                        </span>
                       )}
                     </div>
                     <div className="text-xs text-dim">{mgr.season_managers.managers.real_name}</div>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-xl font-black text-ink">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} /></span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">Points</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${atRisk.has(mgr.manager_fpl_id) ? 'text-red-400' : 'text-green-400'}`}>Points</span>
                   </div>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* GRAVEYARD */}
+          {/* ELIMINATED */}
           <section>
             <h2 className="text-2xl font-bold text-ink mb-6 flex items-center gap-2 border-b pb-2">
-              The Graveyard
+              The Eliminated
             </h2>
             
             <div className="bg-panel rounded-xl overflow-hidden shadow-lg border border-line">
@@ -246,7 +256,7 @@ async function EliminatorContent() {
                       <tr>
                         <th className="p-4 font-semibold uppercase tracking-wider text-xs">Eliminated</th>
                         <th className="p-4 font-semibold uppercase tracking-wider text-xs">Team & Manager</th>
-                        <th className="p-4 font-semibold uppercase tracking-wider text-xs text-right">Fatal Score</th>
+                        <th className="p-4 font-semibold uppercase tracking-wider text-xs text-right">Exit Score</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line text-ink-2">

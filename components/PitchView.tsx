@@ -78,7 +78,7 @@ function PlayerCard({ player, live, onGrass }: { player: PitchPlayer; live: bool
         <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onGrass ? 'bg-[#0b1f14] text-white' : 'bg-surface-3 text-ink'}`}>{player.name}</div>
         <div className={`px-1.5 py-0.5 text-xs font-black ${live && playing ? 'bg-amber-300 text-slate-900' : yetToPlay ? 'bg-white/70 text-slate-500' : 'bg-white text-slate-900'}`}>
           {scored === null ? '–' : scored}
-          {player.multiplier > 1 && scored !== null && <span className="ml-1 text-[10px] font-bold text-slate-500 align-middle">×{player.multiplier}</span>}
+          {player.multiplier > 1 && scored !== null && <span className="ml-1 font-normal text-slate-500">({player.points})</span>}
         </div>
       </div>
     </div>
@@ -161,14 +161,14 @@ export function FlipPitch({ front, back, flipped }: { front: React.ReactNode; ba
 export function FlipButton({ flipped, onToggle, label }: { flipped: boolean; onToggle: () => void; label: string }) {
   return (
     <button type="button" onClick={onToggle} aria-pressed={flipped} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition whitespace-nowrap truncate max-w-[70vw] sm:max-w-xs ${flipped ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-surface border-line text-dim hover:text-ink'}`}>
-      {flipped ? '↺ Back to this team' : `⇄ Flip to ${label}`}
+      {flipped ? '↺ Flip back' : `⇄ ${label}`}
     </button>
   );
 }
 
 export type PitchOpponent = { name: string; week: number; starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number };
 
-export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, opponent }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; opponent?: PitchOpponent | null }) {
+export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, opponent, title = 'Line-up' }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; opponent?: PitchOpponent | null; title?: React.ReactNode }) {
   const [flipped, setFlipped] = useState(false);
   const mineIds = new Set([...starters, ...bench].map(p => p.element));
   const theirIds = new Set(opponent ? [...opponent.starters, ...opponent.bench].map(p => p.element) : []);
@@ -196,11 +196,11 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
     <section className="mb-8">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <h2 className="text-lg font-bold text-ink flex items-center gap-2">
-          {flipped && opponent ? <span>{opponent.name}<span className="text-faint font-normal"> · GW{opponent.week} opponent</span></span> : 'Line-up'} {live && <LiveChip />}
+          {flipped && opponent ? <span>{opponent.name}<span className="text-faint font-normal"> · GW{opponent.week} opponent</span></span> : title} {live && <LiveChip />}
           {pointsUnavailable && <span className="text-xs font-normal text-faint">player points unavailable</span>}
         </h2>
         <div className="flex items-center gap-2">
-          {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`${opponent.name} (GW${opponent.week} opponent)`} />}
+          {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`View GW${opponent.week} opponent (${opponent.name})`} />}
         </div>
       </div>
       {back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front}

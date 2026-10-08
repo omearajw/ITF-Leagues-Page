@@ -1,4 +1,4 @@
-import { getGameweekStatus, describePhase, stageOf, STAGE_ORDER, STAGE_LABEL, type GameweekStage } from '@/lib/gameweek-status';
+import { getGameweekStatus, describePhase, stageOf, STAGE_ORDER, STAGE_LABEL, type GameweekStage, type GameweekStatus } from '@/lib/gameweek-status';
 import { getLastSyncedAt, describeAgo } from '@/lib/sync-status';
 
 export const ACTIVE_DOT: Record<GameweekStage, string> = {
@@ -6,13 +6,6 @@ export const ACTIVE_DOT: Record<GameweekStage, string> = {
   live: 'bg-amber-400 animate-pulse',
   awaiting: 'bg-brand',
   final: 'bg-green-500',
-};
-
-export const STAGE_PILL: Record<GameweekStage, string> = {
-  upcoming: 'bg-surface-3 text-dim',
-  live: 'bg-amber-500/15 text-amber-300',
-  awaiting: 'bg-brand-2/15 text-brand-2',
-  final: 'bg-green-500/15 text-green-300',
 };
 
 export function StageDots({ stage }: { stage: GameweekStage }) {
@@ -35,17 +28,24 @@ export function StageDots({ stage }: { stage: GameweekStage }) {
   );
 }
 
+// The strip's contents; the hub reuses it as the collapsed face of its timeline.
+export function StripRow({ gw, ago, trailing }: { gw: GameweekStatus; ago: string | null; trailing?: React.ReactNode }) {
+  const stage = stageOf(gw.phase);
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <span className="font-black text-ink">GW{gw.activeGw}</span>
+      {stage && <StageDots stage={stage} />}
+      <span className="text-dim sm:ml-auto">{describePhase(gw)}{ago ? ` · updated ${ago}` : ''}</span>
+      {trailing}
+    </div>
+  );
+}
+
 export default async function GameweekStrip() {
   const [gw, lastSynced] = await Promise.all([getGameweekStatus(), getLastSyncedAt()]);
-  const stage = stageOf(gw.phase);
-  const ago = describeAgo(lastSynced);
   return (
     <div className="bg-surface border-b border-line">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-        <span className="font-black text-ink">GW{gw.activeGw}</span>
-        {stage && <StageDots stage={stage} />}
-        <span className="text-dim sm:ml-auto">{describePhase(gw)}{ago ? ` · updated ${ago}` : ''}</span>
-      </div>
+      <StripRow gw={gw} ago={describeAgo(lastSynced)} />
     </div>
   );
 }

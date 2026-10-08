@@ -6,6 +6,9 @@ import MobileNav from '@/components/mobile-nav';
 import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
 import { TickerSwitch } from '@/components/Ticker';
+import IntroSplash from '@/components/IntroSplash';
+import { INTRO_HEAD_SCRIPT } from '@/lib/intro';
+import { wordmarkFont, displayFont } from '@/lib/fonts';
 
 export const metadata = {
   title: 'ITF League Hub',
@@ -37,8 +40,10 @@ async function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="font-extrabold text-xl tracking-tight hover:opacity-80 transition">
-                ITF<span className="text-brand-2">LEAGUE</span>
+              <Link href="/" aria-label="ITF Fantasy Football home" className="font-wordmark font-semibold lowercase text-brand text-[15px] leading-[0.78] tracking-[-0.01em] hover:opacity-80 transition">
+                <span className="block pl-[0.4em]">itf</span>
+                <span className="block">fantasy</span>
+                <span className="block pl-[0.2em]">football</span>
               </Link>
             </div>
             
@@ -111,12 +116,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    // The intro's head script sets data-intro on <html> before React hydrates.
+    <html lang="en" className={`${wordmarkFont.variable} ${displayFont.variable}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script dangerouslySetInnerHTML={{ __html: INTRO_HEAD_SCRIPT }} />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen flex flex-col">
-        
+        <IntroSplash />
+
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
         <Suspense fallback={<div className="h-14 lg:h-[104px] bg-panel w-full animate-pulse" />}>
           <Navbar />

@@ -26,10 +26,6 @@ export function GameweekStripSkeleton() {
   );
 }
 
-export function GameweekTimelineSkeleton() {
-  return <SkeletonBox className="h-[22rem] sm:h-60 lg:h-44 w-full" />;
-}
-
 // 1. Eliminator Skeleton
 export function EliminatorSkeleton({ phase = 'active' }: { phase?: 'pre' | 'active' }) {
   return (

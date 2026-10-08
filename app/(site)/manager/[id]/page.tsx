@@ -13,6 +13,7 @@ import { projectAutoSubs, type FixtureState } from '@/lib/autosubs';
 import { getMyTeamId } from '@/lib/my-team';
 import { DIVISIONS } from '@/lib/divisions';
 import TeamBadge from '@/components/TeamBadge';
+import { getLeagueBadges } from '@/lib/badges';
 
 export default async function ManagerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ gw?: string }> }) {
   const { id } = await params;
@@ -49,7 +50,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   const isLiveWeek = selectedGw === gw.liveGw;
   const isFinal = selectedGw <= gw.syncedThroughGw || !!events?.find(e => e.id === selectedGw)?.finished;
 
-  const [players, picks, live, transfers, entry, { data: scoreRow }, { data: h2h }, { data: elim }, { data: recent }, fixtureStatus, myTeamId] = await Promise.all([
+  const [players, picks, live, transfers, entry, { data: scoreRow }, { data: h2h }, { data: elim }, { data: recent }, fixtureStatus, myTeamId, badges] = await Promise.all([
     getPlayers(),
     getManagerPicks(managerId, selectedGw, isFinal),
     getLivePoints(selectedGw, isFinal),
@@ -61,6 +62,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
     supabase.from('h2h_fixtures').select('gw_number, result').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).lte('gw_number', gw.syncedThroughGw).order('gw_number', { ascending: false }).limit(5),
     getGwFixtureStatus(selectedGw, isFinal),
     getMyTeamId(),
+    getLeagueBadges(),
   ]);
   const isUnprocessed = !isFinal;
 
@@ -131,49 +133,69 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
     name: opponentName, week: selectedGw, starters: theirs.starters, bench: theirs.bench, benchPoints: opponentPicks!.entry_history.points_on_bench,
   } : null;
   const weekTransfers = (transfers || []).filter(t => t.event === selectedGw);
+  // Net effect of the week's business: what the new players scored, less what the sold ones
+  // scored and the hit. Raw player points, so bench and captaincy are not taken into account.
+  const pointsOf = (element: number) => live?.[element]?.total_points ?? 0;
+  const pointsIn = weekTransfers.reduce((sum, t) => sum + pointsOf(t.element_in), 0);
+  const pointsOut = weekTransfers.reduce((sum, t) => sum + pointsOf(t.element_out), 0);
+  const transferNet = pointsIn - pointsOut - cost;
+  const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
   // Newest first so the current week is visible without scrolling on a phone
   const weeks = Array.from({ length: latestGw }, (_, i) => latestGw - i);
   const chipLabel: Record<string, string> = { wildcard: 'Wildcard', freehit: 'Free Hit', bboost: 'Bench Boost', '3xc': 'Triple Captain', manager: 'Assistant Manager' };
+  // The result only stands once the week is synced; until then it is read from the live scores.
+  const tie = h2h as { manager_score: number; opponent_score: number; result: string | null } | null;
+  const tieSettled = selectedGw <= gw.syncedThroughGw;
+  const tieMargin = tie ? Number(tie.manager_score) - Number(tie.opponent_score) : 0;
+  const tieOutcome = !tie ? null
+    : tieSettled ? (tie.result === 'W' ? 'Beat' : tie.result === 'L' ? 'Lost to' : 'Drew with')
+    : tieMargin > 0 ? 'Beating' : tieMargin < 0 ? 'Losing to' : 'Drawing with';
+  const badgeSrc = badges[managerId];
 
   return (
     <>
-      <PageHeader
-        title={<span className="inline-flex items-center gap-3 min-w-0">{entry?.club_badge_src && <TeamBadge src={entry.club_badge_src} size={56} className="rounded-md" />}<TeamName name={manager.team_name} inline className="min-w-0" hideBadge showStars starSize={12} /></span>}
-        titleExtra={division && (
-          <Link href={`/divisions/${division.slug}`} className="text-xs sm:text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase bg-surface-3 text-dim hover:text-ink">
-            {manager.division}
-          </Link>
-        )}
-      >
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />
-          {myTeamId === managerId ? (
-            <span className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-green-500/15 text-green-400">Your team</span>
-          ) : (
-            <a href={`/api/my-team?id=${managerId}&next=${encodeURIComponent(`/manager/${managerId}`)}`} className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-surface-3 text-dim hover:text-ink">Set as my team</a>
+      {/* Badge sits large to the right of the header; phones put it underneath. */}
+      <div className="flex flex-col sm:flex-row sm:items-start gap-x-6 gap-y-4 mb-8 sm:mb-10">
+        <PageHeader
+          className="flex-1 min-w-0"
+          title={<TeamName name={manager.team_name} inline className="min-w-0" hideBadge showStars starSize={12} />}
+          titleExtra={division && (
+            <Link href={`/divisions/${division.slug}`} className="text-xs sm:text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase bg-surface-3 text-dim hover:text-ink">
+              {manager.division}
+            </Link>
           )}
-          <Link href={`/manager/${managerId}/plan`} className="whitespace-nowrap text-xs sm:text-sm bg-brand text-white px-3 py-1.5 rounded-full font-semibold hover:bg-brand/90 transition">Plan next week &rarr;</Link>
-          <span className="flex items-center gap-3 text-xs sm:text-sm sm:ml-auto">
-            <span className="text-faint hidden sm:inline">On FPL:</span>
-            <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Pick team &rarr;</a>
-            <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Transfers &rarr;</a>
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dim">
-          <span className="font-semibold text-ink-2">{manager.managers.real_name}</span>
-          {entry && <span>Overall rank {entry.summary_overall_rank?.toLocaleString('en-GB') ?? '–'}</span>}
-          {entry && <span>Total {entry.summary_overall_points}</span>}
-          {elim && <span className={elim.is_eliminated ? 'text-red-400' : 'text-green-400'}>{elim.is_eliminated ? `Eliminated GW${elim.eliminated_gw}` : 'Still in the Eliminator'}</span>}
-          {recent && recent.length > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="text-faint">Form</span>
-              {[...recent].reverse().map((r: any) => (
-                <span key={r.gw_number} className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center text-white ${r.result === 'W' ? 'bg-green-500' : r.result === 'L' ? 'bg-red-500' : 'bg-faint'}`} title={`GW${r.gw_number}`}>{r.result}</span>
-              ))}
+        >
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />
+            {myTeamId === managerId ? (
+              <span className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-green-500/15 text-green-400">Your team</span>
+            ) : (
+              <a href={`/api/my-team?id=${managerId}&next=${encodeURIComponent(`/manager/${managerId}`)}`} className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-surface-3 text-dim hover:text-ink">Set as my team</a>
+            )}
+            <Link href={`/manager/${managerId}/plan`} className="whitespace-nowrap text-xs sm:text-sm bg-brand text-white px-3 py-1.5 rounded-full font-semibold hover:bg-brand/90 transition">Plan next week &rarr;</Link>
+            <span className="flex items-center gap-3 text-xs sm:text-sm sm:ml-auto">
+              <span className="text-faint hidden sm:inline">On FPL:</span>
+              <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Pick team &rarr;</a>
+              <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Transfers &rarr;</a>
             </span>
-          )}
-        </div>
-      </PageHeader>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dim">
+            <span className="font-semibold text-ink-2">{manager.managers.real_name}</span>
+            {entry && <span>Overall rank {entry.summary_overall_rank?.toLocaleString('en-GB') ?? '–'}</span>}
+            {entry && <span>Total {entry.summary_overall_points}</span>}
+            {elim && <span className={elim.is_eliminated ? 'text-red-400' : 'text-green-400'}>{elim.is_eliminated ? `Eliminated GW${elim.eliminated_gw}` : 'Still in the Eliminator'}</span>}
+            {recent && recent.length > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="text-faint">Form</span>
+                {[...recent].reverse().map((r: any) => (
+                  <span key={r.gw_number} className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center text-white ${r.result === 'W' ? 'bg-green-500' : r.result === 'L' ? 'bg-red-500' : 'bg-faint'}`} title={`GW${r.gw_number}`}>{r.result}</span>
+                ))}
+              </span>
+            )}
+          </div>
+        </PageHeader>
+        {badgeSrc && <TeamBadge src={badgeSrc} size={176} className="rounded-xl w-28 h-28 sm:w-40 sm:h-40 lg:w-44 lg:h-44" />}
+      </div>
 
       {/* Week selector */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-6">
@@ -202,15 +224,18 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
               { label: 'Team points', value: gross ?? '–', sub: 'before hits' },
               { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
               { label: 'On bench', value: picks.entry_history.points_on_bench, sub: 'points' },
-              { label: 'Chip', value: picks.active_chip ? (chipLabel[picks.active_chip] || picks.active_chip) : 'None', sub: picks.active_chip ? 'played' : '' },
-              { label: 'H2H tie', value: h2h ? `${(h2h as any).manager_score} - ${(h2h as any).opponent_score}` : '–', sub: h2h ? `${(h2h as any).result === 'W' ? 'Won' : (h2h as any).result === 'L' ? 'Lost' : 'Drew'} v ${opponentName || 'opponent'}` : 'no tie recorded' },
-            ].map(tile => (
-              <div key={tile.label} className="bg-surface border border-line rounded-xl p-3 min-w-0 break-words">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-faint">{tile.label}</div>
-                <div className="text-xl font-black text-ink leading-tight">{tile.value}</div>
-                {tile.sub && <div className="text-[11px] text-dim">{tile.sub}</div>}
-              </div>
-            ))}
+              { label: 'Chip', value: picks.active_chip ? (chipLabel[picks.active_chip] || picks.active_chip) : 'None', sub: picks.active_chip ? 'played' : '', played: !!picks.active_chip },
+              { label: 'League match', value: tie ? `${tie.manager_score} - ${tie.opponent_score}` : '–', sub: tie ? `${tieOutcome} ${opponentName || 'opponent'}` : 'no match recorded' },
+            ].map(tile => {
+              const filled = 'played' in tile && tile.played;
+              return (
+                <div key={tile.label} className={`border rounded-xl p-3 min-w-0 break-words ${filled ? 'bg-brand border-brand text-brand-2' : 'bg-surface border-line'}`}>
+                  <div className={`text-[10px] font-bold uppercase tracking-widest ${filled ? '' : 'text-faint'}`}>{tile.label}</div>
+                  <div className={`text-xl font-black leading-tight ${filled ? '' : 'text-ink'}`}>{tile.value}</div>
+                  {tile.sub && <div className={`text-[11px] ${filled ? '' : 'text-dim'}`}>{tile.sub}</div>}
+                </div>
+              );
+            })}
           </div>
 
           <PitchView starters={starters} bench={bench} benchPoints={picks.entry_history.points_on_bench} live={isLiveWeek} pointsUnavailable={live === null} opponent={pitchOpponent} />
@@ -220,16 +245,28 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
             <h2 className="text-lg font-bold text-ink mb-3">Transfers · GW{selectedGw}</h2>
             <div className="bg-surface border border-line rounded-xl divide-y divide-line">
               {weekTransfers.length === 0 && <div className="p-4 text-sm text-faint italic">No transfers this week.</div>}
-              {weekTransfers.map((t, i) => (
-                <div key={i} className="p-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                  <span className="text-red-400 font-semibold">{players?.[t.element_out]?.name || t.element_out}</span>
-                  <span className="text-faint text-xs">£{(t.element_out_cost / 10).toFixed(1)}</span>
-                  <span className="text-faint whitespace-nowrap">→</span>
-                  <span className="text-green-400 font-semibold">{players?.[t.element_in]?.name || t.element_in}</span>
-                  <span className="text-faint text-xs">£{(t.element_in_cost / 10).toFixed(1)}</span>
-                </div>
-              ))}
+              {weekTransfers.map((t, i) => {
+                const delta = pointsOf(t.element_in) - pointsOf(t.element_out);
+                return (
+                  <div key={i} className="p-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <span className="text-red-400 font-semibold">{players?.[t.element_out]?.name || t.element_out}</span>
+                    <span className="text-faint text-xs">£{(t.element_out_cost / 10).toFixed(1)}{live && ` · ${pointsOf(t.element_out)} pts`}</span>
+                    <span className="text-faint whitespace-nowrap">→</span>
+                    <span className="text-green-400 font-semibold">{players?.[t.element_in]?.name || t.element_in}</span>
+                    <span className="text-faint text-xs">£{(t.element_in_cost / 10).toFixed(1)}{live && ` · ${pointsOf(t.element_in)} pts`}</span>
+                    {live && <span className={`ml-auto text-sm font-bold ${delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-dim'}`}>{signed(delta)}</span>}
+                  </div>
+                );
+              })}
               {cost > 0 && <div className="p-3 text-xs text-amber-300">−{cost} points for {picks.entry_history.event_transfers} transfer{picks.entry_history.event_transfers === 1 ? '' : 's'}.</div>}
+              {live && weekTransfers.length > 0 && (
+                <div className="p-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="text-sm font-bold text-ink">Transfer business{isLiveWeek ? ' so far' : ''}</span>
+                  <span className="text-xs text-dim">{pointsIn} in − {pointsOut} out{cost ? ` − ${cost} hit` : ''}</span>
+                  <span className={`ml-auto text-lg font-black ${transferNet > 0 ? 'text-green-400' : transferNet < 0 ? 'text-red-400' : 'text-dim'}`}>{signed(transferNet)}</span>
+                  <span className="basis-full text-[11px] text-faint">Players&apos; own points for the week, before bench and captaincy.</span>
+                </div>
+              )}
             </div>
           </section>
 

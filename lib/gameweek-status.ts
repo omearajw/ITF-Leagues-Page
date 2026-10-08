@@ -286,8 +286,8 @@ export const SYNC_CADENCE = 'updates every 15 min';
 export function describePhase(gw: GameweekStatus): string {
   switch (gw.phase) {
     case 'upcoming': {
-      const prefix = gw.syncedThroughGw > 0 && gw.syncedThroughGw < gw.activeGw ? `GW${gw.syncedThroughGw} final · ` : '';
-      return `${prefix}Deadline ${formatUk(gw.deadline)}`;
+      const prefix = gw.syncedThroughGw > 0 && gw.syncedThroughGw < gw.activeGw ? `GW${gw.syncedThroughGw} Complete · ` : '';
+      return `${prefix}GW${gw.activeGw} Deadline ${formatUk(gw.deadline)}`;
     }
     case 'live': {
       if (gw.fixturesStarted === 0) return `Deadline passed · first kickoff ${formatUk(gw.firstKickoff)}`;
@@ -302,7 +302,7 @@ export function describePhase(gw: GameweekStatus): string {
     case 'confirmed':
       return 'Results confirmed · updating tournaments';
     case 'synced':
-      return gw.nextGw ? `Results final · GW${gw.nextGw.id} deadline ${formatUk(gw.nextGw.deadline)}` : 'Results final · season complete';
+      return gw.nextGw ? `GW${gw.activeGw} Complete · GW${gw.nextGw.id} Deadline ${formatUk(gw.nextGw.deadline)}` : `GW${gw.activeGw} Complete · season complete`;
     default:
       return `Final through GW${gw.syncedThroughGw}`
         + (gw.liveGw ? ` · GW${gw.liveGw} scores are provisional` : '')

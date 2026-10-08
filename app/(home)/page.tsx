@@ -4,15 +4,14 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
 import Snippet from '@/components/snippet';
-import GameweekTimeline from '@/components/GameweekTimeline';
+import BackPageBanner from '@/components/BackPageBanner';
 import { GameweekChip } from '@/components/GameweekBadge';
-import MovementArrow from '@/components/MovementArrow';
+import MovementArrow, { NewEntryMark } from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getWeekProjection, dueFor } from '@/lib/projection';
 import { toPlainText } from '@/lib/richtext';
 import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
 import DueMark from '@/components/DueMark';
-import { GameweekTimelineSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
@@ -24,16 +23,10 @@ import { eliminatorNextLine, onionBaggersNextLine, championsLeagueNextLine } fro
 export default function Dashboard() {
   return (
     <div className="relative pb-4">
-      <header className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-4xl font-extrabold text-ink tracking-tight">ITF Hub</h1>
-        <p className="text-dim">Live updates and standings for the 2026-27 Season.</p>
+      <header className="mb-8 sm:mb-10">
+        <h1 className="sr-only">ITF Hub: live updates and standings for the 2026-27 season</h1>
+        <BackPageBanner />
       </header>
-
-      <div className="mb-8">
-        <Suspense fallback={<GameweekTimelineSkeleton />}>
-          <GameweekTimeline />
-        </Suspense>
-      </div>
 
       {/* The Suspense boundary stops Next.js from throwing the Blocking Navigation error */}
       <Suspense fallback={<DashboardSkeleton />}>
@@ -179,6 +172,12 @@ async function DashboardContent() {
         [...itfPreviousScores].sort((a: any, b: any) => b.classic_total_points - a.classic_total_points).map((s: any) => s.manager_fpl_id)
       )
     : {};
+  const itfPreviousTopTen = new Set(
+    [...(itfPreviousScores || [])].sort((a, b) => b.classic_total_points - a.classic_total_points).slice(0, 10).map(s => Number(s.manager_fpl_id))
+  );
+  const itfMark = (id: number) => itfPreviousTopTen.size > 0 && !itfPreviousTopTen.has(Number(id))
+    ? <NewEntryMark />
+    : <MovementArrow delta={itfMovement[id]} />;
 
   return (
     <>
@@ -235,7 +234,7 @@ async function DashboardContent() {
               nextLine={nextLines.el}
               summary={elStatus && elStatus.length > 0 ? (
                 <>
-                  <span className="text-2xl font-black text-ink">{elAlive}</span> <span className="text-dim">alive</span>
+                  <span className="text-2xl font-black text-ink">{elAlive}</span> <span className="text-dim">remain</span>
                   {elLastCut && (
                     <span className="block mt-1 text-xs text-dim">
                       Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="text-red-400 min-w-0" />
@@ -306,7 +305,7 @@ async function DashboardContent() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold min-w-0" />
-                        <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
+                        {itfMark(manager.manager_fpl_id)}
                       </div>
                       <div className="text-xs text-faint">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
                     </div>
@@ -331,7 +330,7 @@ async function DashboardContent() {
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold" />
-                        <MovementArrow delta={itfMovement[manager.manager_fpl_id]} />
+                        {itfMark(manager.manager_fpl_id)}
                       </div>
                       <div className="text-xs text-faint">{manager.season_managers.managers.real_name}</div>
                     </td>
