@@ -5,7 +5,6 @@ import { Suspense } from 'react';
 import MobileNav from '@/components/mobile-nav';
 import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
-import { TickerSwitch } from '@/components/Ticker';
 import { INTRO_HEAD_SCRIPT } from '@/lib/intro';
 import { THEME_HEAD_SCRIPT } from '@/lib/theme';
 import Image from 'next/image';
@@ -52,11 +51,10 @@ async function Navbar() {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden lg:flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em]">
-                <Link href="/my-team" className="whitespace-nowrap text-dim hover:text-white transition px-2 py-2 rounded-sm">My team</Link>
-                <Link href="/plan" className="whitespace-nowrap bg-brand text-white hover:bg-brand/85 transition px-3 py-1.5 rounded-sm">Plan</Link>
+              <div className="hidden lg:flex items-center gap-2 text-sm font-semibold">
+                <Link href="/my-team" className="whitespace-nowrap border border-line text-ink-2 hover:text-white hover:border-faint transition px-3 py-1.5 rounded-sm">My team</Link>
+                <Link href="/plan" className="whitespace-nowrap border border-brand bg-brand text-white hover:bg-brand/85 transition px-3 py-1.5 rounded-sm">Plan next week</Link>
               </div>
-              <TickerSwitch />
               {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
               {(isAdmin || isEditor) && (
                 <div className="hidden lg:flex space-x-4 text-xs font-semibold uppercase tracking-[0.08em] -mr-2">

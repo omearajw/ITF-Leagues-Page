@@ -8,8 +8,8 @@ type Mode = 'motm' | 'live';
 const STORAGE_KEY = 'itf-ticker-mode';
 const EVENT = 'itf-ticker-mode';
 
-// Mode lives in localStorage and is broadcast within the tab so the switch in the
-// navbar and the bar at the bottom stay in step.
+// Mode lives in localStorage, broadcast within the tab and across tabs, so every open page
+// shows the same feed.
 function useTickerMode(): [Mode, (m: Mode) => void] {
   const [mode, setMode] = useState<Mode>('motm');
   useEffect(() => {
@@ -32,14 +32,13 @@ function useTickerMode(): [Mode, (m: Mode) => void] {
   return [mode, choose];
 }
 
-export function TickerSwitch() {
-  const [mode, choose] = useTickerMode();
+// Sits at the left end of the bar it controls, so it's clear what it switches.
+function TickerSwitch({ mode, choose }: { mode: Mode; choose: (m: Mode) => void }) {
   return (
-    <div className="hidden md:flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em]" role="group" aria-label="Ticker">
-      <span className="text-faint">Ticker</span>
-      <div className="flex rounded-sm overflow-hidden border border-line">
+    <div className="shrink-0 flex items-center px-3 bg-panel-2 border-r border-line" role="group" aria-label="Ticker shows">
+      <div className="flex rounded-sm overflow-hidden border border-line text-xs font-semibold uppercase tracking-[0.08em]">
         {([['motm', 'MotM'], ['live', 'Live']] as const).map(([key, label]) => (
-          <button key={key} type="button" onClick={() => choose(key)} aria-pressed={mode === key} className={`px-2 py-1 transition ${mode === key ? 'bg-brand text-white' : 'bg-panel-2 text-dim hover:text-ink'}`}>{label}</button>
+          <button key={key} type="button" onClick={() => choose(key)} aria-pressed={mode === key} className={`px-2.5 py-1 transition ${mode === key ? 'bg-brand text-white' : 'bg-panel text-dim hover:text-ink'}`}>{label}</button>
         ))}
       </div>
     </div>
@@ -102,12 +101,15 @@ function LiveContent({ live }: { live: TickerLive }) {
 }
 
 export function TickerBar({ motm, live }: { motm: TickerMotm; live: TickerLive }) {
-  const [mode] = useTickerMode();
+  const [mode, choose] = useTickerMode();
   return (
-    <div className="hidden md:block fixed bottom-0 left-0 w-full bg-panel text-white overflow-hidden border-t-[3px] border-brand z-40">
-      <Marquee key={mode} speed={mode === 'live' ? 70 : 60}>
-        {mode === 'live' ? <LiveContent live={live} /> : <MotmContent motm={motm} />}
-      </Marquee>
+    <div className="hidden md:flex fixed bottom-0 left-0 w-full bg-panel text-white border-t-[3px] border-brand z-40">
+      <TickerSwitch mode={mode} choose={choose} />
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <Marquee key={mode} speed={mode === 'live' ? 70 : 60}>
+          {mode === 'live' ? <LiveContent live={live} /> : <MotmContent motm={motm} />}
+        </Marquee>
+      </div>
     </div>
   );
 }

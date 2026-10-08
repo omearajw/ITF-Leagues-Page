@@ -201,6 +201,17 @@
   /* A small label for a figure or column, never an eyebrow above a heading. */
   .label { @apply text-xs font-semibold uppercase tracking-[0.08em] text-dim; }
 
+  /* Anchors, so text hangs off something instead of floating on the page, without outlining
+     everything: a heavy rule over a column, thin rules between columns, a solid plate behind a
+     big figure, a shaded band down a table's key column, and (hub widgets only) a shaded box. */
+  .col-head { @apply border-t-[3px] border-ink/85 pt-3; }
+  .col-rules > * { @apply md:px-6 md:first:pl-0 md:last:pr-0; }
+  /* The same thin rules for a list that flows into newspaper columns (CSS columns). */
+  .flow-rules { column-rule: 1px solid rgb(var(--color-line)); }
+  .plate { @apply inline-flex items-center justify-center gap-1 rounded-sm bg-surface-2 px-2 py-1.5 leading-none text-ink tabular; }
+  .key-col { @apply bg-surface; }
+  .panel { @apply rounded-sm bg-surface p-4 sm:p-5; }
+
   .writeup { @apply text-[15px] leading-relaxed text-ink-2; }
   .writeup h2 { @apply font-display text-2xl leading-none tracking-[0.01em] text-ink mt-4 mb-2 first:mt-0; }
   .writeup h3 { @apply font-display text-lg leading-tight tracking-[0.02em] text-ink mt-3 mb-1 first:mt-0; }
@@ -226,6 +237,12 @@ html[data-intro="play"] .intro-splash.is-driven { animation: none; }
 /* The lettering animates as separate letters, then becomes the banner's single shape at rest. */
 .intro-splash:not([data-settled]) [data-mark-union],
 .intro-splash[data-settled] [data-glyph] { display: none; }
+
+/* Thin rules between columns, set on the left edge only so each column's heavy top rule keeps
+   its colour (Tailwind's divide colour would recolour every side). */
+@media (min-width: 768px) {
+  .col-rules > * + * { border-left: 1px solid rgb(var(--color-line)); }
+}
 
 @layer utilities {
   .flip-face,

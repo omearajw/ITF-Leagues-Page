@@ -158,7 +158,7 @@ async function DivisionContent({ division, requestedGw }: { division: Division; 
             <th className="label font-semibold py-2 px-2 text-center w-12 hidden md:table-cell">D</th>
             <th className="label font-semibold py-2 px-2 text-center w-12 hidden md:table-cell">L</th>
             <th className="label font-semibold py-2 px-2 text-right w-20 hidden md:table-cell">Total</th>
-            <th className="label font-semibold py-2 pl-2 text-right w-16 text-ink">Pts</th>
+            <th className="label font-semibold py-2 px-3 text-right w-16 text-ink key-col">Pts</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -180,7 +180,7 @@ async function DivisionContent({ division, requestedGw }: { division: Division; 
               <td className="py-3 px-2 text-center font-semibold text-dim hidden md:table-cell">{team.drawn}</td>
               <td className="py-3 px-2 text-center font-semibold text-loss-2 hidden md:table-cell">{team.lost}</td>
               <td className="py-3 px-2 text-right text-dim hidden md:table-cell">{team.totalPoints}</td>
-              <td className="py-3 pl-2 text-right font-display text-3xl leading-none text-ink">{team.matchPoints}</td>
+              <td className="py-3 px-3 text-right font-display text-3xl leading-none text-ink key-col">{team.matchPoints}</td>
             </tr>
           ))}
           {tableData.length === 0 && (

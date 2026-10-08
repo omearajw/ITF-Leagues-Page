@@ -20,9 +20,10 @@ export default function PageHeader({
           <span className="min-w-0">{title}</span>
           {titleExtra}
         </h1>
-        {(badge || actions) && (
+        {/* The status sits on the title's baseline rather than off at the far edge. */}
+        {badge && <div className="flex items-center sm:pb-1.5">{badge}</div>}
+        {actions && (
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto sm:pb-1">
-            {badge}
             {actions}
           </div>
         )}

@@ -136,7 +136,7 @@ async function EliminatorContent() {
 
           <section className="mb-16">
             <SectionHeading aside={<span className="text-dim">{roster?.length || 0} managers, all safe</span>}>Entrants</SectionHeading>
-            <div className="columns-1 sm:columns-2 lg:columns-3 gap-x-8">
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-x-12 flow-rules">
               {roster?.map((mgr: any) => (
                 <div key={mgr.manager_fpl_id} className="break-inside-avoid flex items-center justify-between gap-3 py-2.5 border-b border-line">
                   <div className="min-w-0">
@@ -180,7 +180,7 @@ async function EliminatorContent() {
                       </div>
                       <div className="text-sm text-dim">{mgr.season_managers.managers.real_name}</div>
                     </div>
-                    <span className="shrink-0 font-display text-3xl leading-none text-brand-2">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
+                    <span className="plate shrink-0 bg-loss text-white font-display text-2xl min-w-[3.25rem]">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
                   </div>
                 ))}
                 <div className="flex items-center gap-3 mt-1" aria-hidden="true">
@@ -190,14 +190,14 @@ async function EliminatorContent() {
                 </div>
               </div>
             )}
-            <ol className="columns-1 sm:columns-2 lg:columns-3 gap-x-8">
+            <ol className="columns-1 sm:columns-2 lg:columns-3 gap-x-12 flow-rules">
               {survivors.filter(m => !atRisk.has(m.manager_fpl_id)).map((mgr: any) => (
                 <li key={mgr.season_managers.team_name} className="break-inside-avoid flex items-center justify-between gap-3 py-2.5 border-b border-line">
                   <div className="min-w-0">
                     <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                     <div className="text-sm text-dim">{mgr.season_managers.managers.real_name}</div>
                   </div>
-                  <span className="shrink-0 font-display text-3xl leading-none text-ink">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
+                  <span className="plate shrink-0 font-display text-2xl min-w-[3.25rem]">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
                 </li>
               ))}
             </ol>

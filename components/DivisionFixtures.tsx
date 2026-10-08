@@ -29,11 +29,11 @@ function FixtureRow({ fix, scores, teamNames, live, projection }: { fix: H2HFixt
         <TeamName name={teamNames[fix.m1] || fix.name1} managerId={fix.m1} inline className="min-w-0" />
       </span>
       {played ? (
-        <span className={`shrink-0 font-display text-xl leading-none px-2 whitespace-nowrap ${live ? 'text-live-2' : 'text-ink'}`}>
+        <span className={`plate shrink-0 font-display text-xl mx-1 whitespace-nowrap ${live ? 'text-live-2' : 'text-ink'}`}>
           <DueMark due={d1} className="mr-1 font-sans" />{s1}<span className="text-faint mx-1">-</span>{s2}<DueMark due={d2} className="ml-1 font-sans" />
         </span>
       ) : (
-        <span className="shrink-0 label px-2">v</span>
+        <span className="plate shrink-0 label mx-1 px-2.5">v</span>
       )}
       <span className={`flex min-w-0 flex-1 ${lead2 ? 'font-bold text-ink' : lead1 ? 'text-dim' : 'text-ink-2'}`}>
         <TeamName name={teamNames[fix.m2] || fix.name2} managerId={fix.m2} inline className="min-w-0" />
@@ -64,7 +64,7 @@ export default async function DivisionFixtures({ leagueId, gw, teamNames, week }
   if (!thisWeek && !nextWeek) return null;
 
   return (
-    <section className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10">
+    <section className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-y-10 col-rules">
       {thisWeek && (
         <div>
           <SectionHeading as="h2" className="mb-2" aside={isLive ? <LiveChip /> : undefined}>GW{thisGw} Fixtures</SectionHeading>

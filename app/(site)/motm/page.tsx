@@ -30,9 +30,9 @@ function MonthCard({ month }: { month: MotmMonth }) {
       )}>
         {month.label}
       </SectionHeading>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 col-rules">
         {month.divisions.map(div => (
-          <div key={div.division}>
+          <div key={div.division} className="col-head">
             <div className="flex items-baseline justify-between gap-3 mb-2">
               <h3 className="font-display text-lg leading-none tracking-[0.03em] text-ink-2">{div.division}</h3>
               {div.leaders.length > 1 && <span className="label">Shared</span>}
@@ -47,7 +47,7 @@ function MonthCard({ month }: { month: MotmMonth }) {
                       <TeamName name={leader.teamName} managerId={leader.id} inline className="font-semibold text-ink min-w-0" />
                       <div className="text-sm text-dim">{leader.realName}</div>
                     </div>
-                    <span className="shrink-0 font-display text-3xl leading-none text-ink">{leader.points}</span>
+                    <span className="plate shrink-0 font-display text-3xl min-w-[3.75rem]">{leader.points}</span>
                   </div>
                 ))}
               </div>

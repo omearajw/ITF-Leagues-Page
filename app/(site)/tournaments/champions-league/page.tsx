@@ -130,8 +130,8 @@ async function ChampionsLeagueContent() {
         </p>}
       </PageHeader>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-        <div className="xl:col-span-2 space-y-12">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 xl:gap-0 xl:divide-x xl:divide-line">
+        <div className="xl:col-span-2 space-y-12 xl:pr-8">
 
           {isPreTournament && (
             <section>
@@ -211,7 +211,7 @@ async function ChampionsLeagueContent() {
         </div>
 
         {/* Fixture log: collapsible below xl, where it sits under the tables */}
-        <div className="xl:col-span-1">
+        <div className="xl:col-span-1 xl:pl-8">
           <details className="xl:hidden border-y border-line">
             <summary className="py-3 flex justify-between items-center gap-3 cursor-pointer list-none">
               <h2 className="font-display text-2xl leading-none tracking-[0.01em] text-ink">Fixtures &amp; Results</h2>
@@ -263,11 +263,11 @@ function FixtureLog({ fixtures, entrants, liveGw, projection }: { fixtures: any[
                 <TeamName name={entrants[fix.manager_1_id]?.teamName} managerId={fix.manager_1_id} inline className="min-w-0" />
               </span>
               {isPlayed ? (
-                <span className={`font-display text-xl leading-none shrink-0 whitespace-nowrap ${isLiveFix ? 'text-live-2' : 'text-ink'}`}>
+                <span className={`plate font-display text-xl shrink-0 whitespace-nowrap ${isLiveFix ? 'text-live-2' : 'text-ink'}`}>
                   <DueMark due={d1} className="mr-1 font-sans" />{s1}<span className="text-faint mx-1">-</span>{s2}<DueMark due={d2} className="ml-1 font-sans" />
                 </span>
               ) : (
-                <span className="label shrink-0">v</span>
+                <span className="plate label shrink-0 px-2.5">v</span>
               )}
               <span className={`flex justify-end min-w-0 w-2/5 text-right ${!isPlayed ? 'text-dim' : won2 ? 'font-bold text-ink' : 'text-ink-2'}`}>
                 <TeamName name={entrants[fix.manager_2_id]?.teamName} managerId={fix.manager_2_id} inline className="min-w-0" />
@@ -297,7 +297,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
           <th className="label font-semibold py-2 px-2 text-center w-12 hidden md:table-cell">D</th>
           <th className="label font-semibold py-2 px-2 text-center w-12 hidden md:table-cell">L</th>
           <th className="label font-semibold py-2 px-2 text-right w-20 hidden md:table-cell">Total</th>
-          <th className="label font-semibold py-2 pl-2 text-right w-16 text-ink">Pts</th>
+          <th className="label font-semibold py-2 px-3 text-right w-16 text-ink key-col">Pts</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-line">
@@ -329,7 +329,7 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
               <td className="py-3 px-2 text-center font-semibold text-dim hidden md:table-cell">{team.drawn}</td>
               <td className="py-3 px-2 text-center font-semibold text-loss-2 hidden md:table-cell">{team.lost}</td>
               <td className="py-3 px-2 text-right text-dim hidden md:table-cell">{team.totalScore}</td>
-              <td className={`py-3 pl-2 text-right font-display text-3xl leading-none ${out ? 'text-dim' : 'text-ink'}`}>{team.points}</td>
+              <td className={`py-3 px-3 text-right font-display text-3xl leading-none key-col ${out ? 'text-dim' : 'text-ink'}`}>{team.points}</td>
             </tr>
           );
         })}

@@ -215,7 +215,7 @@ async function OnionBaggersContent() {
                             <div className="text-sm text-dim">{teamMap[entrant.manager_fpl_id]?.realName} · GW{entrant.qualified_in_gw}</div>
                           </div>
                         </div>
-                        <span className="shrink-0 font-display text-2xl leading-none text-win-2">{getScore(entrant.manager_fpl_id, entrant.qualified_in_gw)}</span>
+                        <span className="plate shrink-0 font-display text-2xl min-w-[3.25rem] text-win-2">{getScore(entrant.manager_fpl_id, entrant.qualified_in_gw)}</span>
                       </div>
                     );
                   })}
@@ -235,7 +235,7 @@ async function OnionBaggersContent() {
                           <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                           <div className="text-sm text-dim">{teamMap[manager.manager_fpl_id]?.realName}</div>
                         </div>
-                        <span className="shrink-0 font-display text-2xl leading-none text-ink">{getScore(manager.manager_fpl_id, displayGw)} <DueMark due={dueOf(manager.manager_fpl_id)} className="font-sans" /></span>
+                        <span className="plate shrink-0 font-display text-2xl min-w-[3.25rem]">{getScore(manager.manager_fpl_id, displayGw)} <DueMark due={dueOf(manager.manager_fpl_id)} className="font-sans" /></span>
                       </div>
                       {recent.length > 0 && (
                         <div className="mt-1 text-sm text-dim tabular">
@@ -289,7 +289,7 @@ async function OnionBaggersContent() {
         </section>
       )}
 
-      <p className="mt-16 pb-8 text-center label">Dedicated to the original Onion Bagger.</p>
+      <p className="mt-16 mb-8 pt-4 border-t border-line text-center label">Dedicated to the original Onion Bagger.</p>
     </>
   );
 }
@@ -355,7 +355,7 @@ function MatchRow({ managerId, score, due, isWinner, isPlayed, isLive, teamMap }
         className={`text-sm min-w-0 max-w-[60vw] sm:max-w-[160px] ${isWinner ? 'font-bold text-ink' : lost ? 'text-faint' : 'text-ink-2'}`}
       />
       {isPlayed && (
-        <span className={`font-display text-xl leading-none whitespace-nowrap ${isLive ? 'text-live-2' : isWinner ? 'text-ink' : 'text-faint'}`}>
+        <span className={`plate font-display text-xl whitespace-nowrap ${isLive ? 'text-live-2' : isWinner ? 'text-ink' : 'text-faint'}`}>
           {score} <DueMark due={due} className="font-sans" />
         </span>
       )}

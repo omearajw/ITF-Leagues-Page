@@ -37,6 +37,13 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
   ]);
   const many = (totw?.winners.length ?? 0) > 1;
   const lineups = totw ? await Promise.all(totw.winners.map(w => getFinalLineup(w.id, totw.gw))) : [];
+  const facts = totw && (
+    <>
+      {totw.nextBest !== null && <span><b className="text-ink tabular">+{totw.winners[0].points - totw.nextBest}</b> clear of the rest</span>}
+      <span>League average <b className="text-ink tabular">{totw.average}</b></span>
+      <span>Left on the bench <b className="text-ink tabular">{totw.winners.map(w => w.benchPoints).join(' / ')}</b></span>
+    </>
+  );
 
   return (
     <>
@@ -56,22 +63,17 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
         <p className="py-10 text-center text-dim">No scores recorded for GW{selectedGw} yet.</p>
       ) : (
         <>
-          <section className="border-y border-line py-4 mb-3">
-            <div className={many ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}>
-              {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} />)}
+          <section className="border-y border-line py-5 mb-10">
+            <div className={many ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 col-rules' : ''}>
+              {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} facts={many ? undefined : facts} />)}
             </div>
             {many && (
-              <p className="mt-3 text-sm font-semibold text-ink-2">
-                Shared by {totw.winners.length} teams, all on {totw.winners[0].points}.
-              </p>
+              <div className="mt-4 pt-3 border-t border-line flex flex-wrap gap-x-6 gap-y-1 text-sm text-dim">
+                <span className="font-semibold text-ink-2">Shared by {totw.winners.length} teams, all on {totw.winners[0].points}.</span>
+                {facts}
+              </div>
             )}
           </section>
-
-          <p className="flex flex-wrap gap-x-6 gap-y-1 text-dim mb-10">
-            {totw.nextBest !== null && <span><b className="text-ink tabular">+{totw.winners[0].points - totw.nextBest}</b> clear of the rest</span>}
-            <span>League average <b className="text-ink tabular">{totw.average}</b></span>
-            <span>Left on the bench <b className="text-ink tabular">{totw.winners.map(w => w.benchPoints).join(' / ')}</b></span>
-          </p>
 
           {totw.winners.map((team, i) => {
             const lineup = lineups[i];

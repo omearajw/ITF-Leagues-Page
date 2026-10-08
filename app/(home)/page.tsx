@@ -190,7 +190,7 @@ async function DashboardContent() {
       <section>
         <SectionHeading aside={<GameweekChip gw={gw} />}>League</SectionHeading>
         {gw.liveGw && <p className="text-sm text-dim -mt-2 mb-4">Pts and positions update once GW{gw.liveGw} is confirmed.</p>}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 col-rules">
           <DivisionWidget name="Premier League" link="/divisions/premier-league" lead={leads['premier-league']} gw={currentGw} teams={premierLeagueTeams} placeholder={noWriteUp} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
           <DivisionWidget name="Championship" link="/divisions/championship" lead={leads['championship']} gw={currentGw} teams={championshipTeams} placeholder={noWriteUp} movement={divisionMovement(championshipTeams, 'Championship')} />
           <DivisionWidget name="League One" link="/divisions/league-one" lead={leads['league-one']} gw={currentGw} teams={leagueOneTeams} placeholder={noWriteUp} movement={divisionMovement(leagueOneTeams, 'League One')} />
@@ -199,7 +199,7 @@ async function DashboardContent() {
 
       <section>
         <SectionHeading>Tournaments</SectionHeading>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 items-start gap-4">
           <TournamentWidget
             name="Onion Baggers Cup"
             stage={currentGw < obKnock ? `Qualifiers, since GW${obQual}` : `Knockouts, since GW${obKnock}`}
@@ -230,7 +230,7 @@ async function DashboardContent() {
             nextLine={nextLines.el}
             summary={elStatus && elStatus.length > 0 ? (
               <>
-                <span className="font-display text-5xl leading-none text-ink tabular">{elAlive}</span> <span className="label">remain</span>
+                <span className="plate bg-panel font-display text-4xl px-2.5">{elAlive}</span> <span className="label ml-1">remain</span>
                 {elLastCut && (
                   <span className="block mt-2 text-sm text-dim">
                     Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
@@ -255,9 +255,9 @@ async function DashboardContent() {
           )}>
             Manager of the Month
           </SectionHeading>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 col-rules">
             {motmLatest.divisions.map(div => (
-              <div key={div.division}>
+              <div key={div.division} className="col-head">
                 <div className="flex items-baseline justify-between gap-3 mb-2">
                   <h3 className="font-display text-lg leading-none tracking-[0.03em] text-ink-2">{div.division}</h3>
                   {div.leaders.length > 1 && <span className="label">Shared</span>}
@@ -272,7 +272,7 @@ async function DashboardContent() {
                           <TeamName name={leader.teamName} managerId={leader.id} inline className="font-semibold text-ink min-w-0" />
                           <div className="text-sm text-dim">{leader.realName}</div>
                         </div>
-                        <span className="shrink-0 font-display text-3xl leading-none text-ink tabular">{leader.points}</span>
+                        <span className="plate shrink-0 font-display text-3xl min-w-[3.75rem]">{leader.points}</span>
                       </div>
                     ))}
                   </div>
@@ -297,8 +297,8 @@ async function DashboardContent() {
             <tr className="border-b border-line">
               <th className="label font-semibold py-2 pr-3 w-10">Pos</th>
               <th className="label font-semibold py-2 pr-3">Team</th>
-              <th className="label font-semibold py-2 pr-3 hidden md:table-cell">Division</th>
-              <th className="label font-semibold py-2 text-right">Total</th>
+              <th className="label font-semibold py-2 px-3 text-right w-24">GW{scoresGw}</th>
+              <th className="label font-semibold py-2 px-3 text-right w-28 key-col">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -310,10 +310,10 @@ async function DashboardContent() {
                     <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                     {itfMark(manager.manager_fpl_id)}
                   </div>
-                  <div className="text-dim">{manager.season_managers.managers.real_name}<span className="md:hidden"> · {manager.season_managers.division}</span></div>
+                  <div className="text-dim">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
                 </td>
-                <td className="py-2.5 pr-3 text-dim hidden md:table-cell">{manager.season_managers.division}</td>
-                <td className="py-2.5 text-right whitespace-nowrap"><span className="font-display text-2xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
+                <td className={`py-2.5 px-3 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)}</td>
+                <td className="py-2.5 px-3 text-right whitespace-nowrap key-col"><span className="font-display text-2xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
               </tr>
             ))}
           </tbody>
@@ -335,7 +335,7 @@ type Lead = { headline: string | null; teaser: string };
 function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: { name: string, link: string, lead?: Lead, gw: number, teams: any[], movement: Record<number, number | null>, placeholder?: string }) {
   const headline = lead?.headline;
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col col-head">
       <Link href={link} className="group">
         <h3 className="font-display text-[1.9rem] leading-display tracking-[0.01em] text-ink group-hover:text-brand-2 transition-colors text-balance">{headline || name}</h3>
       </Link>
@@ -351,7 +351,7 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
           <tr className="border-b border-line">
             <th className="label font-semibold py-1.5 pr-3 w-10">Pos</th>
             <th className="label font-semibold py-1.5">{name}</th>
-            <th className="label font-semibold py-1.5 text-right">Pts</th>
+            <th className="label font-semibold py-1.5 px-2 text-right key-col">Pts</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -364,7 +364,7 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
                   <MovementArrow delta={movement[team.manager_fpl_id]} />
                 </span>
               </td>
-              <td className="py-1.5 text-right font-bold text-ink">{team.h2h_points}</td>
+              <td className="py-1.5 px-2 text-right font-bold text-ink key-col">{team.h2h_points}</td>
             </tr>
           ))}
           {teams.length === 0 && (
@@ -381,7 +381,7 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
 function TournamentWidget({ name, stage, status, pending, link, lead, nextLine, summary, placeholder }: { name: string, stage: string, status: string, pending: boolean, link: string, lead?: Lead, nextLine?: string, summary?: React.ReactNode, placeholder?: string }) {
   const headline = !pending ? lead?.headline : null;
   return (
-    <div className="flex flex-col">
+    <div className="panel flex flex-col">
       <Link href={link} className="group">
         <h3 className={`font-display text-[1.9rem] leading-display tracking-[0.01em] transition-colors text-balance ${pending ? 'text-ink-2' : 'text-ink'} group-hover:text-brand-2`}>{headline || name}</h3>
       </Link>

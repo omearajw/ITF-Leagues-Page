@@ -101,7 +101,7 @@ async function ITFOpenContent() {
             <th className="label font-semibold py-2 pr-3">Team</th>
             <th className="label font-semibold py-2 pr-3 hidden md:table-cell">Division</th>
             <th className="label font-semibold py-2 px-2 text-right">GW{scoresGw}</th>
-            <th className="label font-semibold py-2 pl-2 text-right text-ink">Total</th>
+            <th className="label font-semibold py-2 px-3 text-right text-ink key-col">Total</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -117,7 +117,7 @@ async function ITFOpenContent() {
               </td>
               <td className="py-3 pr-3 text-dim hidden md:table-cell">{manager.season_managers.division}</td>
               <td className={`py-3 px-2 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
-              <td className="py-3 pl-2 text-right whitespace-nowrap">
+              <td className="py-3 px-3 text-right whitespace-nowrap key-col">
                 <span className="font-display text-3xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} />
               </td>
             </tr>
