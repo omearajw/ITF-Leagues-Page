@@ -15,8 +15,8 @@ const SHORT_LABEL: Record<GameweekStage, string> = {
 function Fact({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
-      <div className="text-[10px] font-bold uppercase tracking-widest text-faint">{label}</div>
-      <div className="font-bold text-ink">{value}</div>
+      <div className="label">{label}</div>
+      <div className="font-semibold text-ink">{value}</div>
       {sub && <div className="text-xs text-dim">{sub}</div>}
     </div>
   );
@@ -42,7 +42,7 @@ export function StageCheckpoints({ stage, progress }: { stage: GameweekStage; pr
             </div>
           );
         })}
-        <span className={`w-3 h-3 rounded-full shrink-0 ring-4 ring-surface ${idx === 3 ? 'bg-green-500' : 'bg-surface-3'}`} />
+        <span className={`w-3 h-3 rounded-full shrink-0 ring-4 ring-surface ${idx === 3 ? 'bg-win-2' : 'bg-surface-3'}`} />
       </div>
 
       <div className="flex mt-2 text-xs">
@@ -56,7 +56,7 @@ export function StageCheckpoints({ stage, progress }: { stage: GameweekStage; pr
             </div>
           );
         })}
-        <div className={`shrink-0 -ml-8 w-8 text-right ${idx === 3 ? 'font-bold text-green-400' : 'text-faint'}`}>{STAGE_LABEL.final}</div>
+        <div className={`shrink-0 -ml-8 w-8 text-right ${idx === 3 ? 'font-bold text-win-2' : 'text-faint'}`}>{STAGE_LABEL.final}</div>
       </div>
     </div>
   );
@@ -100,7 +100,7 @@ export default async function GameweekTimeline() {
       </summary>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-5">
         {!gw.fplAvailable || !stage ? (
-          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-200 rounded-lg p-4 text-sm mt-2">
+          <div className="bg-live/10 border border-live/30 text-live-2 rounded-lg p-4 text-sm mt-2">
             Live FPL status is unavailable right now. Results are final through GW{gw.syncedThroughGw}
             {gw.liveGw ? `, and GW${gw.liveGw} scores on the site are provisional.` : '.'}
           </div>

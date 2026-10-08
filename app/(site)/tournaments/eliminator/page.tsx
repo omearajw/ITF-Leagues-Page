@@ -9,6 +9,7 @@ import { getGameweekStatus } from '@/lib/gameweek-status';
 import { eliminatorNextLine } from '@/lib/tournament-next';
 import { getWeekProjection, dueFor } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
+import SectionHeading from '@/components/SectionHeading';
 
 export default async function EliminatorPage() {
   const supabase = await createClient();
@@ -72,7 +73,7 @@ async function EliminatorContent() {
 
   const { data: allScores } = await supabase.from('manager_gw_scores').select('manager_fpl_id, gw_number, points').eq('season_id', SEASON_ID);
 
-  if (error) return <div className="p-10 text-red-500">Error: {error.message}</div>;
+  if (error) return <div className="p-10 text-loss-2">Error: {error.message}</div>;
 
   // Helper to find a specific week's score
   const getScore = (managerId: number, gw: number) => {
@@ -109,185 +110,134 @@ async function EliminatorContent() {
 
   return (
     <>
-      {/* HEADER */}
       <PageHeader
         className="mb-10 sm:mb-12"
         title="The Eliminator"
-        titleExtra={(
-          <span className={`text-xs sm:text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase ${statusMuted ? 'bg-surface-3 text-dim' : 'bg-panel text-white'}`}>
-            {statusLabel}
-          </span>
-        )}
-        badge={(
-          <GameweekChip gw={gw} startGw={startGw} />
-        )}
+        titleExtra={<span className={`text-2xl sm:text-4xl ${statusMuted ? 'text-dim' : 'text-brand-2'}`}>{statusLabel}</span>}
+        badge={<GameweekChip gw={gw} startGw={startGw} />}
       >
-        {contentData?.content && (
-          <div className="bg-surface border-l-4 border-red-500 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">
-            <RichText content={contentData.content} />
-          </div>
-        )}
-        {/* Before it starts the chip and the card below already say when. */}
-        {!isPreTournament && <p className="text-sm text-dim mt-3">
-          {nextLine}
-          {gw.liveGw ? ` · Survivors show GW${gw.liveGw} points so far; the cut is made once the week is confirmed.` : ''}
+        {!isPreTournament && <p className="text-dim max-w-[34rem]">
+          The lowest net score each week is out.{' '}{nextLine}.
+          {gw.liveGw ? ` Survivors show GW${gw.liveGw} points so far; the cut is made once the week is confirmed.` : ''}
         </p>}
+        {contentData?.content && (
+          <article className="max-w-[34rem] border-t border-line pt-5 mt-5 text-[15px] leading-relaxed text-ink-2">
+            <RichText content={contentData.content} />
+          </article>
+        )}
       </PageHeader>
 
-      {/* CONDITIONAL RENDER: PRE-TOURNAMENT VS ACTIVE TOURNAMENT */}
       {isPreTournament ? (
         <>
-          <section className="mb-12 text-center bg-surface border border-line rounded-xl p-6 sm:p-12 shadow-sm">
-            <h2 className="text-2xl sm:text-3xl font-black text-ink mb-2">The Purge is Pending</h2>
-            <p className="text-dim">The battle for survival begins in <strong>Gameweek {startGw}</strong>, once the scores are confirmed. Until then, everyone is safe.</p>
+          <section className="mb-12">
+            <SectionHeading>The Purge is Pending</SectionHeading>
+            <p className="text-dim max-w-[34rem]">The battle for survival begins in <strong className="text-ink">Gameweek {startGw}</strong>, once the scores are confirmed. Until then, everyone is safe.</p>
           </section>
 
           <section className="mb-16">
-            <h2 className="text-2xl font-bold text-ink mb-6 flex items-center gap-2">
-              <div className="w-3 h-3 bg-surface-3 rounded-full"></div>
-              Entrants <span className="text-sm font-normal text-faint ml-2">({roster?.length || 0} managers, all safe)</span>
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <SectionHeading aside={<span className="text-dim">{roster?.length || 0} managers, all safe</span>}>Entrants</SectionHeading>
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-x-8">
               {roster?.map((mgr: any) => (
-                <div key={mgr.manager_fpl_id} className="bg-surface border border-line p-4 rounded-xl shadow-sm flex items-center justify-between">
-                  <div>
-                    <TeamName name={mgr.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink" />
-                    <div className="text-xs text-dim">{mgr.managers.real_name}</div>
+                <div key={mgr.manager_fpl_id} className="break-inside-avoid flex items-center justify-between gap-3 py-2.5 border-b border-line">
+                  <div className="min-w-0">
+                    <TeamName name={mgr.team_name} managerId={mgr.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
+                    <div className="text-sm text-dim">{mgr.managers.real_name}</div>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-faint bg-surface-2 px-2 py-1 rounded">{mgr.division}</span>
+                  <span className="label shrink-0">{mgr.division}</span>
                 </div>
               ))}
-              {(!roster || roster.length === 0) && (
-                <div className="col-span-full text-center text-faint italic py-8">No managers registered for this season yet.</div>
-              )}
             </div>
+            {(!roster || roster.length === 0) && <p className="text-center text-faint italic py-8">No managers registered for this season yet.</p>}
           </section>
         </>
       ) : !hasEntrants ? (
-        <section className="mb-12 text-center bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 sm:p-12 shadow-sm">
-          <h2 className="text-2xl sm:text-3xl font-black text-amber-200 mb-2">Waiting for Entrants</h2>
-          <p className="text-amber-300">
-            The Eliminator started in <strong>Gameweek {startGw}</strong>, but no managers have been registered yet.
-          </p>
-          <p className="text-amber-300/80 text-sm mt-2">
-            The next data sync will register all {roster?.length || 0} managers in the league and apply any outstanding eliminations.
-          </p>
+        <section className="mb-12">
+          <SectionHeading>Waiting for Entrants</SectionHeading>
+          <p className="text-ink-2">The Eliminator started in <strong>Gameweek {startGw}</strong>, but no managers have been registered yet.</p>
+          <p className="text-dim text-sm mt-2">The next data sync will register all {roster?.length || 0} managers in the league and apply any outstanding eliminations.</p>
         </section>
       ) : (
         <>
           {awaitingElimination && (
-            <div className="mb-10 bg-amber-500/10 border border-amber-500/30 text-amber-200 p-5 rounded-xl shadow-sm flex items-start gap-3">
-              <div className="w-3 h-3 mt-1.5 bg-amber-400 rounded-full animate-pulse shrink-0"></div>
-              <div>
-                <div className="font-bold">Gameweek {currentGw} elimination pending</div>
-                <p className="text-sm text-amber-300/90">
-                  Gameweek {currentGw} is finished, but the lowest scorer has not been cut yet. The next data sync will eliminate them.
-                </p>
-              </div>
+            <div className="mb-10 flex items-start gap-3 text-live-2">
+              <span className="w-2.5 h-2.5 mt-1.5 bg-live rounded-full animate-pulse shrink-0" aria-hidden="true" />
+              <p><b>Gameweek {currentGw} elimination pending.</b> <span className="text-live-2/90">Gameweek {currentGw} is finished, but the lowest scorer has not been cut yet. The next data sync will eliminate them.</span></p>
             </div>
           )}
 
-          {/* SURVIVORS */}
           <section className="mb-16">
-            <h2 className="text-2xl font-bold text-ink mb-6 flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              Active Survivors <span className="text-sm font-normal text-faint ml-2">(GW{displayGw} {displayGw === gw.liveGw ? 'live scores · provisional' : 'Scores'})</span>
-            </h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {survivors.map((mgr: any) => (
-                <div key={mgr.season_managers.team_name} className={`p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition border ${atRisk.has(mgr.manager_fpl_id) ? 'bg-red-500/10 border-red-500/50' : 'bg-surface border-green-500/20'}`}>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink" />
-                      {atRisk.has(mgr.manager_fpl_id) && (
-                        <span className="inline-flex items-center gap-1.5 text-[10px] bg-red-500/15 text-red-400 border border-red-500/40 px-2 py-0.5 rounded font-bold uppercase animate-pulse" title="On the lowest live score: out if it stays this way when the week is confirmed">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                          At risk
-                        </span>
-                      )}
+            <SectionHeading aside={<span className={displayGw === gw.liveGw ? 'text-live-2' : 'text-dim'}>GW{displayGw} {displayGw === gw.liveGw ? 'live scores · provisional' : 'Scores'}</span>}>
+              Active Survivors
+            </SectionHeading>
+            {atRisk.size > 0 && (
+              <div className="mb-4">
+                {survivors.filter(m => atRisk.has(m.manager_fpl_id)).map((mgr: any) => (
+                  <div key={mgr.season_managers.team_name} className="flex items-center justify-between gap-3 py-2.5 border-b border-line">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
+                        <span className="shrink-0 text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm" title="On the lowest live score: out if it stays this way when the week is confirmed">At risk</span>
+                      </div>
+                      <div className="text-sm text-dim">{mgr.season_managers.managers.real_name}</div>
                     </div>
-                    <div className="text-xs text-dim">{mgr.season_managers.managers.real_name}</div>
+                    <span className="shrink-0 font-display text-3xl leading-none text-brand-2">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-xl font-black text-ink">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} /></span>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${atRisk.has(mgr.manager_fpl_id) ? 'text-red-400' : 'text-green-400'}`}>Points</span>
-                  </div>
+                ))}
+                <div className="flex items-center gap-3 mt-1" aria-hidden="true">
+                  <span className="h-[3px] flex-1 bg-brand" />
+                  <span className="label text-brand-2">Cut line</span>
+                  <span className="h-[3px] flex-1 bg-brand" />
                 </div>
+              </div>
+            )}
+            <ol className="columns-1 sm:columns-2 lg:columns-3 gap-x-8">
+              {survivors.filter(m => !atRisk.has(m.manager_fpl_id)).map((mgr: any) => (
+                <li key={mgr.season_managers.team_name} className="break-inside-avoid flex items-center justify-between gap-3 py-2.5 border-b border-line">
+                  <div className="min-w-0">
+                    <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
+                    <div className="text-sm text-dim">{mgr.season_managers.managers.real_name}</div>
+                  </div>
+                  <span className="shrink-0 font-display text-3xl leading-none text-ink">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
+                </li>
               ))}
-            </div>
+            </ol>
           </section>
 
-          {/* ELIMINATED */}
           <section>
-            <h2 className="text-2xl font-bold text-ink mb-6 flex items-center gap-2 border-b pb-2">
-              The Eliminated
-            </h2>
-            
-            <div className="bg-panel rounded-xl overflow-hidden shadow-lg border border-line">
-              {dead.length === 0 ? (
-                <div className="p-6 sm:p-8 text-center text-dim italic">
-                  No one has been eliminated yet. The first casualty falls once Gameweek {startGw} is processed.
-                </div>
-              ) : (
-                <>
-                  {/* Mobile list */}
-                  <div className="md:hidden divide-y divide-line text-ink-2">
-                    {dead.map((mgr: any) => {
-                      const justDied = mgr.eliminated_gw === currentGw;
-                      return (
-                        <div key={mgr.season_managers.team_name} className={`p-3 flex items-center justify-between gap-3 ${justDied ? 'bg-red-950/40 border-l-4 border-l-red-500' : ''}`}>
-                          <div className="min-w-0">
-                            <div className={`text-xs font-bold ${justDied ? 'text-red-400' : 'text-dim'}`}>
-                              GW {mgr.eliminated_gw}
-                              {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
-                            </div>
-                            <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink line-through opacity-75 min-w-0" />
-                            <div className="text-xs text-dim">{mgr.season_managers.managers.real_name}</div>
-                          </div>
-                          <span className="shrink-0 text-lg font-black text-red-400">{getScore(mgr.manager_fpl_id, mgr.eliminated_gw || 1)} pts</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <table className="hidden md:table w-full text-left text-sm">
-                    <thead className="bg-panel-2 text-faint border-b border-line">
-                      <tr>
-                        <th className="p-4 font-semibold uppercase tracking-wider text-xs">Eliminated</th>
-                        <th className="p-4 font-semibold uppercase tracking-wider text-xs">Team & Manager</th>
-                        <th className="p-4 font-semibold uppercase tracking-wider text-xs text-right">Exit Score</th>
+            <SectionHeading>The Eliminated</SectionHeading>
+            {dead.length === 0 ? (
+              <p className="py-6 text-center text-dim italic">No one has been eliminated yet. The first casualty falls once Gameweek {startGw} is processed.</p>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line">
+                    <th className="label font-semibold py-2 pr-3 w-36">Eliminated</th>
+                    <th className="label font-semibold py-2 pr-3">Team</th>
+                    <th className="label font-semibold py-2 text-right">Exit Score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {dead.map((mgr: any) => {
+                    const justDied = mgr.eliminated_gw === currentGw;
+                    return (
+                      <tr key={mgr.season_managers.team_name} className={justDied ? 'bg-loss/15' : ''}>
+                        <td className="py-3 pr-3 align-top">
+                          <span className={`font-display text-xl leading-none ${justDied ? 'text-brand-2' : 'text-dim'}`}>GW{mgr.eliminated_gw}</span>
+                          {justDied && <span className="block mt-1 w-fit whitespace-nowrap text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm">Just eliminated</span>}
+                        </td>
+                        <td className="py-3 pr-3 min-w-0">
+                          <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="font-semibold text-ink-2 line-through decoration-brand-2 decoration-2 min-w-0" />
+                          <div className="text-dim">{mgr.season_managers.managers.real_name}</div>
+                        </td>
+                        <td className="py-3 text-right whitespace-nowrap">
+                          <span className="font-display text-2xl leading-none text-brand-2">{getScore(mgr.manager_fpl_id, mgr.eliminated_gw || 1)}</span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line text-ink-2">
-                      {dead.map((mgr: any) => {
-                        const justDied = mgr.eliminated_gw === currentGw;
-                        
-                        return (
-                          <tr key={mgr.season_managers.team_name} className={`${justDied ? 'bg-red-950/40 border-l-4 border-l-red-500' : 'hover:bg-surface-2/50'} transition-colors`}>
-                            <td className="p-4">
-                              <span className={`font-bold ${justDied ? 'text-red-400' : 'text-dim'}`}>
-                                GW {mgr.eliminated_gw}
-                              </span>
-                              {justDied && <span className="ml-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest animate-pulse">Just Eliminated</span>}
-                            </td>
-                            <td className="p-4">
-                              <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="text-ink line-through opacity-75" />
-                              <div className="text-xs text-dim">{mgr.season_managers.managers.real_name}</div>
-                            </td>
-                            <td className="p-4 text-right">
-                              <span className="text-lg font-black text-red-400">
-                                {getScore(mgr.manager_fpl_id, mgr.eliminated_gw || 1)} pts
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </>
-              )}
-            </div>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </section>
         </>
       )}

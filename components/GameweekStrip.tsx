@@ -3,9 +3,9 @@ import { getLastSyncedAt, describeAgo } from '@/lib/sync-status';
 
 export const ACTIVE_DOT: Record<GameweekStage, string> = {
   upcoming: 'bg-dim',
-  live: 'bg-amber-400 animate-pulse',
+  live: 'bg-live animate-pulse',
   awaiting: 'bg-brand',
-  final: 'bg-green-500',
+  final: 'bg-win-2',
 };
 
 export function StageDots({ stage }: { stage: GameweekStage }) {
@@ -33,7 +33,7 @@ export function StripRow({ gw, ago, trailing }: { gw: GameweekStatus; ago: strin
   const stage = stageOf(gw.phase);
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-10 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-      <span className="font-black text-ink">GW{gw.activeGw}</span>
+      <span className="font-bold text-ink">GW{gw.activeGw}</span>
       {stage && <StageDots stage={stage} />}
       <span className="text-dim sm:ml-auto">{describePhase(gw)}{ago ? ` · updated ${ago}` : ''}</span>
       {trailing}

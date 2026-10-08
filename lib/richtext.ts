@@ -60,3 +60,21 @@ export function toPlainText(content: string | null | undefined): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
+
+const decode = (text: string) => text
+  .replace(/<[^>]+>/g, '')
+  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  .replace(/\s+/g, ' ')
+  .trim();
+
+// A write-up's headline and the text that follows it, for teasers. Write-ups usually open
+// with a "Gameweek 5" heading before the real headline, so a heading that only names the week
+// is skipped. Plain-text write-ups have no headings, so they get no headline.
+export function writeUpLead(content: string | null | undefined): { headline: string | null; teaser: string } {
+  if (!content) return { headline: null, teaser: '' };
+  if (!isHtml(content)) return { headline: null, teaser: content };
+  const headings = [...content.matchAll(/<(h2|h3)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map(m => decode(m[2])).filter(Boolean);
+  const headline = headings.find(h => !/^(gameweek|gw)\s*\d+$/i.test(h)) ?? null;
+  const teaser = toPlainText(content.replace(/<(h2|h3)\b[^>]*>[\s\S]*?<\/\1>/gi, ''));
+  return { headline, teaser };
+}

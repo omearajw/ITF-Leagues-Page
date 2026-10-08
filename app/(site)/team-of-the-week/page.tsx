@@ -49,42 +49,29 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
             <GameweekSelector basePath="/team-of-the-week" latestGw={latestGw} selected={selectedGw} liveGw={gw.liveGw} />
           </div>
         )}
-        <p className="text-sm text-dim">The highest score of GW{selectedGw}, across all three leagues.</p>
+        <p className="text-dim">The highest score of GW{selectedGw}, across all three leagues.</p>
       </PageHeader>
 
       {!totw ? (
-        <div className="bg-surface border border-line rounded-xl p-6 sm:p-12 text-center text-dim">
-          No scores recorded for GW{selectedGw} yet.
-        </div>
+        <p className="py-10 text-center text-dim">No scores recorded for GW{selectedGw} yet.</p>
       ) : (
         <>
-          <section className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-surface to-surface shadow-lg mb-6">
-            <div className="absolute -top-12 -right-8 text-[10rem] leading-none opacity-10 select-none" aria-hidden="true">🏆</div>
-            <div className="relative p-5 sm:p-8">
-              <div className={many ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}>
-                {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} />)}
-              </div>
-              {many && (
-                <p className="mt-5 text-sm font-semibold text-amber-300">
-                  Shared by {totw.winners.length} teams, all on {totw.winners[0].points}.
-                </p>
-              )}
+          <section className="border-y border-line py-4 mb-3">
+            <div className={many ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}>
+              {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} />)}
             </div>
+            {many && (
+              <p className="mt-3 text-sm font-semibold text-ink-2">
+                Shared by {totw.winners.length} teams, all on {totw.winners[0].points}.
+              </p>
+            )}
           </section>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            {[
-              { label: 'Winning score', value: totw.winners[0].points },
-              { label: 'Clear of the rest', value: totw.nextBest === null ? '–' : `+${totw.winners[0].points - totw.nextBest}` },
-              { label: 'League average', value: totw.average },
-              { label: 'Left on the bench', value: totw.winners.map(w => w.benchPoints).join(' / ') },
-            ].map(tile => (
-              <div key={tile.label} className="bg-surface border border-line rounded-xl p-3 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-faint">{tile.label}</div>
-                <div className="text-xl font-black text-ink">{tile.value}</div>
-              </div>
-            ))}
-          </div>
+          <p className="flex flex-wrap gap-x-6 gap-y-1 text-dim mb-10">
+            {totw.nextBest !== null && <span><b className="text-ink tabular">+{totw.winners[0].points - totw.nextBest}</b> clear of the rest</span>}
+            <span>League average <b className="text-ink tabular">{totw.average}</b></span>
+            <span>Left on the bench <b className="text-ink tabular">{totw.winners.map(w => w.benchPoints).join(' / ')}</b></span>
+          </p>
 
           {totw.winners.map((team, i) => {
             const lineup = lineups[i];
@@ -103,9 +90,9 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
           })}
 
           {contentData?.content ? (
-            <div className="bg-surface border-l-4 border-amber-400 p-4 sm:p-6 rounded-r-xl shadow-sm text-ink-2 leading-relaxed">
+            <article className="max-w-[34rem] border-t border-line pt-5 text-[15px] leading-relaxed text-ink-2">
               <RichText content={contentData.content} />
-            </div>
+            </article>
           ) : (
             <p className="text-sm text-faint italic">No GW{selectedGw} write-up yet.</p>
           )}

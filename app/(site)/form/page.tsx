@@ -4,14 +4,15 @@ import { Suspense } from 'react';
 import { FormGridSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import { getGameweekStatus } from '@/lib/gameweek-status';
+import PageHeader from '@/components/PageHeader';
+import SectionHeading from '@/components/SectionHeading';
 
 export default function FormGrid() {
   return (
     <div className="max-w-[1400px] mx-auto pb-12 font-sans">
-      <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">Form Guide</h1>
+      <PageHeader title="Form Guide">
         <p className="text-dim">Win/Draw/Loss record, ranked.<span className="md:hidden"> Showing the last five results on small screens.</span></p>
-      </header>
+      </PageHeader>
 
       <Suspense fallback={<FormGridSkeleton />}>
         <FormGridContent />
@@ -44,7 +45,7 @@ async function FormGridContent() {
     .order('division');
 
   if (error) {
-    return <div className="p-8 text-red-500">Failed to load Form Guide: {error.message}</div>;
+    return <div className="p-8 text-loss-2">Failed to load Form Guide: {error.message}</div>;
   }
 
   const divisions = ['Premier League', 'Championship', 'League One'];
@@ -69,22 +70,23 @@ async function FormGridContent() {
 
   const getResultColor = (result?: string, isLive = false) => {
     if (isLive) {
-      if (result === 'W') return `border-2 border-dashed border-green-500 text-green-400 font-bold bg-green-500/10 ${LIVE_STRIPES}`;
-      if (result === 'L') return `border-2 border-dashed border-red-500 text-red-400 font-bold bg-red-500/10 ${LIVE_STRIPES}`;
+      if (result === 'W') return `border-2 border-dashed border-win-2 text-win-2 font-bold bg-win/10 ${LIVE_STRIPES}`;
+      if (result === 'L') return `border-2 border-dashed border-loss-2 text-loss-2 font-bold bg-loss/10 ${LIVE_STRIPES}`;
       if (result === 'D') return `border-2 border-dashed border-faint text-dim font-bold bg-surface-2 ${LIVE_STRIPES}`;
     }
-    if (result === 'W') return 'bg-green-500 text-white font-bold';
-    if (result === 'L') return 'bg-red-500 text-white font-bold';
-    if (result === 'D') return 'bg-faint text-white font-bold';
-    return 'bg-surface-2 text-ink-2'; 
+    // Deep enough for white letters to pass contrast.
+    if (result === 'W') return 'bg-win text-white font-bold';
+    if (result === 'L') return 'bg-loss text-white font-bold';
+    if (result === 'D') return 'bg-surface-3 text-ink font-bold';
+    return 'text-faint';
   };
 
   return (
     <div className="space-y-12">
-      <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-dim">
+      <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-dim">
         {gw.liveGw && (
           <span className="flex items-center gap-2">
-            <span className={`w-4 h-4 rounded border-2 border-dashed border-faint bg-surface-2 ${LIVE_STRIPES}`} />
+            <span className={`w-4 h-4 rounded-sm border-2 border-dashed border-faint bg-surface-2 ${LIVE_STRIPES}`} />
             dashed = live result, may change
           </span>
         )}
@@ -98,11 +100,9 @@ async function FormGridContent() {
         if (divManagers.length === 0) return null;
 
         return (
-          <section key={divisionName} className="bg-surface rounded-xl shadow-sm border overflow-hidden">
-            <div className="p-4 bg-panel text-white font-bold text-lg">
-              {divisionName}
-            </div>
-            
+          <section key={divisionName}>
+            <SectionHeading className="mb-1">{divisionName}</SectionHeading>
+
             {/* Phones: last five results per manager instead of a 38-column grid */}
             <div className="md:hidden divide-y divide-line">
               {divManagers.map((manager: any) => {
@@ -115,12 +115,12 @@ async function FormGridContent() {
                   return acc;
                 }, {});
                 return (
-                  <div key={manager.manager_fpl_id} className="p-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-5 shrink-0 text-xs font-black text-faint">{divManagers.indexOf(manager) + 1}</span>
+                  <div key={manager.manager_fpl_id} className="py-2.5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-6 shrink-0 font-display text-xl leading-none text-faint">{divManagers.indexOf(manager) + 1}</span>
                       <div className="min-w-0">
-                        <TeamName name={manager.team_name} managerId={manager.manager_fpl_id} inline className="text-ink min-w-0" />
-                        <div className="text-xs text-dim">{manager.managers.real_name} · {tally.W || 0}W {tally.D || 0}D {tally.L || 0}L · form {manager.form.score % 1 === 0 ? manager.form.score : manager.form.score.toFixed(1)}</div>
+                        <TeamName name={manager.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
+                        <div className="text-sm text-dim">{manager.managers.real_name} · {tally.W || 0}W {tally.D || 0}D {tally.L || 0}L · form {manager.form.score % 1 === 0 ? manager.form.score : manager.form.score.toFixed(1)}</div>
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -130,7 +130,7 @@ async function FormGridContent() {
                         return (
                           <span
                             key={f.gw_number}
-                            className={`w-7 h-7 flex items-center justify-center rounded text-xs ${getResultColor(f.result, isLive)}`}
+                            className={`w-7 h-7 flex items-center justify-center rounded-sm text-xs ${getResultColor(f.result, isLive)}`}
                             title={`GW${f.gw_number}: ${f.manager_score} - ${f.opponent_score}${isLive ? ' (live)' : ''}`}
                           >
                             {f.result}
@@ -145,14 +145,14 @@ async function FormGridContent() {
 
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm text-center border-collapse">
-                <thead className="bg-surface-2 border-b">
-                  <tr>
-                    <th className="p-3 text-left sticky left-0 bg-surface-2 border-r z-10 min-w-[200px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                      Manager
+                <thead>
+                  <tr className="border-b border-line">
+                    <th className="label font-semibold py-2 pr-3 text-left sticky left-0 bg-bg z-10 min-w-[220px]">
+                      Team
                     </th>
-                    <th className="p-2 min-w-[52px] text-xs text-dim font-semibold border-r" title="Form score: last five results, weighted to the most recent">Form</th>
+                    <th className="label font-semibold py-2 px-2 min-w-[52px] text-ink" title="Form score: last five results, weighted to the most recent">Form</th>
                     {Array.from({ length: TOTAL_GW }, (_, i) => (
-                      <th key={i} className={`p-2 min-w-[40px] text-xs font-semibold border-r ${i + 1 === gw.liveGw ? 'text-amber-400' : 'text-dim'}`} title={i + 1 === gw.liveGw ? 'In progress' : undefined}>
+                      <th key={i} className={`py-2 min-w-[36px] text-xs font-semibold tabular ${i + 1 === gw.liveGw ? 'text-live-2' : 'text-faint'}`} title={i + 1 === gw.liveGw ? 'In progress' : undefined}>
                         {i + 1}
                       </th>
                     ))}
@@ -166,15 +166,17 @@ async function FormGridContent() {
                     });
 
                     return (
-                      <tr key={manager.manager_fpl_id} className="border-b last:border-0 hover:bg-surface-2">
-                        <td className="p-3 text-left sticky left-0 bg-surface border-r z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-5 shrink-0 text-xs font-black text-faint">{rank + 1}</span>
-                            <TeamName name={manager.team_name} managerId={manager.manager_fpl_id} inline className="text-ink min-w-0 max-w-[180px]" />
+                      <tr key={manager.manager_fpl_id} className="border-b border-line last:border-0 hover:bg-surface">
+                        <td className="py-2 pr-3 text-left sticky left-0 bg-bg z-10">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="w-6 shrink-0 font-display text-xl leading-none text-faint">{rank + 1}</span>
+                            <div className="min-w-0">
+                              <TeamName name={manager.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0 max-w-[180px]" />
+                              <div className="text-dim">{manager.managers.real_name}</div>
+                            </div>
                           </div>
-                          <div className="text-xs text-dim pl-7">{manager.managers.real_name}</div>
                         </td>
-                        <td className="p-2 text-center border-r font-black text-ink">{manager.form.score % 1 === 0 ? manager.form.score : manager.form.score.toFixed(1)}</td>
+                        <td className="px-2 text-center font-display text-xl leading-none text-ink">{manager.form.score % 1 === 0 ? manager.form.score : manager.form.score.toFixed(1)}</td>
                         
                         {Array.from({ length: TOTAL_GW }, (_, i) => {
                           const gwNumber = i + 1;
@@ -182,12 +184,12 @@ async function FormGridContent() {
                           const isLive = gwNumber === gw.liveGw;
                           
                           return (
-                            <td key={gwNumber} className="p-1 border-r border-line">
-                              <div 
-                                className={`w-8 h-8 mx-auto flex items-center justify-center rounded text-xs cursor-default ${getResultColor(match?.result, isLive)}`}
+                            <td key={gwNumber} className="p-0.5">
+                              <div
+                                className={`w-8 h-8 mx-auto flex items-center justify-center rounded-sm text-xs cursor-default ${getResultColor(match?.result, isLive)}`}
                                 title={match ? `${getTeamNameDisplayText(manager.team_name)} ${match.manager_score} - ${match.opponent_score}${isLive ? ' (live)' : ''}` : `Gameweek ${gwNumber} unplayed`}
                               >
-                                {match?.result || '-'}
+                                {match?.result || '·'}
                               </div>
                             </td>
                           );

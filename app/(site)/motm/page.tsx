@@ -7,6 +7,7 @@ import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID } from '@/lib/gameweek-status';
 import { buildMotm, type MotmMonth } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
+import SectionHeading from '@/components/SectionHeading';
 
 export default function MotmPage() {
   return (
@@ -20,45 +21,45 @@ export default function MotmPage() {
 
 function MonthCard({ month }: { month: MotmMonth }) {
   return (
-    <section className={`bg-surface rounded-xl shadow-sm border overflow-hidden ${month.complete ? '' : 'border-amber-500/30'}`}>
-      <div className="px-4 sm:px-6 py-3 border-b flex flex-wrap items-center justify-between gap-2 bg-surface-2">
-        <h2 className="text-lg font-bold text-ink">{month.label}</h2>
-        <span className="text-xs text-dim">
+    <section>
+      <SectionHeading aside={(
+        <span className={month.complete ? 'text-dim' : 'text-live-2'}>
           GW{month.gameweeks[0]}–{month.gameweeks[month.gameweeks.length - 1]}
           {month.complete ? ' · awarded' : ' · in progress'}
         </span>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-line">
+      )}>
+        {month.label}
+      </SectionHeading>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
         {month.divisions.map(div => (
-          <div key={div.division} className="p-4 sm:p-5">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-2">{div.division}</div>
+          <div key={div.division}>
+            <div className="flex items-baseline justify-between gap-3 mb-2">
+              <h3 className="font-display text-lg leading-none tracking-[0.03em] text-ink-2">{div.division}</h3>
+              {div.leaders.length > 1 && <span className="label">Shared</span>}
+            </div>
             {div.leaders.length === 0 ? (
               <div className="text-sm text-faint italic">No scores yet</div>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-line border-t border-line">
                 {div.leaders.map(leader => (
-                  <div key={leader.id} className="flex items-center justify-between gap-3">
+                  <div key={leader.id} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span aria-hidden="true">{month.complete ? '🏆' : '⏳'}</span>
-                        <TeamName name={leader.teamName} managerId={leader.id} inline className="text-ink min-w-0" />
-                      </div>
-                      <div className="text-xs text-dim pl-7">{leader.realName}</div>
+                      <TeamName name={leader.teamName} managerId={leader.id} inline className="font-semibold text-ink min-w-0" />
+                      <div className="text-sm text-dim">{leader.realName}</div>
                     </div>
-                    <span className="shrink-0 text-lg font-black text-ink">{leader.points}</span>
+                    <span className="shrink-0 font-display text-3xl leading-none text-ink">{leader.points}</span>
                   </div>
                 ))}
-                {div.leaders.length > 1 && <div className="text-[10px] uppercase tracking-wider font-bold text-amber-300">Shared</div>}
               </div>
             )}
             {div.standings.length > div.leaders.length && (
-              <details className="mt-3">
-                <summary className="text-xs text-brand-2 cursor-pointer">Full standings</summary>
-                <ol className="mt-2 space-y-1 text-xs text-dim">
+              <details className="mt-2 border-t border-line pt-2">
+                <summary className="text-sm font-semibold text-brand-2 cursor-pointer">Full standings</summary>
+                <ol className="mt-2 divide-y divide-line text-sm text-ink-2">
                   {div.standings.map((m, i) => (
-                    <li key={m.id} className="flex justify-between gap-2">
-                      <span className="min-w-0 flex items-center gap-1.5"><span className="text-faint w-4">{i + 1}</span><TeamName name={m.teamName} managerId={m.id} inline className="min-w-0" /></span>
-                      <span className="font-bold">{m.points}</span>
+                    <li key={m.id} className="flex justify-between gap-2 py-1.5">
+                      <span className="min-w-0 flex items-center gap-2"><span className="text-faint w-5 tabular">{i + 1}</span><TeamName name={m.teamName} managerId={m.id} inline className="min-w-0" /></span>
+                      <span className="font-semibold tabular">{m.points}</span>
                     </li>
                   ))}
                 </ol>
@@ -90,19 +91,19 @@ async function MotmContent() {
         title="Manager of the Month"
         badge={<GameweekBadge provisional={false}>Confirmed weeks through GW{gw.syncedThroughGw}</GameweekBadge>}
       >
-        <p className="text-sm text-dim">
+        <p className="text-dim max-w-[34rem]">
           Each month the manager in each league with the most points across that month&apos;s gameweeks takes the award. Ties share it.
           A gameweek belongs to the month its FPL deadline falls in.
         </p>
       </PageHeader>
 
       {!events && (
-        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-200 rounded-xl p-4 text-sm">Live FPL status is unavailable, so months cannot be worked out right now.</div>
+        <div className="text-live-2 border-y border-live/30 py-3 text-sm">Live FPL status is unavailable, so months cannot be worked out right now.</div>
       )}
       {events && months.length === 0 && (
-        <div className="bg-surface border rounded-xl p-6 sm:p-12 text-center text-dim">No confirmed gameweeks yet. The first award lands once the opening month is complete.</div>
+        <div className="py-10 text-center text-dim">No confirmed gameweeks yet. The first award lands once the opening month is complete.</div>
       )}
-      <div className="space-y-6">
+      <div className="space-y-12">
         {months.map(month => <MonthCard key={month.key} month={month} />)}
       </div>
     </>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { LiveChip } from '@/components/GameweekBadge';
+import SectionHeading from '@/components/SectionHeading';
 
 export type PitchPlayer = {
   element: number;
@@ -40,7 +41,7 @@ export function Visual({ player }: { player: VisualPlayer }) {
   return (
     <div className="mx-auto w-16 h-14 flex items-end justify-center">
       {failed ? (
-        <div className="w-12 h-12 mb-1 rounded-full bg-[#0f2a1a]/80 border border-white/20 flex items-center justify-center text-[11px] font-black text-white">
+        <div className="w-12 h-12 mb-1 rounded-full bg-plate/80 border border-white/20 flex items-center justify-center text-[11px] font-black text-white">
           {player.team}
         </div>
       ) : (
@@ -51,34 +52,45 @@ export function Visual({ player }: { player: VisualPlayer }) {
   );
 }
 
+// "Yet to play" marker: a drawn clock rather than an emoji, so it matches on every device.
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.25" />
+      <path d="M8 4.5V8l2.25 1.5" />
+    </svg>
+  );
+}
+
 function PlayerCard({ player, live, onGrass }: { player: PitchPlayer; live: boolean; onGrass: boolean }) {
   const yetToPlay = player.fixtureState === 'pending' || player.fixtureState === 'none';
   const playing = player.fixtureState === 'playing';
   const scored = player.points === null || yetToPlay ? null : player.points * (player.multiplier || 1);
   const faded = player.subbedOut || player.projectedOut || player.projectedUndecided;
-  const leftTag = player.projectedOut ? { text: '✕', cls: 'bg-red-500 text-white', title: 'Did not play: due to be auto-subbed out' }
-    : player.projectedUndecided ? { text: '✕ ?', cls: 'bg-red-500/80 text-white', title: 'Did not play: which substitute comes on depends on matches still to be played' }
-    : player.projectedIn ? { text: 'DUE ON', cls: 'bg-green-500 text-white', title: 'Due to come on as an auto-sub' }
-    : player.subbedIn ? { text: 'IN', cls: 'bg-green-500 text-white', title: 'Auto-subbed in' }
-    : player.subbedOut ? { text: 'OUT', cls: 'bg-red-500 text-white', title: 'Auto-subbed out' }
-    : yetToPlay ? { text: '🕗', cls: 'bg-white/90 text-slate-900', title: player.fixtureState === 'none' ? 'No fixture this week' : 'Yet to play' }
+  // Fills deep enough for white letters to pass contrast.
+  const leftTag = player.projectedOut ? { text: '✕', cls: 'bg-loss text-white', title: 'Did not play: due to be auto-subbed out' }
+    : player.projectedUndecided ? { text: '✕ ?', cls: 'bg-loss text-white', title: 'Did not play: which substitute comes on depends on matches still to be played' }
+    : player.projectedIn ? { text: 'DUE ON', cls: 'bg-win text-white', title: 'Due to come on as an auto-sub' }
+    : player.subbedIn ? { text: 'IN', cls: 'bg-win text-white', title: 'Auto-subbed in' }
+    : player.subbedOut ? { text: 'OUT', cls: 'bg-loss text-white', title: 'Auto-subbed out' }
+    : yetToPlay ? { text: <ClockIcon />, cls: 'bg-white/90 text-on-light', title: player.fixtureState === 'none' ? 'No fixture this week' : 'Yet to play' }
     : null;
   return (
     <div className={`relative w-full flex flex-col items-center ${faded ? 'opacity-50' : ''}`} title={leftTag?.title}>
       {(player.isCaptain || player.isVice || player.projectedCaptain) && (
-        <span className={`absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 ${player.isCaptain || player.projectedCaptain ? 'bg-brand text-white' : 'bg-white text-slate-900'}`} title={player.projectedCaptain ? 'Takes the armband: captain did not play' : undefined}>
+        <span className={`absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 ${player.isCaptain || player.projectedCaptain ? 'bg-brand text-white' : 'bg-white text-on-light'}`} title={player.projectedCaptain ? 'Takes the armband: captain did not play' : undefined}>
           {player.isCaptain || player.projectedCaptain ? 'C' : 'V'}
         </span>
       )}
       {leftTag && (
-        <span className={`absolute top-0 left-0 sm:left-2 z-10 text-[9px] font-black rounded-full px-1.5 h-5 flex items-center ring-2 ring-black/30 ${leftTag.cls}`}>{leftTag.text}</span>
+        <span className={`absolute top-0 left-0 sm:left-2 z-10 text-[11px] font-black rounded-full px-1.5 h-5 flex items-center ring-2 ring-black/30 ${leftTag.cls}`}>{leftTag.text}</span>
       )}
       <Visual player={player} />
-      <div className="mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center">
-        <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onGrass ? 'bg-[#0b1f14] text-white' : 'bg-surface-3 text-ink'}`}>{player.name}</div>
-        <div className={`px-1.5 py-0.5 text-xs font-black ${live && playing ? 'bg-amber-300 text-slate-900' : yetToPlay ? 'bg-white/70 text-slate-500' : 'bg-white text-slate-900'}`}>
+      <div className="mt-1 w-full max-w-[7.5rem] rounded-sm overflow-hidden text-center">
+        <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onGrass ? 'bg-plate text-white' : 'bg-surface-3 text-ink'}`}>{player.name}</div>
+        <div className={`px-1.5 py-0.5 text-xs font-black ${live && playing ? 'bg-live-2 text-on-light' : yetToPlay ? 'bg-white/70 text-on-light/60' : 'bg-white text-on-light'}`}>
           {scored === null ? '–' : scored}
-          {player.multiplier > 1 && scored !== null && <span className="ml-1 font-normal text-slate-500">({player.points})</span>}
+          {player.multiplier > 1 && scored !== null && <span className="ml-1 font-normal text-on-light/60">({player.points})</span>}
         </div>
       </div>
     </div>
@@ -113,14 +125,15 @@ export function PitchMarkings() {
   );
 }
 
-export const PITCH_STRIPES = 'repeating-linear-gradient(180deg, #2f8a4b 0px, #2f8a4b 48px, #2a7f44 48px, #2a7f44 96px)';
+// Colours come from the theme (app/globals.css): a warm floodlight wash from the stands over mown stripes.
+export const PITCH_STRIPES = 'radial-gradient(120% 70% at 50% 0%, rgb(255 244 222 / var(--pitch-light)), rgb(255 244 222 / 0) 70%), repeating-linear-gradient(180deg, rgb(var(--color-pitch)) 0px, rgb(var(--color-pitch)) 48px, rgb(var(--color-pitch-2)) 48px, rgb(var(--color-pitch-2)) 96px)';
 
 // Generic pitch layout: four rows of starters on the grass, bench strip underneath.
 export function PitchBoard<T>({ starters, bench, positionOf, renderPlayer, benchLabel, className = '' }: {
   starters: T[]; bench: T[]; positionOf: (p: T) => PitchPlayer['position']; renderPlayer: (p: T, onBench: boolean) => React.ReactNode; benchLabel: React.ReactNode; className?: string;
 }) {
   return (
-    <div className={`rounded-2xl overflow-hidden shadow-lg border border-black/30 ${className}`}>
+    <div className={`rounded-sm overflow-hidden border border-line ${className}`}>
       <div className="relative px-2 sm:px-6 pt-8 pb-6" style={{ backgroundImage: PITCH_STRIPES }}>
         <PitchMarkings />
         <div className="relative space-y-5 sm:space-y-7">
@@ -136,7 +149,7 @@ export function PitchBoard<T>({ starters, bench, positionOf, renderPlayer, bench
         </div>
       </div>
       <div className="bg-surface-2 border-t border-line px-2 sm:px-6 pt-4 pb-4">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-3 text-center">{benchLabel}</div>
+        <div className="label mb-3 text-center">{benchLabel}</div>
         <div className="flex justify-center items-start gap-1 sm:gap-3">
           {bench.map((p, i) => <div key={i} className="w-[19%] sm:w-28 flex">{renderPlayer(p, true)}</div>)}
         </div>
@@ -160,7 +173,7 @@ export function FlipPitch({ front, back, flipped }: { front: React.ReactNode; ba
 
 export function FlipButton({ flipped, onToggle, label }: { flipped: boolean; onToggle: () => void; label: string }) {
   return (
-    <button type="button" onClick={onToggle} aria-pressed={flipped} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition whitespace-nowrap truncate max-w-[70vw] sm:max-w-xs ${flipped ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-surface border-line text-dim hover:text-ink'}`}>
+    <button type="button" onClick={onToggle} aria-pressed={flipped} className={`text-sm font-semibold px-3 py-1.5 rounded-sm border transition whitespace-nowrap truncate max-w-[78vw] sm:max-w-sm ${flipped ? 'bg-live/15 border-live/40 text-live-2' : 'border-line text-ink-2 hover:text-ink hover:border-faint'}`}>
       {flipped ? '↺ Flip back' : `⇄ ${label}`}
     </button>
   );
@@ -182,7 +195,7 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
       renderPlayer={(p, onBench) => (
         <div className={`w-full ${sharedWith.has(p.element) ? 'opacity-90' : ''}`}>
           <PlayerCard player={onBench ? { ...p, multiplier: 1 } : p} live={live} onGrass={!onBench} />
-          {opponent && sharedWith.has(p.element) && <div className="text-center text-[9px] font-bold uppercase tracking-wider text-white/70 mt-0.5">both own</div>}
+          {opponent && sharedWith.has(p.element) && <div className="mx-auto mt-1 w-fit rounded-sm bg-black/55 px-1.5 text-[11px] font-bold uppercase tracking-wider text-white">both own</div>}
         </div>
       )}
     />
@@ -193,16 +206,12 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
   const back = opponent ? board(opponent.starters, opponent.bench, `${opponent.name} bench · ${opponent.benchPoints} pts`, mineIds) : null;
 
   return (
-    <section className="mb-8">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-        <h2 className="text-lg font-bold text-ink flex items-center gap-2">
-          {flipped && opponent ? <span>{opponent.name}<span className="text-faint font-normal"> · GW{opponent.week} opponent</span></span> : title} {live && <LiveChip />}
-          {pointsUnavailable && <span className="text-xs font-normal text-faint">player points unavailable</span>}
-        </h2>
-        <div className="flex items-center gap-2">
-          {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`View GW${opponent.week} opponent (${opponent.name})`} />}
-        </div>
-      </div>
+    <section className="mb-10">
+      <SectionHeading aside={opponent ? <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`View GW${opponent.week} opponent (${opponent.name})`} /> : undefined}>
+        {flipped && opponent ? <>{opponent.name}<span className="text-dim"> · GW{opponent.week} opponent</span></> : title}
+        {live && <span className="ml-3 align-middle font-sans"><LiveChip /></span>}
+        {pointsUnavailable && <span className="ml-3 align-middle font-sans normal-case text-sm text-dim">player points unavailable</span>}
+      </SectionHeading>
       {back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front}
     </section>
   );

@@ -5,6 +5,7 @@ import { getDivisionFixtures, type H2HFixture } from '@/lib/h2h-fixtures';
 import { SEASON_ID, type GameweekStatus } from '@/lib/gameweek-status';
 import { getWeekProjection, dueFor, type WeekProjection } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
+import SectionHeading from '@/components/SectionHeading';
 
 type Props = {
   leagueId: string;
@@ -28,11 +29,11 @@ function FixtureRow({ fix, scores, teamNames, live, projection }: { fix: H2HFixt
         <TeamName name={teamNames[fix.m1] || fix.name1} managerId={fix.m1} inline className="min-w-0" />
       </span>
       {played ? (
-        <span className={`shrink-0 font-mono font-bold px-2 py-0.5 rounded text-xs ${live ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30' : 'bg-panel text-white'}`}>
-          <DueMark due={d1} className="mr-1" />{s1} - {s2}<DueMark due={d2} className="ml-1" />
+        <span className={`shrink-0 font-display text-xl leading-none px-2 whitespace-nowrap ${live ? 'text-live-2' : 'text-ink'}`}>
+          <DueMark due={d1} className="mr-1 font-sans" />{s1}<span className="text-faint mx-1">-</span>{s2}<DueMark due={d2} className="ml-1 font-sans" />
         </span>
       ) : (
-        <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-faint px-2">v</span>
+        <span className="shrink-0 label px-2">v</span>
       )}
       <span className={`flex min-w-0 flex-1 ${lead2 ? 'font-bold text-ink' : lead1 ? 'text-dim' : 'text-ink-2'}`}>
         <TeamName name={teamNames[fix.m2] || fix.name2} managerId={fix.m2} inline className="min-w-0" />
@@ -63,26 +64,24 @@ export default async function DivisionFixtures({ leagueId, gw, teamNames, week }
   if (!thisWeek && !nextWeek) return null;
 
   return (
-    <section className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <section className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10">
       {thisWeek && (
-        <div className="bg-surface rounded-xl shadow-sm border p-4">
-          <h3 className="text-sm font-bold text-ink uppercase tracking-wider flex items-center gap-2 mb-1">
-            GW{thisGw} Fixtures {isLive && <LiveChip />}
-          </h3>
-          <p className="text-xs text-dim mb-2">{isLive ? 'Scores update through the week, include subs due from the bench (+n), and are provisional until FPL confirms.' : 'Confirmed results.'}</p>
+        <div>
+          <SectionHeading as="h2" className="mb-2" aside={isLive ? <LiveChip /> : undefined}>GW{thisGw} Fixtures</SectionHeading>
+          <p className="text-sm text-dim mb-1">{isLive ? 'Scores update through the week, include subs due from the bench (+n), and are provisional until FPL confirms.' : 'Confirmed results.'}</p>
           <div className="divide-y divide-line">
             {thisWeek.map(fix => <FixtureRow key={`${fix.m1}-${fix.m2}`} fix={fix} scores={scores} teamNames={teamNames} live={isLive} projection={projection} />)}
-            {thisWeek.length === 0 && <div className="py-4 text-center text-xs text-faint italic">No fixtures listed.</div>}
+            {thisWeek.length === 0 && <div className="py-4 text-center text-sm text-faint italic">No fixtures listed.</div>}
           </div>
         </div>
       )}
       {nextWeek && (
-        <div className="bg-surface rounded-xl shadow-sm border p-4">
-          <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-1">GW{nextGw} Fixtures</h3>
-          <p className="text-xs text-dim mb-2">Next up{gw.nextGw && gw.nextGw.id === nextGw ? ` · deadline ${new Date(gw.nextGw.deadline).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}.</p>
+        <div>
+          <SectionHeading as="h2" className="mb-2">GW{nextGw} Fixtures</SectionHeading>
+          <p className="text-sm text-dim mb-1">Next up{gw.nextGw && gw.nextGw.id === nextGw ? ` · deadline ${new Date(gw.nextGw.deadline).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}.</p>
           <div className="divide-y divide-line">
             {nextWeek.map(fix => <FixtureRow key={`${fix.m1}-${fix.m2}`} fix={fix} scores={null} teamNames={teamNames} live={false} projection={null} />)}
-            {nextWeek.length === 0 && <div className="py-4 text-center text-xs text-faint italic">Fixtures not published yet.</div>}
+            {nextWeek.length === 0 && <div className="py-4 text-center text-sm text-faint italic">Fixtures not published yet.</div>}
           </div>
         </div>
       )}

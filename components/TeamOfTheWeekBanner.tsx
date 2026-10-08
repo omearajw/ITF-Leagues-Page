@@ -1,33 +1,26 @@
 import Link from 'next/link';
 import TeamOfTheWeekCard from '@/components/TeamOfTheWeekCard';
+import SectionHeading from '@/components/SectionHeading';
 import { getTeamOfTheWeek } from '@/lib/team-of-the-week';
 
-// Full-width celebration on the hub, between the gameweek timeline and the leagues.
+// The week's top score, first thing under the hub masthead.
 export default async function TeamOfTheWeekBanner({ gw }: { gw: number }) {
   const totw = await getTeamOfTheWeek(gw);
   if (!totw) return null;
   const many = totw.winners.length > 1;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-surface to-surface shadow-lg">
-      <div className="absolute -top-10 -right-6 text-[7rem] leading-none opacity-10 select-none" aria-hidden="true">🏆</div>
-      <div className="relative p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-300 flex items-center gap-2">
-            <span aria-hidden="true">🏆</span> Team{many ? 's' : ''} of the Week · GW{totw.gw}
-          </h2>
-          <Link href="/team-of-the-week" className="text-xs font-bold text-brand-2 hover:underline whitespace-nowrap">Full write-up &rarr;</Link>
-        </div>
-
-        <div className={many ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : ''}>
-          {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} size={many ? 'md' : 'lg'} href="/team-of-the-week" />)}
-        </div>
-
-        <div className="mt-4 pt-3 border-t border-amber-500/20 flex flex-wrap gap-x-6 gap-y-1 text-xs text-dim">
-          {many && <span className="text-amber-300 font-semibold">Shared by {totw.winners.length} teams</span>}
-          {totw.nextBest !== null && <span>{totw.winners[0].points - totw.nextBest} clear of the rest</span>}
-          <span>League average {totw.average}</span>
-        </div>
+    <section>
+      <SectionHeading aside={<Link href="/team-of-the-week" className="font-semibold text-brand-2 hover:underline whitespace-nowrap">Full write-up &rarr;</Link>}>
+        Team{many ? 's' : ''} of the Week <span className="text-dim">· GW{totw.gw}</span>
+      </SectionHeading>
+      <div className={many ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}>
+        {totw.winners.map(team => <TeamOfTheWeekCard key={team.id} team={team} gw={totw.gw} size={many ? 'md' : 'lg'} href="/team-of-the-week" />)}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-dim">
+        {many && <span className="font-semibold text-ink-2">Shared by {totw.winners.length} teams</span>}
+        {totw.nextBest !== null && <span><b className="text-ink-2 tabular">{totw.winners[0].points - totw.nextBest}</b> clear of the rest</span>}
+        <span>League average <b className="text-ink-2 tabular">{totw.average}</b></span>
       </div>
     </section>
   );

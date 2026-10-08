@@ -13,6 +13,7 @@ import { projectAutoSubs, type FixtureState } from '@/lib/autosubs';
 import { getMyTeamId } from '@/lib/my-team';
 import { DIVISIONS } from '@/lib/divisions';
 import TeamBadge from '@/components/TeamBadge';
+import SectionHeading from '@/components/SectionHeading';
 import { getLeagueBadges } from '@/lib/badges';
 
 export default async function ManagerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ gw?: string }> }) {
@@ -151,73 +152,103 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
     : tieSettled ? (tie.result === 'W' ? 'Beat' : tie.result === 'L' ? 'Lost to' : 'Drew with')
     : tieMargin > 0 ? 'Beating' : tieMargin < 0 ? 'Losing to' : 'Drawing with';
   const badgeSrc = badges[managerId];
+  const isMine = myTeamId === managerId;
+
+  const button = 'whitespace-nowrap text-sm font-semibold px-3 py-1.5 rounded-sm transition';
 
   return (
     <>
-      {/* Badge sits large to the right of the header; phones put it underneath. */}
-      <div className="flex flex-col sm:flex-row sm:items-start gap-x-6 gap-y-4 mb-8 sm:mb-10">
+      {/* Three bands: who the team is (with what you can do), their season, then the week being viewed. */}
+      {/* The badge sits large on the right, as the league owner asked; phones keep it beside the name. */}
+      <header className={`grid items-start gap-x-4 sm:gap-x-8 gap-y-5 mb-6 ${badgeSrc ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-1'}`}>
         <PageHeader
-          className="flex-1 min-w-0"
-          title={<TeamName name={manager.team_name} inline className="min-w-0" hideBadge showStars starSize={12} />}
-          titleExtra={division && (
-            <Link href={`/divisions/${division.slug}`} className="text-xs sm:text-sm px-3 py-1 rounded-full font-bold tracking-widest uppercase bg-surface-3 text-dim hover:text-ink">
-              {manager.division}
-            </Link>
-          )}
+          className="min-w-0"
+          title={<TeamName name={manager.team_name} inline wrap hideBadge showStars starSize={14} />}
         >
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />
-            {myTeamId === managerId ? (
-              <span className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-green-500/15 text-green-400">Your team</span>
-            ) : (
-              <a href={`/api/my-team?id=${managerId}&next=${encodeURIComponent(`/manager/${managerId}`)}`} className="whitespace-nowrap text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold bg-surface-3 text-dim hover:text-ink">Set as my team</a>
-            )}
-            <Link href={`/manager/${managerId}/plan`} className="whitespace-nowrap text-xs sm:text-sm bg-brand text-white px-3 py-1.5 rounded-full font-semibold hover:bg-brand/90 transition">Plan next week &rarr;</Link>
-            <span className="flex items-center gap-3 text-xs sm:text-sm sm:ml-auto">
-              <span className="text-faint hidden sm:inline">On FPL:</span>
+          <p className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-dim">
+            <span className="font-semibold text-ink-2">{manager.managers.real_name}</span>
+            {/* Each separator travels with the item after it, so a wrapped line never ends on a dot. */}
+            <span className="whitespace-nowrap">
+              <span aria-hidden="true" className="mr-2">·</span>
+              {division ? <Link href={`/divisions/${division.slug}`} className="hover:text-ink hover:underline">{manager.division}</Link> : manager.division}
+            </span>
+            {isMine && <span className="ml-1 label text-win-2 border border-win-2/40 rounded-sm px-1.5 py-0.5">Your team</span>}
+          </p>
+        </PageHeader>
+        {/* Phones line it up with the top of the name, below the accent rule (5px + 12px). */}
+        {badgeSrc && <TeamBadge src={badgeSrc} size={176} className="col-start-2 row-start-1 sm:row-span-2 mt-[17px] sm:mt-0 w-20 h-20 sm:w-36 sm:h-36 lg:w-44 lg:h-44" />}
+        <div className="col-span-full sm:col-span-1 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Link href={`/manager/${managerId}/plan`} className={`${button} bg-brand text-white hover:bg-brand/85`}>Plan next week &rarr;</Link>
+          {/* The FPL links open the visitor's own FPL account, so they only make sense on their own team. */}
+          {isMine ? (
+            <span className="flex items-center gap-3 text-sm">
+              <span className="text-dim">On FPL:</span>
               <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Pick team &rarr;</a>
               <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-brand-2 font-semibold hover:underline">Transfers &rarr;</a>
             </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-dim">
-            <span className="font-semibold text-ink-2">{manager.managers.real_name}</span>
-            {entry && <span>Overall rank {entry.summary_overall_rank?.toLocaleString('en-GB') ?? '–'}</span>}
-            {entry && <span>Total {entry.summary_overall_points}</span>}
-            {elim && <span className={elim.is_eliminated ? 'text-red-400' : 'text-green-400'}>{elim.is_eliminated ? `Eliminated GW${elim.eliminated_gw}` : 'Still in the Eliminator'}</span>}
-            {recent && recent.length > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="text-faint">Form</span>
-                {[...recent].reverse().map((r: any) => (
-                  <span key={r.gw_number} className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center text-white ${r.result === 'W' ? 'bg-green-500' : r.result === 'L' ? 'bg-red-500' : 'bg-faint'}`} title={`GW${r.gw_number}`}>{r.result}</span>
-                ))}
-              </span>
-            )}
-          </div>
-        </PageHeader>
-        {badgeSrc && <TeamBadge src={badgeSrc} size={176} className="rounded-xl w-28 h-28 sm:w-40 sm:h-40 lg:w-44 lg:h-44" />}
-      </div>
+          ) : (
+            <a href={`/api/my-team?id=${managerId}&next=${encodeURIComponent(`/manager/${managerId}`)}`} className={`${button} border border-line text-ink-2 hover:text-ink hover:border-faint`}>Set as my team</a>
+          )}
+        </div>
+      </header>
 
-      {/* Week selector */}
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-6">
-        {weeks.map(week => (
-          <Link
-            key={week}
-            href={`/manager/${managerId}?gw=${week}`}
-            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border ${week === selectedGw ? 'bg-brand text-white border-brand' : 'bg-surface border-line text-dim hover:text-ink'}`}
-          >
-            GW{week}{week === gw.liveGw ? ' ·' : ''}
-          </Link>
-        ))}
+      {(entry || elim || (recent && recent.length > 0)) && (
+        <dl className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-10 gap-y-4 border-y border-line py-4 mb-8">
+          {entry && (
+            <div>
+              <dt className="label">Overall rank</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink tabular">{entry.summary_overall_rank?.toLocaleString('en-GB') ?? '–'}</dd>
+            </div>
+          )}
+          {entry && (
+            <div>
+              <dt className="label">Season points</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink tabular">{entry.summary_overall_points}</dd>
+            </div>
+          )}
+          {recent && recent.length > 0 && (
+            <div>
+              <dt className="label">League form</dt>
+              <dd className="mt-1.5 flex items-center gap-1">
+                {[...recent].reverse().map((r: any) => (
+                  <span key={r.gw_number} className={`w-6 h-6 rounded-sm text-xs font-bold flex items-center justify-center ${r.result === 'W' ? 'bg-win text-white' : r.result === 'L' ? 'bg-loss text-white' : 'bg-surface-3 text-ink'}`} title={`GW${r.gw_number}`}>{r.result}</span>
+                ))}
+              </dd>
+            </div>
+          )}
+          {elim && (
+            <div>
+              <dt className="label">Eliminator</dt>
+              <dd className={`mt-1 text-lg font-semibold ${elim.is_eliminated ? 'text-loss-2' : 'text-win-2'}`}>{elim.is_eliminated ? `Out in GW${elim.eliminated_gw}` : 'Still in'}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 mb-6">
+        <GameweekChip gw={gw} week={selectedGw} live={isLiveWeek} />
+        <nav aria-label="Gameweek" className="flex gap-1.5 overflow-x-auto no-scrollbar min-w-0 max-w-full">
+          {weeks.map(week => (
+            <Link
+              key={week}
+              href={`/manager/${managerId}?gw=${week}`}
+              aria-current={week === selectedGw ? 'page' : undefined}
+              className={`shrink-0 px-3 py-1.5 rounded-sm text-xs font-bold border ${week === selectedGw ? 'bg-brand text-white border-brand' : 'border-line text-dim hover:text-ink'}`}
+            >
+              GW{week}{week === gw.liveGw ? ' ·' : ''}
+            </Link>
+          ))}
+        </nav>
       </div>
 
       {!picks ? (
-        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-200 rounded-xl p-6 text-sm">
+        <p className="text-live-2 border-y border-live/30 py-4 text-sm">
           Team data for GW{selectedGw} is not available from FPL right now. Line-ups appear once the gameweek deadline has passed.
-        </div>
+        </p>
       ) : (
         <>
-          {/* Summary tiles */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+          {/* The week at a glance, as one scoreboard row */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-t-2 border-ink/80 mb-10 -mx-3">
             {[
               // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
               { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs${undecidedSubs ? ` · ${undecidedSubs} more sub to settle` : ''}` : undecidedSubs ? `${undecidedSubs} sub still to settle` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
@@ -229,10 +260,10 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
             ].map(tile => {
               const filled = 'played' in tile && tile.played;
               return (
-                <div key={tile.label} className={`border rounded-xl p-3 min-w-0 break-words ${filled ? 'bg-brand border-brand text-brand-2' : 'bg-surface border-line'}`}>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest ${filled ? '' : 'text-faint'}`}>{tile.label}</div>
-                  <div className={`text-xl font-black leading-tight ${filled ? '' : 'text-ink'}`}>{tile.value}</div>
-                  {tile.sub && <div className={`text-[11px] ${filled ? '' : 'text-dim'}`}>{tile.sub}</div>}
+                <div key={tile.label} className={`py-3 px-3 min-w-0 break-words border-b border-line ${filled ? 'bg-brand text-white' : ''}`}>
+                  <div className={`label ${filled ? 'text-white/85' : ''}`}>{tile.label}</div>
+                  <div className={`font-display text-3xl leading-none mt-1.5 ${filled ? 'text-white' : 'text-ink'}`}>{tile.value}</div>
+                  {tile.sub && <div className={`text-xs mt-1 ${filled ? 'text-white/85' : 'text-dim'}`}>{tile.sub}</div>}
                 </div>
               );
             })}
@@ -240,48 +271,46 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
 
           <PitchView starters={starters} bench={bench} benchPoints={picks.entry_history.points_on_bench} live={isLiveWeek} pointsUnavailable={live === null} opponent={pitchOpponent} />
 
-          {/* Transfers this week */}
-          <section className="mb-8">
-            <h2 className="text-lg font-bold text-ink mb-3">Transfers · GW{selectedGw}</h2>
-            <div className="bg-surface border border-line rounded-xl divide-y divide-line">
-              {weekTransfers.length === 0 && <div className="p-4 text-sm text-faint italic">No transfers this week.</div>}
+          <section className="mb-10">
+            <SectionHeading className="mb-1">Transfers · GW{selectedGw}</SectionHeading>
+            <div className="divide-y divide-line">
+              {weekTransfers.length === 0 && <div className="py-3 text-sm text-faint italic">No transfers this week.</div>}
               {weekTransfers.map((t, i) => {
                 const delta = pointsOf(t.element_in) - pointsOf(t.element_out);
                 return (
-                  <div key={i} className="p-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    <span className="text-red-400 font-semibold">{players?.[t.element_out]?.name || t.element_out}</span>
-                    <span className="text-faint text-xs">£{(t.element_out_cost / 10).toFixed(1)}{live && ` · ${pointsOf(t.element_out)} pts`}</span>
+                  <div key={i} className="py-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <span className="text-loss-2 font-semibold">{players?.[t.element_out]?.name || t.element_out}</span>
+                    <span className="text-dim">£{(t.element_out_cost / 10).toFixed(1)}{live && ` · ${pointsOf(t.element_out)} pts`}</span>
                     <span className="text-faint whitespace-nowrap">→</span>
-                    <span className="text-green-400 font-semibold">{players?.[t.element_in]?.name || t.element_in}</span>
-                    <span className="text-faint text-xs">£{(t.element_in_cost / 10).toFixed(1)}{live && ` · ${pointsOf(t.element_in)} pts`}</span>
-                    {live && <span className={`ml-auto text-sm font-bold ${delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-dim'}`}>{signed(delta)}</span>}
+                    <span className="text-win-2 font-semibold">{players?.[t.element_in]?.name || t.element_in}</span>
+                    <span className="text-dim">£{(t.element_in_cost / 10).toFixed(1)}{live && ` · ${pointsOf(t.element_in)} pts`}</span>
+                    {live && <span className={`ml-auto font-display text-xl leading-none ${delta > 0 ? 'text-win-2' : delta < 0 ? 'text-loss-2' : 'text-dim'}`}>{signed(delta)}</span>}
                   </div>
                 );
               })}
-              {cost > 0 && <div className="p-3 text-xs text-amber-300">−{cost} points for {picks.entry_history.event_transfers} transfer{picks.entry_history.event_transfers === 1 ? '' : 's'}.</div>}
+              {cost > 0 && <div className="py-3 text-sm text-live-2">−{cost} points for {picks.entry_history.event_transfers} transfer{picks.entry_history.event_transfers === 1 ? '' : 's'}.</div>}
               {live && weekTransfers.length > 0 && (
-                <div className="p-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="text-sm font-bold text-ink">Transfer business{isLiveWeek ? ' so far' : ''}</span>
-                  <span className="text-xs text-dim">{pointsIn} in − {pointsOut} out{cost ? ` − ${cost} hit` : ''}</span>
-                  <span className={`ml-auto text-lg font-black ${transferNet > 0 ? 'text-green-400' : transferNet < 0 ? 'text-red-400' : 'text-dim'}`}>{signed(transferNet)}</span>
-                  <span className="basis-full text-[11px] text-faint">Players&apos; own points for the week, before bench and captaincy.</span>
+                <div className="py-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-semibold text-ink">Transfer business{isLiveWeek ? ' so far' : ''}</span>
+                  <span className="text-sm text-dim">{pointsIn} in − {pointsOut} out{cost ? ` − ${cost} hit` : ''}</span>
+                  <span className={`ml-auto font-display text-3xl leading-none ${transferNet > 0 ? 'text-win-2' : transferNet < 0 ? 'text-loss-2' : 'text-dim'}`}>{signed(transferNet)}</span>
+                  <span className="basis-full text-xs text-dim">Players&apos; own points for the week, before bench and captaincy.</span>
                 </div>
               )}
             </div>
           </section>
 
-          {/* Season transfers */}
           {transfers && transfers.length > 0 && (
-            <details className="bg-surface border border-line rounded-xl">
-              <summary className="p-4 cursor-pointer text-sm font-bold text-ink">Season transfer history · {transfers.length}</summary>
-              <div className="divide-y divide-line">
+            <details className="border-y border-line">
+              <summary className="py-3 cursor-pointer font-display text-xl leading-none tracking-[0.02em] text-ink">Season transfer history · {transfers.length}</summary>
+              <div className="divide-y divide-line border-t border-line">
                 {[...transfers].sort((a, b) => b.event - a.event || b.time.localeCompare(a.time)).map((t, i) => (
-                  <div key={i} className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    <span className="w-10 text-xs font-bold text-faint">GW{t.event}</span>
-                    <span className="text-red-400">{players?.[t.element_out]?.name || t.element_out}</span>
+                  <div key={i} className="py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <span className="w-12 font-display text-base leading-none text-faint">GW{t.event}</span>
+                    <span className="text-loss-2">{players?.[t.element_out]?.name || t.element_out}</span>
                     <span className="text-faint whitespace-nowrap">→</span>
-                    <span className="text-green-400">{players?.[t.element_in]?.name || t.element_in}</span>
-                    <span className="ml-auto text-[11px] text-faint">{formatUk(t.time, false)}</span>
+                    <span className="text-win-2">{players?.[t.element_in]?.name || t.element_in}</span>
+                    <span className="ml-auto text-xs text-dim">{formatUk(t.time, false)}</span>
                   </div>
                 ))}
               </div>

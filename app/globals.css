@@ -3,27 +3,96 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   SITE COLOURS — change the site's look here.
-   Values are RGB channels so Tailwind can apply opacity (e.g. bg-accent/20).
-   Tokens: bg (page), surface (cards), surface-2 (subtle panels), surface-3
-   (table headers, skeletons), panel / panel-2 (nav, dark tables), ink (text),
-   ink-2 (secondary text), dim, faint, line (borders), brand (red accent),
-   brand-2 (blue links and labels).
+   THEME: the site's colours, fonts and corners are all set here, and every page
+   follows. Colours are RGB channels (red green blue, 0-255) so Tailwind can apply
+   opacity, e.g. bg-brand/20.
+
+   Two themes ship: the default below, and "classic" (the site before the October
+   2026 restyle) further down. Visitors get DEFAULT_THEME from lib/theme.ts; adding
+   ?theme=classic or ?theme=new to any address switches that device until it is
+   switched back.
    ========================================================================== */
 :root {
+  /* Backgrounds, darkest to lightest */
+  --color-panel-2: 7 6 5;         /* deepest panel */
+  --color-panel: 11 10 9;         /* navbar, footer */
+  --color-bg: 17 15 13;           /* the page */
+  --color-surface: 27 24 21;      /* hovered rows, boxes */
+  --color-surface-2: 36 32 28;    /* raised rows, inputs */
+  --color-surface-3: 50 45 40;    /* table heads, skeletons, draws */
+  --color-line: 58 52 46;         /* rules and borders */
+
+  /* Text, strongest to quietest */
+  --color-ink: 246 242 235;       /* headings and main text */
+  --color-ink-2: 214 207 196;     /* body copy */
+  --color-dim: 170 161 148;       /* secondary text and labels */
+  --color-faint: 150 142 130;     /* least important text (too faint on surface-3) */
+
+  /* The accent */
+  --color-brand: 206 36 58;       /* fills and rules: buttons, selected tabs, the red rules (white text sits on it) */
+  --color-brand-2: 255 112 124;   /* accent text and links on the dark background */
+
+  /* Colours with a meaning */
+  --color-win: 21 128 61;         /* win and qualified fills (white text sits on it) */
+  --color-win-2: 74 222 128;      /* win, up and qualified text */
+  --color-loss: 220 38 38;        /* loss and eliminated fills (white text sits on it) */
+  --color-loss-2: 248 113 113;    /* loss, down and error text */
+  --color-live: 251 191 36;       /* live and provisional fills and dots */
+  --color-live-2: 252 211 77;     /* live and provisional text */
+  --color-on-light: 15 23 42;     /* dark text on light or amber plates */
+
+  /* The pitch on team pages and the planner */
+  --color-pitch: 34 80 58;        /* mown stripe */
+  --color-pitch-2: 29 71 51;      /* alternate stripe */
+  --color-plate: 11 31 20;        /* player name plates */
+  --pitch-light: 0.1;             /* the floodlight wash from the top, 0 for none */
+
+  /* Fonts. The typefaces are loaded in lib/fonts.ts, which provides --font-text and --font-display. */
+  --font-body: var(--font-text);          /* Libre Franklin: everything that isn't a headline */
+  --font-headline: var(--font-display);   /* Anton: page titles, headlines and big figures */
+  --display-case: uppercase;              /* headline capitals: none for normal case */
+  --display-weight: 400;                  /* Anton only has 400; another headline font may want 700-900 */
+  --display-leading: 0.92;                /* line height of headlines that wrap; ~1.1 for a non-condensed font */
+
+  /* Corners, for Tailwind's rounded-sm to rounded-2xl (rounded-full is unaffected) */
+  --radius-sm: 2px;
+  --radius-base: 3px;
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --radius-2xl: 5px;
+}
+
+/* Classic: navy, rose and blue in the system font with softer corners. Only what differs from
+   the default is listed. */
+:root[data-theme="classic"] {
+  --color-panel-2: 5 7 16;
+  --color-panel: 9 12 24;
   --color-bg: 13 17 31;
   --color-surface: 23 29 51;
   --color-surface-2: 31 39 66;
   --color-surface-3: 42 51 80;
-  --color-panel: 9 12 24;
-  --color-panel-2: 5 7 16;
+  --color-line: 45 54 84;
   --color-ink: 241 245 249;
   --color-ink-2: 203 213 225;
   --color-dim: 148 163 184;
   --color-faint: 122 137 162;
-  --color-line: 45 54 84;
-  --color-brand: 244 63 94;
+  --color-brand: 225 29 72;       /* the old rose (244 63 94) one step deeper, so white text on it is readable */
   --color-brand-2: 96 165 250;
+  --color-pitch: 47 138 75;
+  --color-pitch-2: 42 127 68;
+  --pitch-light: 0;
+  --font-body: ui-sans-serif, system-ui, sans-serif;
+  --font-headline: ui-sans-serif, system-ui, sans-serif;
+  --display-case: none;
+  --display-weight: 900;
+  --display-leading: 1.05;
+  --radius-sm: 4px;
+  --radius-base: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
 }
 
 @layer base {
@@ -84,7 +153,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-line;
   }
   html {
     -webkit-text-size-adjust: 100%;
@@ -93,11 +162,28 @@
     max-width: 100%;
   }
   body {
-    @apply bg-bg text-ink;
+    @apply bg-bg text-ink font-sans;
     overflow-x: hidden;
     overflow-x: clip;
     max-width: 100%;
     color-scheme: dark;
+    accent-color: rgb(var(--color-brand));
+  }
+
+  /* The parts the browser draws itself, in the site's colours. */
+  ::selection { background: rgb(var(--color-brand)); color: #fff; }
+  html { scrollbar-color: rgb(var(--color-surface-3)) rgb(var(--color-panel)); }
+  :focus-visible { outline: 2px solid rgb(var(--color-brand-2)); outline-offset: 2px; }
+  a { text-underline-offset: 0.2em; }
+  table, .tabular { font-variant-numeric: tabular-nums; }
+  /* Headlines take their case and weight from the theme. Bold is never faked: Anton has a single
+     weight, and browsers fake bold (TeamName is font-bold) by stroking each glyph, which reads as
+     a blurry outline. All three are inherited, so they reach text that takes the headline font
+     from a heading too. */
+  .font-display, .writeup h2, .writeup h3 {
+    text-transform: var(--display-case);
+    font-weight: var(--display-weight);
+    font-synthesis: none;
   }
 
   .marquee-group {
@@ -112,13 +198,17 @@
 }
 
 @layer components {
-  .writeup h2 { @apply text-xl font-black text-ink mt-3 mb-1; }
-  .writeup h3 { @apply text-base font-bold text-ink mt-2 mb-1; }
-  .writeup p { @apply mb-2 last:mb-0; }
-  .writeup ul { @apply list-disc pl-5 mb-2; }
-  .writeup ol { @apply list-decimal pl-5 mb-2; }
+  /* A small label for a figure or column, never an eyebrow above a heading. */
+  .label { @apply text-xs font-semibold uppercase tracking-[0.08em] text-dim; }
+
+  .writeup { @apply text-[15px] leading-relaxed text-ink-2; }
+  .writeup h2 { @apply font-display text-2xl leading-none tracking-[0.01em] text-ink mt-4 mb-2 first:mt-0; }
+  .writeup h3 { @apply font-display text-lg leading-tight tracking-[0.02em] text-ink mt-3 mb-1 first:mt-0; }
+  .writeup p { @apply mb-3 last:mb-0; }
+  .writeup ul { @apply list-disc pl-5 mb-3; }
+  .writeup ol { @apply list-decimal pl-5 mb-3; }
   .writeup a { @apply text-brand-2 underline; }
-  .writeup blockquote { @apply border-l-4 border-line pl-3 text-dim; }
+  .writeup blockquote { @apply border-l-2 border-line pl-3 italic text-dim; }
 }
 
 /* Hub intro (components/IntroSplash.tsx). Hidden unless the head script in lib/intro.ts or

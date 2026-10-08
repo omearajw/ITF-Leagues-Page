@@ -7,16 +7,17 @@ import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
 import { TickerSwitch } from '@/components/Ticker';
 import { INTRO_HEAD_SCRIPT } from '@/lib/intro';
+import { THEME_HEAD_SCRIPT } from '@/lib/theme';
 import Image from 'next/image';
-import { wordmarkFont } from '@/lib/fonts';
+import { wordmarkFont, displayFont, textFont } from '@/lib/fonts';
 
 export const metadata = {
   title: 'ITF League Hub',
   description: 'Custom Fantasy Premier League Dashboard',
 };
 
-const navLink = 'whitespace-nowrap text-[13px] xl:text-sm text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-md';
-const navGroup = 'text-brand-2 font-bold tracking-widest text-[10px] uppercase hidden xl:block pl-1.5 xl:pl-2';
+const navLink = 'whitespace-nowrap text-[13px] xl:text-sm font-medium text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-sm';
+const navGroup = 'text-xs font-semibold uppercase tracking-[0.08em] text-faint hidden xl:block pl-1.5 xl:pl-2';
 
 // Reference pages that still live on the old ITF site until they are rebuilt here (log items 7 and 8).
 const FOOTER_LINKS = [
@@ -34,7 +35,7 @@ async function Navbar() {
   const isEditor = role === process.env.EDITOR_SECRET_TOKEN;
 
   return (
-    <nav className="bg-panel text-white shadow-md sticky top-0 z-50">
+    <nav className="bg-panel text-white border-b border-line sticky top-0 z-50">
       {/* TOP TIER: Logo and Tools */}
       <div className="border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,17 +52,17 @@ async function Navbar() {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden lg:flex items-center gap-1 text-xs font-medium uppercase tracking-wider">
-                <Link href="/my-team" className="whitespace-nowrap text-dim hover:text-white transition px-2 py-2 rounded-md">My team</Link>
-                <Link href="/plan" className="whitespace-nowrap bg-brand/15 text-brand hover:bg-brand/25 transition px-2.5 py-1.5 rounded-md font-bold">Plan</Link>
+              <div className="hidden lg:flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em]">
+                <Link href="/my-team" className="whitespace-nowrap text-dim hover:text-white transition px-2 py-2 rounded-sm">My team</Link>
+                <Link href="/plan" className="whitespace-nowrap bg-brand text-white hover:bg-brand/85 transition px-3 py-1.5 rounded-sm">Plan</Link>
               </div>
               <TickerSwitch />
               {/* CONDITIONAL RENDERING FOR STAFF LINKS */}
               {(isAdmin || isEditor) && (
-                <div className="hidden lg:flex space-x-4 text-xs font-medium uppercase tracking-wider -mr-2">
-                  <Link href="/editor" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Editor</Link>
+                <div className="hidden lg:flex space-x-4 text-xs font-semibold uppercase tracking-[0.08em] -mr-2">
+                  <Link href="/editor" className="text-faint hover:text-white transition px-2 py-2 rounded-sm">Editor</Link>
                   {isAdmin && (
-                    <Link href="/admin" className="text-faint hover:text-white transition px-2 py-2 rounded-md">Admin</Link>
+                    <Link href="/admin" className="text-faint hover:text-white transition px-2 py-2 rounded-sm">Admin</Link>
                   )}
                 </div>
               )}
@@ -119,10 +120,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    // The intro's head script sets data-intro on <html> before React hydrates.
-    <html lang="en" className={wordmarkFont.variable} suppressHydrationWarning>
+    // The theme and intro head scripts set data-theme and data-intro on <html> before React hydrates.
+    <html lang="en" className={`${wordmarkFont.variable} ${displayFont.variable} ${textFont.variable}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_HEAD_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INTRO_HEAD_SCRIPT }} />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen flex flex-col">
@@ -141,10 +143,10 @@ export default function RootLayout({
         </Suspense>
 
         {/* GLOBAL FOOTER */}
-        <footer className="bg-panel text-dim text-center py-8 text-sm mt-auto relative z-30">
+        <footer className="bg-panel text-faint text-center py-8 text-sm mt-auto relative z-30 border-t border-line">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-3">
             {FOOTER_LINKS.map(link => (
-              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="text-faint hover:text-white transition">
+              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-dim hover:text-white transition">
                 {link.label}
               </a>
             ))}

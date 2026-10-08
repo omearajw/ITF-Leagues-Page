@@ -11,10 +11,12 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        sans: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-headline)", "'Arial Narrow'", "ui-sans-serif", "sans-serif"],
         wordmark: ["var(--font-wordmark)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
-        // Site palette, defined once in app/globals.css
+        // The theme, defined once in app/globals.css
         bg: "rgb(var(--color-bg) / <alpha-value>)",
         surface: {
           DEFAULT: "rgb(var(--color-surface) / <alpha-value>)",
@@ -36,6 +38,24 @@ export default {
           DEFAULT: "rgb(var(--color-brand) / <alpha-value>)",
           2: "rgb(var(--color-brand-2) / <alpha-value>)",
         },
+        win: {
+          DEFAULT: "rgb(var(--color-win) / <alpha-value>)",
+          2: "rgb(var(--color-win-2) / <alpha-value>)",
+        },
+        loss: {
+          DEFAULT: "rgb(var(--color-loss) / <alpha-value>)",
+          2: "rgb(var(--color-loss-2) / <alpha-value>)",
+        },
+        live: {
+          DEFAULT: "rgb(var(--color-live) / <alpha-value>)",
+          2: "rgb(var(--color-live-2) / <alpha-value>)",
+        },
+        "on-light": "rgb(var(--color-on-light) / <alpha-value>)",
+        pitch: {
+          DEFAULT: "rgb(var(--color-pitch) / <alpha-value>)",
+          2: "rgb(var(--color-pitch-2) / <alpha-value>)",
+        },
+        plate: "rgb(var(--color-plate) / <alpha-value>)",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -77,10 +97,17 @@ export default {
           "5": "hsl(var(--chart-5))",
         },
       },
+      lineHeight: {
+        display: "var(--display-leading)",
+      },
+      // Set per theme in app/globals.css (nearly square by default, like a printed page).
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm: "var(--radius-sm)",
+        DEFAULT: "var(--radius-base)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+        "2xl": "var(--radius-2xl)",
       },
     },
   },

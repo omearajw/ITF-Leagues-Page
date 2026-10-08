@@ -33,11 +33,11 @@ export type PlannerProps = {
   stakes: PlanStakes;
 };
 
-const DIFF_CLASS: Record<number, string> = { 1: 'bg-green-600 text-white', 2: 'bg-green-500/70 text-white', 3: 'bg-surface-3 text-ink', 4: 'bg-red-500/70 text-white', 5: 'bg-red-700 text-white' };
+const DIFF_CLASS: Record<number, string> = { 1: 'bg-win text-white', 2: 'bg-win/70 text-white', 3: 'bg-surface-3 text-ink', 4: 'bg-loss/70 text-white', 5: 'bg-loss text-white' };
 const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`;
 
 function FixtureChips({ fixtures, size = 'sm' }: { fixtures: PlanFixture[] | undefined; size?: 'sm' | 'md' }) {
-  if (!fixtures || fixtures.length === 0) return <span className="text-[10px] text-faint">No fixtures</span>;
+  if (!fixtures || fixtures.length === 0) return <span className="text-xs text-faint">No fixtures</span>;
   return (
     <span className="flex gap-1">
       {fixtures.slice(0, 3).map((f, i) => (
@@ -146,13 +146,13 @@ export default function Planner(props: PlannerProps) {
     return (
       <button key={index} type="button" onClick={() => setSelected(index)} className="relative w-full flex flex-col items-center group focus:outline-none" aria-label={`${p.name}, ${p.team}, £${p.price.toFixed(1)}m`}>
         {s.isCaptain && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-brand text-white">C</span>}
-        {s.isVice && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-white text-slate-900">V</span>}
-        {isNew && <span className="absolute top-0 left-0 sm:left-2 z-10 text-[9px] font-black rounded-full px-1.5 h-5 flex items-center text-white ring-2 ring-black/30 bg-green-500">IN</span>}
-        {flag && !isNew && <span className={`absolute top-0 left-0 sm:left-2 z-10 w-2.5 h-2.5 rounded-full ring-2 ring-black/30 ${p.status === 'd' ? 'bg-amber-400' : 'bg-red-500'}`} title={flag} />}
+        {s.isVice && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-white text-on-light">V</span>}
+        {isNew && <span className="absolute top-0 left-0 sm:left-2 z-10 text-[11px] font-black rounded-full px-1.5 h-5 flex items-center text-white ring-2 ring-black/30 bg-win">IN</span>}
+        {flag && !isNew && <span className={`absolute top-0 left-0 sm:left-2 z-10 w-2.5 h-2.5 rounded-full ring-2 ring-black/30 ${p.status === 'd' ? 'bg-live' : 'bg-loss'}`} title={flag} />}
         <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
-        <div className="mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center transition group-hover:ring-2 group-hover:ring-white/60">
-          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : differential ? 'bg-brand-2 text-slate-900' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
-          <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-slate-900">£{p.price.toFixed(1)}m</div>
+        <div className="mt-1 w-full max-w-[7.5rem] rounded-sm overflow-hidden text-center transition group-hover:ring-2 group-hover:ring-white/60">
+          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : differential ? 'bg-brand text-white' : 'bg-plate text-white'}`}>{p.name}</div>
+          <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-on-light">£{p.price.toFixed(1)}m</div>
         </div>
       </button>
     );
@@ -164,11 +164,11 @@ export default function Planner(props: PlannerProps) {
     const both = squadIds.includes(p.id);
     return (
       <div className="relative w-full flex flex-col items-center" aria-label={`${p.name}, ${p.team}`}>
-        {slot.isCaptain && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-amber-400 text-slate-900">C</span>}
+        {slot.isCaptain && <span className="absolute top-0 right-0 sm:right-2 z-10 text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-black/30 bg-live text-on-light">C</span>}
         <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
-        <div className="mt-1 w-full max-w-[7.5rem] rounded-md overflow-hidden shadow-md text-center">
-          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : !both ? 'bg-amber-400 text-slate-900' : 'bg-[#0b1f14] text-white'}`}>{p.name}</div>
-          <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-slate-900">£{p.price.toFixed(1)}m</div>
+        <div className="mt-1 w-full max-w-[7.5rem] rounded-sm overflow-hidden text-center">
+          <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : !both ? 'bg-live text-on-light' : 'bg-plate text-white'}`}>{p.name}</div>
+          <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-on-light">£{p.price.toFixed(1)}m</div>
         </div>
       </div>
     );
@@ -182,26 +182,26 @@ export default function Planner(props: PlannerProps) {
   return (
     <div className="space-y-5">
       {!isMine && (
-        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-200 rounded-xl px-4 py-3 text-sm flex flex-wrap items-center justify-between gap-2">
+        <div className="border-y border-live/40 text-live-2 py-3 text-sm flex flex-wrap items-center justify-between gap-2">
           <span>You are planning <strong>{teamName}</strong>&apos;s week, not your own. Nothing here changes their real team.</span>
-          <Link href={props.myTeamId ? `/manager/${props.myTeamId}/plan` : '/my-team?next=plan'} className="whitespace-nowrap text-xs font-bold bg-amber-400 text-slate-900 px-3 py-1.5 rounded-lg">{props.myTeamId ? 'Plan my team →' : 'Pick my team →'}</Link>
+          <Link href={props.myTeamId ? `/manager/${props.myTeamId}/plan` : '/my-team?next=plan'} className="whitespace-nowrap text-xs font-bold bg-live text-on-light px-3 py-1.5 rounded-lg">{props.myTeamId ? 'Plan my team →' : 'Pick my team →'}</Link>
         </div>
       )}
       {/* Plan bar */}
-      <div className="bg-surface border border-line rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-        <div><span className="text-[10px] font-bold uppercase tracking-widest text-faint mr-2">Bank</span><span className={`font-black ${bank < 0 ? 'text-red-400' : 'text-ink'}`}>£{bank.toFixed(1)}m</span></div>
+      <div className="border-y border-line py-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+        <div><span className="label mr-2">Bank</span><span className={`font-black ${bank < 0 ? 'text-loss-2' : 'text-ink'}`}>£{bank.toFixed(1)}m</span></div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-faint">Free transfers</span>
+          <span className="label">Free transfers</span>
           <button type="button" onClick={() => setFreeTransfers(f => Math.max(0, f - 1))} className="w-6 h-6 rounded bg-surface-3 text-ink font-bold leading-none">−</button>
           <span className="w-4 text-center font-black text-ink">{freeTransfers}</span>
           <button type="button" onClick={() => setFreeTransfers(f => Math.min(5, f + 1))} className="w-6 h-6 rounded bg-surface-3 text-ink font-bold leading-none">+</button>
         </div>
-        <div><span className="text-[10px] font-bold uppercase tracking-widest text-faint mr-2">Transfers</span><span className="font-black text-ink">{transfersIn.length}</span>{hit > 0 && <span className="ml-1 font-bold text-red-400">−{hit} pts</span>}</div>
+        <div><span className="label mr-2">Transfers</span><span className="font-black text-ink">{transfersIn.length}</span>{hit > 0 && <span className="ml-1 font-bold text-loss-2">−{hit} pts</span>}</div>
         <div className="ml-auto flex items-center gap-2">
           {changed && <button type="button" onClick={reset} className="text-xs px-3 py-1.5 rounded-lg border border-line text-dim hover:text-ink">Reset</button>}
         </div>
         {(bank < 0 || overClub.length > 0) && (
-          <div className="w-full text-xs text-red-400 font-semibold">
+          <div className="w-full text-xs text-loss-2 font-semibold">
             {bank < 0 && <span>Over budget by £{Math.abs(bank).toFixed(1)}m. </span>}
             {overClub.length > 0 && <span>More than three players from {overClub.join(', ')}.</span>}
           </div>
@@ -235,11 +235,11 @@ export default function Planner(props: PlannerProps) {
         ) : null;
         return back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front;
       })()}
-      <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-dim">
+      <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-dim">
         {opponent && (
           <>
-            <span className="flex items-center gap-1.5"><span className={`w-3.5 h-3.5 rounded ${flipped ? 'bg-amber-400' : 'bg-brand-2'}`} /> Only {flipped ? opponent.name : you}</span>
-            <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-[#0b1f14] border border-white/25" /> Both own</span>
+            <span className="flex items-center gap-1.5"><span className={`w-3.5 h-3.5 rounded-sm ${flipped ? 'bg-live' : 'bg-brand'}`} /> Only {flipped ? opponent.name : you}</span>
+            <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-plate border border-white/25" /> Both own</span>
           </>
         )}
         <span className="text-faint">Tap a player to swap, captain or see their fixtures.</span>
@@ -262,7 +262,7 @@ export default function Planner(props: PlannerProps) {
               <>
                 <MatchupLanes mine={mine} shared={shared} theirs={theirs} byId={byId} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} ownLabel={isMine ? 'Only you' : `Only ${teamName}`} />
                 <div className="mt-4 pt-3 border-t border-line text-sm text-dim flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span>Captains: {you} <span className="text-ink-2 font-semibold">{captain ? byId[captain]?.name : '—'}</span>, {opponent.name} <span className="text-ink-2 font-semibold">{oppCaptain ? byId[oppCaptain]?.name : '—'}</span>{captain && captain === oppCaptain && <span className="text-amber-300"> · same captain, it cancels out</span>}</span>
+                  <span>Captains: {you} <span className="text-ink-2 font-semibold">{captain ? byId[captain]?.name : '—'}</span>, {opponent.name} <span className="text-ink-2 font-semibold">{oppCaptain ? byId[oppCaptain]?.name : '—'}</span>{captain && captain === oppCaptain && <span className="text-live-2"> · same captain, it cancels out</span>}</span>
                   <Link href={`/manager/${opponent.id}`} className="text-brand-2 hover:underline text-xs sm:ml-auto whitespace-nowrap">See {opponent.name}&apos;s team &rarr;</Link>
                 </div>
               </>
@@ -274,10 +274,10 @@ export default function Planner(props: PlannerProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {stakes.eliminator && (
               <div className={`rounded-xl p-4 border ${stakes.eliminator.alive ? 'bg-surface border-line' : 'bg-surface-2 border-line opacity-70'}`}>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1">Eliminator</div>
+                <div className="label mb-1">Eliminator</div>
                 {stakes.eliminator.alive ? (
                   <>
-                    <div className="text-2xl font-black text-ink">{stakes.eliminator.myPoints !== null && stakes.eliminator.lowestAlive ? `+${stakes.eliminator.myPoints - stakes.eliminator.lowestAlive.points}` : '–'}</div>
+                    <div className="font-display text-3xl leading-none text-ink">{stakes.eliminator.myPoints !== null && stakes.eliminator.lowestAlive ? `+${stakes.eliminator.myPoints - stakes.eliminator.lowestAlive.points}` : '–'}</div>
                     <div className="text-xs text-dim">{You} {isMine ? 'were' : 'was'} clear of the lowest survivor last week{stakes.eliminator.lowestAlive ? ` (${stakes.eliminator.lowestAlive.name}, ${stakes.eliminator.lowestAlive.points})` : ''}. {stakes.eliminator.aliveCount} remain; the lowest net score in GW{planGw} goes.</div>
                   </>
                 ) : (
@@ -287,14 +287,14 @@ export default function Planner(props: PlannerProps) {
             )}
             {stakes.motm && (
               <div className="rounded-xl p-4 border bg-surface border-line">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1">Manager of the Month · {stakes.motm.month}</div>
-                <div className="text-2xl font-black text-ink">{ordinal(stakes.motm.position)}</div>
+                <div className="label mb-1">Manager of the Month · {stakes.motm.month}</div>
+                <div className="font-display text-3xl leading-none text-ink">{ordinal(stakes.motm.position)}</div>
                 <div className="text-xs text-dim">{You} {isMine ? 'are' : 'is'} on {stakes.motm.points}{stakes.motm.leader && stakes.motm.position !== 1 ? `, ${stakes.motm.leader.points - stakes.motm.points} behind ${stakes.motm.leader.name}` : stakes.motm.position === 1 ? ', leading' : ''}.{stakes.motm.complete ? ' Awarded.' : ''}</div>
               </div>
             )}
             {stakes.obCup && (
               <div className="rounded-xl p-4 border bg-surface border-line">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1">OB Cup</div>
+                <div className="label mb-1">OB Cup</div>
                 <div className="text-sm text-dim">{stakes.obCup}</div>
               </div>
             )}
@@ -303,23 +303,23 @@ export default function Planner(props: PlannerProps) {
 
         {tab === 'apply' && (
           <div className="bg-surface border border-line rounded-xl p-4 sm:p-5">
-            {!isMine && <div className="mb-3 text-xs text-amber-300">Only {teamName}&apos;s manager can make these changes on FPL. This is a what-if.</div>}
+            {!isMine && <div className="mb-3 text-xs text-live-2">Only {teamName}&apos;s manager can make these changes on FPL. This is a what-if.</div>}
             {!changed ? (
               <div className="text-sm text-dim">No changes planned yet. Tap a player on the pitch to start.</div>
             ) : (
               <ol className="space-y-2 text-sm">
                 {transfersOut.map((out, i) => (
-                  <li key={out} className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-surface-3 text-[10px] font-black flex items-center justify-center text-ink">{i + 1}</span><span className="text-red-400 font-semibold">{byId[out]?.name}</span><span className="text-faint whitespace-nowrap">→</span><span className="text-green-400 font-semibold">{byId[transfersIn[i]]?.name}</span><span className="text-faint text-xs">£{byId[transfersIn[i]]?.price.toFixed(1)}m</span></li>
+                  <li key={out} className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-surface-3 text-[10px] font-black flex items-center justify-center text-ink">{i + 1}</span><span className="text-loss-2 font-semibold">{byId[out]?.name}</span><span className="text-faint whitespace-nowrap">→</span><span className="text-win-2 font-semibold">{byId[transfersIn[i]]?.name}</span><span className="text-faint text-xs">£{byId[transfersIn[i]]?.price.toFixed(1)}m</span></li>
                 ))}
                 {captain !== baseCaptain && captain && <li className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-brand text-[10px] font-black flex items-center justify-center text-white">C</span>Captain {byId[captain]?.name}</li>}
-                {vice !== baseVice && vice && <li className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-white text-[10px] font-black flex items-center justify-center text-slate-900">V</span>Vice-captain {byId[vice]?.name}</li>}
-                {hit > 0 && <li className="text-amber-300 text-xs pl-7">Costs a {hit}-point hit.</li>}
+                {vice !== baseVice && vice && <li className="flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-white text-[10px] font-black flex items-center justify-center text-on-light">V</span>Vice-captain {byId[vice]?.name}</li>}
+                {hit > 0 && <li className="text-live-2 text-xs pl-7">Costs a {hit}-point hit.</li>}
               </ol>
             )}
             <div className="flex flex-wrap items-center gap-2 mt-4">
               <a href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer" className="text-xs bg-brand text-white px-3 py-2 rounded-lg font-bold whitespace-nowrap">Make transfers on FPL &rarr;</a>
               <a href="https://fantasy.premierleague.com/my-team" target="_blank" rel="noopener noreferrer" className="text-xs bg-surface-3 text-ink px-3 py-2 rounded-lg font-bold whitespace-nowrap">Pick team on FPL &rarr;</a>
-              {props.deadline && <span className="text-[11px] text-faint sm:ml-auto">Deadline {props.deadline}</span>}
+              {props.deadline && <span className="text-xs text-faint sm:ml-auto">Deadline {props.deadline}</span>}
             </div>
           </div>
         )}
@@ -331,34 +331,34 @@ export default function Planner(props: PlannerProps) {
           <div className="flex items-start gap-4">
             <Visual player={{ element: selectedPlayer.id, team: selectedPlayer.team, teamCode: selectedPlayer.teamCode, code: selectedPlayer.code, position: selectedPlayer.position }} />
             <div className="min-w-0 flex-1">
-              <div className="text-lg font-black text-ink leading-tight">{selectedPlayer.name}</div>
-              <div className="text-xs text-dim">{selectedPlayer.team} · {selectedPlayer.position} · £{selectedPlayer.price.toFixed(1)}m{selectedPlayer.priceChange ? <span className={selectedPlayer.priceChange > 0 ? ' text-green-400' : ' text-red-400'}> {selectedPlayer.priceChange > 0 ? '▲' : '▼'} {Math.abs(selectedPlayer.priceChange).toFixed(1)}</span> : ''}</div>
-              {statusText(selectedPlayer) && <div className={`mt-1 text-xs font-semibold ${selectedPlayer.status === 'd' ? 'text-amber-300' : 'text-red-400'}`}>{statusText(selectedPlayer)}{selectedPlayer.news ? ` · ${selectedPlayer.news}` : ''}</div>}
+              <div className="font-display text-2xl leading-none text-ink">{selectedPlayer.name}</div>
+              <div className="text-xs text-dim">{selectedPlayer.team} · {selectedPlayer.position} · £{selectedPlayer.price.toFixed(1)}m{selectedPlayer.priceChange ? <span className={selectedPlayer.priceChange > 0 ? ' text-win-2' : ' text-loss-2'}> {selectedPlayer.priceChange > 0 ? '▲' : '▼'} {Math.abs(selectedPlayer.priceChange).toFixed(1)}</span> : ''}</div>
+              {statusText(selectedPlayer) && <div className={`mt-1 text-xs font-semibold ${selectedPlayer.status === 'd' ? 'text-live-2' : 'text-loss-2'}`}>{statusText(selectedPlayer)}{selectedPlayer.news ? ` · ${selectedPlayer.news}` : ''}</div>}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-            <div className="bg-surface-2 rounded-lg p-2"><div className="text-lg font-black text-ink">{selectedPlayer.form}</div><div className="text-[10px] text-dim">form</div></div>
-            <div className="bg-surface-2 rounded-lg p-2"><div className="text-lg font-black text-ink">{selectedPlayer.totalPoints}</div><div className="text-[10px] text-dim">points</div></div>
-            <div className="bg-surface-2 rounded-lg p-2"><div className="text-lg font-black text-brand-2">{ownPct(selectedPlayer.id)}%</div><div className="text-[10px] text-dim">of the ITF{capCount(selectedPlayer.id) ? ` · ${capCount(selectedPlayer.id)} captain` : ''}</div></div>
+            <div className="border-t border-line pt-2"><div className="font-display text-2xl leading-none text-ink">{selectedPlayer.form}</div><div className="text-xs text-dim">form</div></div>
+            <div className="border-t border-line pt-2"><div className="font-display text-2xl leading-none text-ink">{selectedPlayer.totalPoints}</div><div className="text-xs text-dim">points</div></div>
+            <div className="border-t border-line pt-2"><div className="font-display text-2xl leading-none text-brand-2">{ownPct(selectedPlayer.id)}%</div><div className="text-xs text-dim">of the ITF{capCount(selectedPlayer.id) ? ` · ${capCount(selectedPlayer.id)} captain` : ''}</div></div>
           </div>
           <div className="mt-4">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-1">Next fixtures</div>
+            <div className="label mb-1">Next fixtures</div>
             <FixtureChips fixtures={fixtures[selectedPlayer.teamId]} size="md" />
           </div>
           {opponent && (
             <div className="mt-3 text-xs text-dim">
               {oppStarters.has(selectedPlayer.id) ? `${opponent.name} also starts ${selectedPlayer.name}, so this one cancels out.` : oppAll.has(selectedPlayer.id) ? `${opponent.name} has ${selectedPlayer.name} on the bench.` : `${opponent.name} does not own ${selectedPlayer.name}: a differential for you.`}
-              {oppCaptain === selectedPlayer.id && <span className="text-amber-300"> Their captain.</span>}
+              {oppCaptain === selectedPlayer.id && <span className="text-live-2"> Their captain.</span>}
             </div>
           )}
           <div className="flex flex-wrap gap-2 mt-5">
             {selectedSlot.position <= 11 && (
               <>
                 <button type="button" onClick={() => setArmband(selectedPlayer.id, 'C')} className={`px-3 py-2 rounded-lg text-sm font-bold ${selectedSlot.isCaptain ? 'bg-brand text-white' : 'bg-surface-3 text-ink'}`}>{selectedSlot.isCaptain ? 'Captain ✓' : 'Make captain'}</button>
-                <button type="button" onClick={() => setArmband(selectedPlayer.id, 'V')} className={`px-3 py-2 rounded-lg text-sm font-bold ${selectedSlot.isVice ? 'bg-white text-slate-900' : 'bg-surface-3 text-ink'}`}>{selectedSlot.isVice ? 'Vice ✓' : 'Make vice'}</button>
+                <button type="button" onClick={() => setArmband(selectedPlayer.id, 'V')} className={`px-3 py-2 rounded-lg text-sm font-bold ${selectedSlot.isVice ? 'bg-white text-on-light' : 'bg-surface-3 text-ink'}`}>{selectedSlot.isVice ? 'Vice ✓' : 'Make vice'}</button>
               </>
             )}
-            <button type="button" onClick={() => setSwapping(selected)} className="px-3 py-2 rounded-lg text-sm font-bold bg-brand-2/15 text-brand-2 ml-auto">Swap out &rarr;</button>
+            <button type="button" onClick={() => setSwapping(selected)} className="px-3 py-2 rounded-sm text-sm font-semibold bg-brand text-white hover:bg-brand/85 ml-auto">Swap out &rarr;</button>
           </div>
         </Sheet>
       )}
@@ -405,22 +405,22 @@ function MatchupLanes({ mine, shared, theirs, byId, captain, oppCaptain, opponen
 }) {
   const sorted = (ids: number[]) => [...ids].sort((a, b) => LANE_ORDER[byId[a]?.position || 'MID'] - LANE_ORDER[byId[b]?.position || 'MID']);
   const lanes = [
-    { key: 'mine', label: ownLabel, ids: sorted(mine), cls: 'bg-brand-2/10 border-brand-2/30', head: 'text-brand-2' },
+    { key: 'mine', label: ownLabel, ids: sorted(mine), cls: 'bg-brand/10 border-brand/40', head: 'text-ink' },
     { key: 'shared', label: 'Both', ids: sorted(shared), cls: 'bg-surface-2 border-line', head: 'text-dim' },
-    { key: 'theirs', label: `Only ${opponentName}`, ids: sorted(theirs), cls: 'bg-amber-500/10 border-amber-500/30', head: 'text-amber-300' },
+    { key: 'theirs', label: `Only ${opponentName}`, ids: sorted(theirs), cls: 'bg-live/10 border-live/30', head: 'text-live-2' },
   ];
   return (
     <div className="grid grid-cols-3 gap-2 sm:gap-3">
       {lanes.map(lane => (
         <div key={lane.key} className={`rounded-xl border p-2 sm:p-3 min-w-0 ${lane.cls}`}>
           <div className={`text-center mb-3 ${lane.head}`}>
-            <div className="text-2xl font-black leading-none">{lane.ids.length}</div>
-            <div className="text-[10px] font-bold uppercase tracking-widest truncate" title={lane.label}>{lane.label}</div>
+            <div className="font-display text-3xl leading-none">{lane.ids.length}</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.08em] truncate" title={lane.label}>{lane.label}</div>
           </div>
           <ul className="space-y-1.5">
             {lane.ids.map(id => {
               const p = byId[id]; if (!p) return null;
-              const capCls = id === captain && id === oppCaptain ? 'bg-white text-slate-900' : id === captain ? 'bg-brand text-white' : id === oppCaptain ? 'bg-amber-400 text-slate-900' : null;
+              const capCls = id === captain && id === oppCaptain ? 'bg-white text-on-light' : id === captain ? 'bg-brand text-white' : id === oppCaptain ? 'bg-live text-on-light' : null;
               return (
                 <li key={id} className="flex items-center gap-2 min-w-0">
                   <Avatar player={p} />
@@ -429,7 +429,7 @@ function MatchupLanes({ mine, shared, theirs, byId, captain, oppCaptain, opponen
                 </li>
               );
             })}
-            {lane.ids.length === 0 && <li className="text-center text-[11px] text-faint py-2">Nobody</li>}
+            {lane.ids.length === 0 && <li className="text-center text-xs text-faint py-2">Nobody</li>}
           </ul>
         </div>
       ))}
@@ -446,7 +446,7 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md max-h-[88dvh] overflow-y-auto bg-surface border border-line rounded-t-2xl sm:rounded-2xl shadow-2xl p-5">
+      <div className="relative w-full sm:max-w-md max-h-[88dvh] overflow-y-auto bg-surface border border-line rounded-t-md sm:rounded-md shadow-[0_24px_60px_rgba(0,0,0,0.55)] p-5">
         <button type="button" onClick={onClose} className="absolute top-3 right-4 text-dim hover:text-ink text-xl leading-none" aria-label="Close">×</button>
         {children}
       </div>
@@ -480,11 +480,11 @@ function ReplaceDrawer({ outgoing, budget, players, squadIds, clubCounts, fixtur
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full sm:max-w-2xl max-h-[88dvh] bg-surface border border-line rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+      <div className="relative w-full sm:max-w-2xl max-h-[88dvh] bg-surface border border-line rounded-t-md sm:rounded-md shadow-[0_24px_60px_rgba(0,0,0,0.55)] flex flex-col">
         <div className="p-4 border-b border-line">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-faint">Replace</div>
+              <div className="label">Replace</div>
               <div className="font-bold text-ink truncate">{outgoing.name} <span className="text-dim font-normal">· {outgoing.position} · up to £{budget.toFixed(1)}m</span></div>
             </div>
             <button type="button" onClick={onClose} className="text-dim hover:text-ink text-xl leading-none px-1" aria-label="Close">×</button>
@@ -509,17 +509,17 @@ function ReplaceDrawer({ outgoing, budget, players, squadIds, clubCounts, fixtur
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-ink">{p.name}</span>
                     <span className="text-xs text-faint">{p.team}</span>
-                    {flag && <span className={`text-[10px] font-bold ${p.status === 'd' ? 'text-amber-300' : 'text-red-400'}`}>{flag}</span>}
-                    {oppIds.has(p.id) && <span className="text-[10px] font-bold text-amber-300">Opponent owns</span>}
-                    {clubFull && <span className="text-[10px] font-bold text-faint">3 from club</span>}
+                    {flag && <span className={`text-xs font-bold ${p.status === 'd' ? 'text-live-2' : 'text-loss-2'}`}>{flag}</span>}
+                    {oppIds.has(p.id) && <span className="text-xs font-bold text-live-2">Opponent owns</span>}
+                    {clubFull && <span className="text-xs font-bold text-faint">3 from club</span>}
                   </div>
-                  <div className="mt-1 flex items-center gap-3 text-[11px] text-dim">
+                  <div className="mt-1 flex items-center gap-3 text-xs text-dim">
                     <FixtureChips fixtures={fixtures[p.teamId]} />
                     <span>Form {p.form}</span>
                     <span className="text-brand-2">ITF {ownPct(p.id)}%</span>
                   </div>
                 </div>
-                <div className={`shrink-0 font-black ${p.price > budget ? 'text-red-400' : 'text-ink'}`}>£{p.price.toFixed(1)}m</div>
+                <div className={`shrink-0 font-black ${p.price > budget ? 'text-loss-2' : 'text-ink'}`}>£{p.price.toFixed(1)}m</div>
               </button>
             );
           })}

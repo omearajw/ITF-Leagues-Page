@@ -8,9 +8,11 @@ import BackPageBanner from '@/components/BackPageBanner';
 import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow, { NewEntryMark } from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
+import { compareStanding } from '@/lib/standings';
 import { getWeekProjection, dueFor } from '@/lib/projection';
-import { toPlainText } from '@/lib/richtext';
+import { writeUpLead } from '@/lib/richtext';
 import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
+import SectionHeading from '@/components/SectionHeading';
 import DueMark from '@/components/DueMark';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { buildMotm } from '@/lib/motm';
@@ -50,7 +52,7 @@ async function DashboardContent() {
   // B. Fetch CMS content
   // Only this week's write-ups; an older one next to this week's table would mislead.
   const { data: contentData } = await supabase.from('page_content').select('id, content').eq('gw_number', currentGw);
-  const snippets: Record<string, string> = contentData?.reduce((acc: any, item: any) => { acc[item.id] = toPlainText(item.content); return acc; }, {}) || {};
+  const leads: Record<string, Lead> = Object.fromEntries((contentData || []).map((item: any) => [item.id, writeUpLead(item.content)]));
   const noWriteUp = `No GW${currentGw} write-up yet.`;
 
   // F. Fetch tournament configs to display status/stage
@@ -84,7 +86,7 @@ async function DashboardContent() {
   // The ingest may not have written live rows yet, so fall back to the synced week.
   const fetchScores = (gwNumber: number) => supabase
     .from('manager_gw_scores')
-    .select(`manager_fpl_id, classic_total_points, season_managers!inner (team_name, division, managers!inner (real_name))`)
+    .select(`manager_fpl_id, points, classic_total_points, season_managers!inner (team_name, division, managers!inner (real_name))`)
     .eq('season_id', SEASON_ID)
     .eq('gw_number', gwNumber);
 
@@ -99,7 +101,7 @@ async function DashboardContent() {
   const dueOf = (id: number) => (projection ? dueFor(projection, scoresGw, Number(id)) : null);
   const withDue = (id: number, value: number) => value + (dueOf(id)?.due || 0);
 
-  if (error) return <div className="p-10 text-red-500">Error: {error.message}</div>;
+  if (error) return <div className="p-10 text-loss-2">Error: {error.message}</div>;
 
   // D. NEW: Fetch H2H results and calculate League Points (3 for W, 1 for D)
   const { data: h2hData } = await supabase.from('h2h_fixtures').select('manager_fpl_id, gw_number, result').eq('season_id', SEASON_ID).lte('gw_number', currentGw);
@@ -115,40 +117,41 @@ async function DashboardContent() {
   };
   const matchPointsMap = buildMatchPoints(currentGw);
 
-  // E. Map H2H points to teams and sort (H2H points first, then Total FPL points)
+  // E. Map H2H points to teams and rank them (see lib/standings.ts)
   const processedTeams = scores?.map(team => ({
     ...team,
     h2h_points: matchPointsMap[team.manager_fpl_id] || 0
-  })).sort((a, b) => {
-    if (b.h2h_points !== a.h2h_points) return b.h2h_points - a.h2h_points;
-    return b.classic_total_points - a.classic_total_points;
-  }) || [];
+  })).sort((a: any, b: any) => compareStanding(
+    { pts: a.h2h_points, total: a.classic_total_points, week: a.points, name: a.season_managers.team_name },
+    { pts: b.h2h_points, total: b.classic_total_points, week: b.points, name: b.season_managers.team_name },
+  )) || [];
 
   const premierLeagueTeams = processedTeams.filter((s: any) => s.season_managers.division === 'Premier League');
   const championshipTeams = processedTeams.filter((s: any) => s.season_managers.division === 'Championship');
   const leagueOneTeams = processedTeams.filter((s: any) => s.season_managers.division === 'League One');
   
-  // ITF Open still uses raw total points
-  const topTenITF = [...processedTeams].sort((a, b) => withDue(b.manager_fpl_id, b.classic_total_points) - withDue(a.manager_fpl_id, a.classic_total_points)).slice(0, 10);
+  // The Open ranks on total points, including any subs due while a week is live.
+  const openStanding = (t: any) => ({ total: withDue(t.manager_fpl_id, t.classic_total_points), week: withDue(t.manager_fpl_id, t.points), name: t.season_managers.team_name });
+  const openOrder = [...processedTeams].sort((a, b) => compareStanding(openStanding(a), openStanding(b)));
+  const topTenITF = openOrder.slice(0, 10);
 
   // Movement: divisions compare with last week's confirmed standings; the ITF Open
   // compares live totals with the last confirmed week (or last week when nothing is live).
   const itfPreviousGw = showingLive ? currentGw : currentGw - 1;
   const { data: previousScores } = currentGw > 1 || showingLive
-    ? await supabase.from('manager_gw_scores').select('manager_fpl_id, classic_total_points, season_managers!inner (division)').eq('season_id', SEASON_ID).eq('gw_number', currentGw - 1)
+    ? await supabase.from('manager_gw_scores').select('manager_fpl_id, points, classic_total_points, season_managers!inner (division, team_name)').eq('season_id', SEASON_ID).eq('gw_number', currentGw - 1)
     : { data: null };
   const { data: itfPreviousScores } = itfPreviousGw === currentGw - 1
     ? { data: previousScores }
-    : await supabase.from('manager_gw_scores').select('manager_fpl_id, classic_total_points, season_managers!inner (division)').eq('season_id', SEASON_ID).eq('gw_number', itfPreviousGw);
+    : await supabase.from('manager_gw_scores').select('manager_fpl_id, points, classic_total_points, season_managers!inner (division, team_name)').eq('season_id', SEASON_ID).eq('gw_number', itfPreviousGw);
 
   const previousMatchPoints = buildMatchPoints(currentGw - 1);
   const previousDivisionOrder = (division: string) => (previousScores || [])
     .filter((s: any) => s.season_managers.division === division)
-    .sort((a: any, b: any) => {
-      const ha = previousMatchPoints[a.manager_fpl_id] || 0, hb = previousMatchPoints[b.manager_fpl_id] || 0;
-      if (hb !== ha) return hb - ha;
-      return b.classic_total_points - a.classic_total_points;
-    })
+    .sort((a: any, b: any) => compareStanding(
+      { pts: previousMatchPoints[a.manager_fpl_id] || 0, total: a.classic_total_points, week: a.points, name: a.season_managers.team_name },
+      { pts: previousMatchPoints[b.manager_fpl_id] || 0, total: b.classic_total_points, week: b.points, name: b.season_managers.team_name },
+    ))
     .map((s: any) => s.manager_fpl_id);
   const divisionMovement = (teams: any[], division: string) =>
     currentGw > 1 ? positionDeltas(teams.map(t => t.manager_fpl_id), previousDivisionOrder(division)) : {};
@@ -166,189 +169,157 @@ async function DashboardContent() {
   }) : [];
   const motmLatest = motmMonths[0] || null;
 
+  const previousOpenOrder = [...(itfPreviousScores || [])]
+    .sort((a: any, b: any) => compareStanding(
+      { total: a.classic_total_points, week: a.points, name: a.season_managers.team_name },
+      { total: b.classic_total_points, week: b.points, name: b.season_managers.team_name },
+    ))
+    .map((s: any) => Number(s.manager_fpl_id));
   const itfMovement = itfPreviousScores
-    ? positionDeltas(
-        [...processedTeams].sort((a, b) => b.classic_total_points - a.classic_total_points).map(t => t.manager_fpl_id),
-        [...itfPreviousScores].sort((a: any, b: any) => b.classic_total_points - a.classic_total_points).map((s: any) => s.manager_fpl_id)
-      )
+    ? positionDeltas(openOrder.map(t => Number(t.manager_fpl_id)), previousOpenOrder)
     : {};
-  const itfPreviousTopTen = new Set(
-    [...(itfPreviousScores || [])].sort((a, b) => b.classic_total_points - a.classic_total_points).slice(0, 10).map(s => Number(s.manager_fpl_id))
-  );
+  const itfPreviousTopTen = new Set(previousOpenOrder.slice(0, 10));
   const itfMark = (id: number) => itfPreviousTopTen.size > 0 && !itfPreviousTopTen.has(Number(id))
     ? <NewEntryMark />
     : <MovementArrow delta={itfMovement[id]} />;
 
   return (
-    <>
-      <div className="flex flex-col gap-10">
-        {/* TEAM OF THE WEEK */}
-        <TeamOfTheWeekBanner gw={currentGw} />
+    <div className="flex flex-col gap-12">
+      <TeamOfTheWeekBanner gw={currentGw} />
 
-        {/* ROW 1: THE DIVISIONS */}
+      <section>
+        <SectionHeading aside={<GameweekChip gw={gw} />}>League</SectionHeading>
+        {gw.liveGw && <p className="text-sm text-dim -mt-2 mb-4">Pts and positions update once GW{gw.liveGw} is confirmed.</p>}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-10">
+          <DivisionWidget name="Premier League" link="/divisions/premier-league" lead={leads['premier-league']} gw={currentGw} teams={premierLeagueTeams} placeholder={noWriteUp} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
+          <DivisionWidget name="Championship" link="/divisions/championship" lead={leads['championship']} gw={currentGw} teams={championshipTeams} placeholder={noWriteUp} movement={divisionMovement(championshipTeams, 'Championship')} />
+          <DivisionWidget name="League One" link="/divisions/league-one" lead={leads['league-one']} gw={currentGw} teams={leagueOneTeams} placeholder={noWriteUp} movement={divisionMovement(leagueOneTeams, 'League One')} />
+        </div>
+      </section>
+
+      <section>
+        <SectionHeading>Tournaments</SectionHeading>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-10">
+          <TournamentWidget
+            name="Onion Baggers Cup"
+            stage={currentGw < obKnock ? `Qualifiers, since GW${obQual}` : `Knockouts, since GW${obKnock}`}
+            pending={currentGw < obQual}
+            status={currentGw < obQual ? `Starts GW${obQual}` : currentGw < obKnock ? 'Qualifying' : 'Knockouts'}
+            nextLine={nextLines.ob}
+            summary={`16 places · the two highest scorers each week qualify from GW${obQual} · knockouts from GW${obKnock}`}
+            link="/tournaments/onion-baggers-cup"
+            lead={leads['onion-baggers-cup']}
+            placeholder={noWriteUp}
+          />
+          <TournamentWidget
+            name="Champions League"
+            stage={`Stage 1, since GW${clS1}`}
+            pending={currentGw < clS1}
+            status={currentGw < clS1 ? `Starts GW${clS1}` : 'Live'}
+            nextLine={nextLines.cl}
+            summary={clEntrants > 0 ? `${clEntrants} entrants confirmed · round robin from GW${clS1}` : 'Entrants not yet selected'}
+            link="/tournaments/champions-league"
+            lead={leads['champions-league']}
+            placeholder={noWriteUp}
+          />
+          <TournamentWidget
+            name="Eliminator"
+            stage={`Running since GW${elStart}`}
+            pending={currentGw < elStart}
+            status={currentGw < elStart ? `Starts GW${elStart}` : 'Live'}
+            nextLine={nextLines.el}
+            summary={elStatus && elStatus.length > 0 ? (
+              <>
+                <span className="font-display text-5xl leading-none text-ink tabular">{elAlive}</span> <span className="label">remain</span>
+                {elLastCut && (
+                  <span className="block mt-2 text-sm text-dim">
+                    Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
+                  </span>
+                )}
+              </>
+            ) : 'Entrants are registered on the first sync after the start week'}
+            link="/tournaments/eliminator"
+            lead={leads['eliminator']}
+            placeholder={noWriteUp}
+          />
+        </div>
+      </section>
+
+      {motmLatest && (
         <section>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-1 border-b pb-2">
-            <h2 className="text-xl font-bold">League</h2>
-            <GameweekChip gw={gw} />
-          </div>
-          <p className="text-xs text-dim mb-4">{gw.liveGw ? `Pts and positions update once GW${gw.liveGw} is confirmed.` : `Standings after GW${currentGw}.`}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <DivisionWidget name="Premier League" link="/divisions/premier-league" snippet={snippets['premier-league']} fullSnippet={snippets['premier-league']} teams={premierLeagueTeams} placeholder={noWriteUp} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
-            <DivisionWidget name="Championship" link="/divisions/championship" snippet={snippets['championship']} fullSnippet={snippets['championship']} teams={championshipTeams} placeholder={noWriteUp} movement={divisionMovement(championshipTeams, 'Championship')} />
-            <DivisionWidget name="League One" link="/divisions/league-one" snippet={snippets['league-one']} fullSnippet={snippets['league-one']} teams={leagueOneTeams} placeholder={noWriteUp} movement={divisionMovement(leagueOneTeams, 'League One')} />
-          </div>
-        </section>
-
-        {/* ROW 2: TOURNAMENTS */}
-        <section>
-          <h2 className="text-xl font-bold mb-4 border-b pb-2">Tournaments</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <TournamentWidget 
-              name="Onion Baggers Cup" 
-              stage={currentGw < obKnock ? `Qualifiers, since GW${obQual}` : `Knockouts, since GW${obKnock}`} 
-              status={currentGw < obQual ? 'Pending' : currentGw < obKnock ? 'Qualifying' : 'Knockouts'} 
-              nextLine={nextLines.ob}
-              summary={`16 places · the two highest scorers each week qualify from GW${obQual} · knockouts from GW${obKnock}`}
-              link="/tournaments/onion-baggers-cup" 
-              snippet={snippets['onion-baggers-cup']} 
-              fullSnippet={snippets['onion-baggers-cup']}
-              startGw={`GW${obQual}`} 
-              placeholder={noWriteUp}
-            />
-            <TournamentWidget 
-              name="Champions League" 
-              stage={`Stage 1, since GW${clS1}`} 
-              status={currentGw < clS1 ? 'Pending' : 'Active'} 
-              nextLine={nextLines.cl}
-              summary={clEntrants > 0 ? `${clEntrants} entrants confirmed · round robin from GW${clS1}` : 'Entrants not yet selected'}
-              link="/tournaments/champions-league" 
-              snippet={snippets['champions-league']} 
-              fullSnippet={snippets['champions-league']}
-              startGw={`GW${clS1}`} 
-              placeholder={noWriteUp}
-            />
-            <TournamentWidget 
-              name="Eliminator" 
-              stage={`Running since GW${elStart}`} 
-              status={currentGw < elStart ? 'Pending' : 'Active'} 
-              nextLine={nextLines.el}
-              summary={elStatus && elStatus.length > 0 ? (
-                <>
-                  <span className="text-2xl font-black text-ink">{elAlive}</span> <span className="text-dim">remain</span>
-                  {elLastCut && (
-                    <span className="block mt-1 text-xs text-dim">
-                      Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="text-red-400 min-w-0" />
-                    </span>
-                  )}
-                </>
-              ) : 'Entrants are registered on the first sync after the start week'}
-              link="/tournaments/eliminator" 
-              snippet={snippets['eliminator']} 
-              fullSnippet={snippets['eliminator']}
-              startGw={`GW${elStart}`} 
-              placeholder={noWriteUp}
-            />
-          </div>
-        </section>
-
-        {/* ROW 3: MANAGER OF THE MONTH */}
-        {motmLatest && (
-          <section>
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b pb-2">
-              <h2 className="text-xl font-bold">Manager of the Month</h2>
-              <div className="flex items-center gap-3 text-sm">
-                <span className="text-dim">{motmLatest.label} · {motmLatest.complete ? 'awarded' : 'in progress'}</span>
-                <Link href="/motm" className="text-brand-2 hover:underline whitespace-nowrap">All months &rarr;</Link>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {motmLatest.divisions.map(div => (
-                <div key={div.division} className={`bg-surface border rounded-xl shadow-sm p-4 ${motmLatest.complete ? '' : 'border-amber-500/30'}`}>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-faint mb-2">{div.division}</div>
-                  {div.leaders.length === 0 ? (
-                    <div className="text-sm text-faint italic">No scores yet</div>
-                  ) : div.leaders.map(leader => (
-                    <div key={leader.id} className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span aria-hidden="true">{motmLatest.complete ? '🏆' : '⏳'}</span>
-                          <TeamName name={leader.teamName} managerId={leader.id} inline className="text-ink min-w-0" />
+          <SectionHeading aside={(
+            <>
+              <span className="text-dim">{motmLatest.label} · {motmLatest.complete ? 'awarded' : 'in progress'}</span>
+              <Link href="/motm" className="font-semibold text-brand-2 hover:underline whitespace-nowrap">All months &rarr;</Link>
+            </>
+          )}>
+            Manager of the Month
+          </SectionHeading>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+            {motmLatest.divisions.map(div => (
+              <div key={div.division}>
+                <div className="flex items-baseline justify-between gap-3 mb-2">
+                  <h3 className="font-display text-lg leading-none tracking-[0.03em] text-ink-2">{div.division}</h3>
+                  {div.leaders.length > 1 && <span className="label">Shared</span>}
+                </div>
+                {div.leaders.length === 0 ? (
+                  <div className="text-sm text-faint italic">No scores yet</div>
+                ) : (
+                  <div className="divide-y divide-line border-t border-line">
+                    {div.leaders.map(leader => (
+                      <div key={leader.id} className="flex items-center justify-between gap-3 py-2">
+                        <div className="min-w-0">
+                          <TeamName name={leader.teamName} managerId={leader.id} inline className="font-semibold text-ink min-w-0" />
+                          <div className="text-sm text-dim">{leader.realName}</div>
                         </div>
-                        <div className="text-xs text-dim pl-7">{leader.realName}</div>
+                        <span className="shrink-0 font-display text-3xl leading-none text-ink tabular">{leader.points}</span>
                       </div>
-                      <span className="shrink-0 text-lg font-black text-ink">{leader.points}</span>
-                    </div>
-                  ))}
-                  {div.leaders.length > 1 && <div className="text-[10px] uppercase tracking-wider font-bold text-amber-300 mt-1">Shared</div>}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ROW 4: LIVE ITF OPEN */}
-        <section className="mb-12">
-          <div className="flex flex-wrap justify-between items-center gap-2 border-b pb-2 mb-4">
-            <h2 className="text-xl font-bold">ITF Open - Top 10</h2>
-            <div className="flex flex-wrap items-center gap-3">
-              <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
-              <Link href="/itf-open" className="text-sm text-brand-2 hover:underline whitespace-nowrap">View Full Table &rarr;</Link>
-            </div>
-          </div>
-          <div className="bg-surface shadow rounded-lg border overflow-hidden">
-            {/* Mobile list */}
-            <div className="md:hidden divide-y divide-line">
-              {topTenITF.map((manager: any, index: number) => (
-                <div key={manager.manager_fpl_id} className="p-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-6 shrink-0 text-sm font-black text-faint">{index + 1}</span>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold min-w-0" />
-                        {itfMark(manager.manager_fpl_id)}
-                      </div>
-                      <div className="text-xs text-faint">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
-                    </div>
+                    ))}
                   </div>
-                  <span className="shrink-0 font-bold text-brand-2">{withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></span>
-                </div>
-              ))}
-            </div>
-            <table className="hidden md:table w-full text-left text-sm">
-              <thead className="bg-surface-2 border-b">
-                <tr>
-                  <th className="p-3">Rank</th>
-                  <th className="p-3">Team & Manager</th>
-                  <th className="p-3">Division</th>
-                  <th className="p-3 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topTenITF.map((manager: any, index: number) => (
-                  <tr key={manager.manager_fpl_id} className="border-b last:border-0 hover:bg-surface-2">
-                    <td className="p-3 font-bold text-dim">{index + 1}</td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold" />
-                        {itfMark(manager.manager_fpl_id)}
-                      </div>
-                      <div className="text-xs text-faint">{manager.season_managers.managers.real_name}</div>
-                    </td>
-                    <td className="p-3">
-                      <span className="px-2 py-0.5 bg-surface-2 text-ink-2 text-xs rounded border">
-                        {manager.season_managers.division}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right font-bold text-brand-2">{withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                )}
+              </div>
+            ))}
           </div>
         </section>
-      </div>
+      )}
 
-    </>
+      <section className="mb-12">
+        <SectionHeading aside={(
+          <>
+            <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
+            <Link href="/itf-open" className="font-semibold text-brand-2 hover:underline whitespace-nowrap">View full table &rarr;</Link>
+          </>
+        )}>
+          The Open <span className="text-dim">· Top 10</span>
+        </SectionHeading>
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-line">
+              <th className="label font-semibold py-2 pr-3 w-10">Pos</th>
+              <th className="label font-semibold py-2 pr-3">Team</th>
+              <th className="label font-semibold py-2 pr-3 hidden md:table-cell">Division</th>
+              <th className="label font-semibold py-2 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {topTenITF.map((manager: any, index: number) => (
+              <tr key={manager.manager_fpl_id} className="hover:bg-surface">
+                <td className="py-2.5 pr-3 font-display text-xl leading-none text-faint">{index + 1}</td>
+                <td className="py-2.5 pr-3 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
+                    {itfMark(manager.manager_fpl_id)}
+                  </div>
+                  <div className="text-dim">{manager.season_managers.managers.real_name}<span className="md:hidden"> · {manager.season_managers.division}</span></div>
+                </td>
+                <td className="py-2.5 pr-3 text-dim hidden md:table-cell">{manager.season_managers.division}</td>
+                <td className="py-2.5 text-right whitespace-nowrap"><span className="font-display text-2xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </div>
   );
 }
 
@@ -356,90 +327,71 @@ async function DashboardContent() {
 // 3. HELPER COMPONENTS
 // =========================================
 
-function DivisionWidget({ name, link, snippet, fullSnippet, teams, movement, placeholder }: { name: string, link: string, snippet: string, fullSnippet?: string, teams: any[], movement: Record<number, number | null>, placeholder?: string }) {
+type Lead = { headline: string | null; teaser: string };
+
+// One division's column, led like a back-page story: the write-up's own headline in the
+// display face, a line saying which league it is, the teaser, then the table. With no
+// write-up the division's name takes the headline's place.
+function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: { name: string, link: string, lead?: Lead, gw: number, teams: any[], movement: Record<number, number | null>, placeholder?: string }) {
+  const headline = lead?.headline;
   return (
-    <div className="bg-surface border rounded-xl shadow-sm flex flex-col h-full hover:shadow-md transition">
-      <Link href={link} className="p-4 border-b bg-surface-2 rounded-t-xl hover:bg-surface-2 transition group cursor-pointer">
-        <h3 className="font-bold text-lg group-hover:text-brand-2 transition-colors">{name}&nbsp;&rarr;</h3>
+    <div className="flex flex-col">
+      <Link href={link} className="group">
+        <h3 className="font-display text-[1.9rem] leading-display tracking-[0.01em] text-ink group-hover:text-brand-2 transition-colors text-balance">{headline || name}</h3>
       </Link>
-      <div className="p-4 flex-grow text-sm text-dim flex flex-col justify-between">
-        <Snippet preview={snippet?.slice(0, 180)} full={fullSnippet} link={link} placeholder={placeholder} />
-        <div className="border rounded overflow-hidden bg-surface-2">
-          <table className="w-full text-xs text-left border-collapse">
-            <tbody>
-              {teams.map((team, index) => (
-                <tr key={team.manager_fpl_id} className="border-b last:border-0 bg-surface hover:bg-surface-2">
-                  <td className="p-1.5 pl-2 font-bold text-faint w-6">{index + 1}</td>
-                  <td className="p-1.5 font-medium min-w-0 max-w-[1px] w-full">
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <TeamName name={team.season_managers.team_name} managerId={team.manager_fpl_id} inline className="min-w-0" />
-                      <MovementArrow delta={movement[team.manager_fpl_id]} />
-                    </span>
-                  </td>
-                  <td className="p-1.5 text-right font-bold pr-2 text-ink">{team.h2h_points} Pts</td>
-                </tr>
-              ))}
-              {teams.length === 0 && (
-                <tr><td className="p-4 text-center text-faint italic">No teams registered.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {headline ? (
+        <p className="mt-2 mb-2 text-sm text-dim">
+          <Link href={link} className="font-semibold text-brand-2 hover:underline">{name}</Link>
+          {` · GW${gw} write-up`}
+        </p>
+      ) : <div className="mb-2" />}
+      <Snippet preview={lead?.teaser?.slice(0, 180)} full={lead?.teaser} link={link} placeholder={placeholder} />
+      <table className="w-full text-sm text-left mt-auto">
+        <thead>
+          <tr className="border-b border-line">
+            <th className="label font-semibold py-1.5 pr-3 w-10">Pos</th>
+            <th className="label font-semibold py-1.5">{name}</th>
+            <th className="label font-semibold py-1.5 text-right">Pts</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {teams.map((team, index) => (
+            <tr key={team.manager_fpl_id} className="h-10 hover:bg-surface">
+              <td className="py-1.5 pr-3 text-faint font-semibold">{index + 1}</td>
+              <td className="py-1.5 pr-2 min-w-0 max-w-[1px] w-full">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <TeamName name={team.season_managers.team_name} managerId={team.manager_fpl_id} inline className="text-ink min-w-0" />
+                  <MovementArrow delta={movement[team.manager_fpl_id]} />
+                </span>
+              </td>
+              <td className="py-1.5 text-right font-bold text-ink">{team.h2h_points}</td>
+            </tr>
+          ))}
+          {teams.length === 0 && (
+            <tr><td colSpan={3} className="py-4 text-center text-faint italic">No teams registered.</td></tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function TournamentWidget({ name, stage, status, link, snippet, fullSnippet, startGw, nextLine, summary, placeholder }: { name: string, stage: string, status: string, link: string, snippet: string, fullSnippet?: string, startGw?: string, nextLine?: string, summary?: React.ReactNode, placeholder?: string }) {
-  const isPending = status === 'Pending';
-
+// One tournament's column, led the same way. A tournament that hasn't started says when it
+// does and what it is, rather than greying out a placeholder.
+function TournamentWidget({ name, stage, status, pending, link, lead, nextLine, summary, placeholder }: { name: string, stage: string, status: string, pending: boolean, link: string, lead?: Lead, nextLine?: string, summary?: React.ReactNode, placeholder?: string }) {
+  const headline = !pending ? lead?.headline : null;
   return (
-    <div className={`bg-surface border rounded-xl flex flex-col h-full relative overflow-hidden ${isPending ? 'border-line bg-surface-2 shadow-none' : 'shadow-sm hover:shadow-md transition'}`}>
-      
-      {/* 1. THE STATUS BADGE */}
-      <div className={`absolute top-0 right-0 text-xs font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm ${isPending ? 'bg-surface-3 text-dim' : 'bg-brand-2/15 text-brand-2'}`}>
-        {status}
-      </div>
-
-      {/* 2. THE HEADER (Always completely visible) */}
-      <Link href={link} className={`p-4 border-b rounded-t-xl transition ${isPending ? 'bg-surface-2/50' : 'bg-surface-2 hover:bg-surface-2 group'}`}>
-        <h3 className={`font-bold text-lg transition-colors pr-16 ${isPending ? 'text-dim' : 'group-hover:text-brand-2'}`}>
-          {name}{!isPending && <>&nbsp;&rarr;</>}
-        </h3>
-        {/* While pending, the overlay below already says when it starts, so neither line is repeated here. */}
-        {!isPending && <p className="text-xs font-semibold text-dim uppercase tracking-wider mt-1">{stage}</p>}
-        {!isPending && nextLine && <p className="text-xs text-dim mt-1">{nextLine}</p>}
+    <div className="flex flex-col">
+      <Link href={link} className="group">
+        <h3 className={`font-display text-[1.9rem] leading-display tracking-[0.01em] transition-colors text-balance ${pending ? 'text-ink-2' : 'text-ink'} group-hover:text-brand-2`}>{headline || name}</h3>
       </Link>
-
-      {/* 3. THE BODY (With the overlay applied ONLY here if pending). Minimum height keeps the
-          pending overlay clear of the header border when there is no write-up to show. */}
-      <div className="relative flex-grow flex flex-col min-h-[6.5rem]">
-        
-        {/* THE NEW OVERLAY DESIGN */}
-        {isPending && (
-          <div className="absolute inset-0 bg-surface/80 backdrop-blur-[1.5px] z-20 flex flex-col items-center justify-center text-center">
-            {/* Simple text label, no button background */}
-            <span className="text-dim font-bold tracking-widest uppercase text-sm mb-1 flex items-center gap-2">
-              <svg className="w-4 h-4 text-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-              Pending Start
-            </span>
-            <span className="text-dim font-medium">
-              Starts in {startGw}
-            </span>
-          </div>
-        )}
-
-        {/* THE WIDGET CONTENT (Greyed out if pending) */}
-        <div className={`p-4 flex-grow text-sm text-dim ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
-          {summary && <div className="mb-3 text-sm leading-snug">{summary}</div>}
-          <Snippet preview={snippet?.slice(0, 160)} full={fullSnippet} link={link} placeholder={placeholder} />
-        </div>
-      </div>
-      
-      {/* Invisible link overlay so users can still click the whole pending card */}
-      {isPending && (
-        <Link href={link} className="absolute inset-0 z-30" aria-label={`View ${name}`} />
-      )}
+      <p className="mt-2 mb-3 text-sm text-dim">
+        {headline && <><Link href={link} className="font-semibold text-brand-2 hover:underline">{name}</Link> · </>}
+        <span className={pending ? '' : 'font-semibold text-ink-2'}>{status}</span>
+        {!pending && <><br />{stage}{nextLine ? ` · ${nextLine}` : ''}</>}
+      </p>
+      {summary && <div className={`text-sm leading-snug mb-3 ${pending ? 'text-dim' : 'text-ink-2'}`}>{summary}</div>}
+      {!pending && <Snippet preview={lead?.teaser?.slice(0, 160)} full={lead?.teaser} link={link} placeholder={placeholder} />}
     </div>
   );
 }

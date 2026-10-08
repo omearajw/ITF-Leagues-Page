@@ -70,10 +70,10 @@ export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, is
         <>
           <div onClick={() => setOpen(false)} className="fixed inset-0 bg-black/40 z-40" />
           <div id="mobile-nav-panel" className="fixed inset-x-0 top-14 z-50 px-3 pb-3">
-            <nav className="bg-surface-2 text-ink rounded-xl p-2 max-h-[calc(100dvh-5rem)] overflow-y-auto shadow-xl">
+            <nav className="bg-surface-2 text-ink rounded-sm border border-line p-2 max-h-[calc(100dvh-5rem)] overflow-y-auto shadow-[0_12px_32px_rgba(0,0,0,0.5)]">
               {links.map((link, i) => {
                 if ('group' in link) {
-                  return <div key={`g-${i}`} className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-brand-2">{link.group}</div>;
+                  return <div key={`g-${i}`} className="px-4 pt-4 pb-1 label text-faint">{link.group}</div>;
                 }
                 const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
                 return (
@@ -81,7 +81,7 @@ export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, is
                     key={link.href}
                     href={link.href}
                     aria-current={active ? 'page' : undefined}
-                    className={`block py-3 px-4 rounded-lg text-base ${active ? 'bg-surface-3 text-white font-semibold' : 'hover:bg-surface-3'}`}
+                    className={`block py-3 px-4 rounded-sm text-base ${active ? 'bg-surface-3 text-white font-semibold' : 'hover:bg-surface-3'}`}
                   >
                     {link.label}
                   </Link>

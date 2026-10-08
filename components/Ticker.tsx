@@ -35,9 +35,9 @@ function useTickerMode(): [Mode, (m: Mode) => void] {
 export function TickerSwitch() {
   const [mode, choose] = useTickerMode();
   return (
-    <div className="hidden md:flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" role="group" aria-label="Ticker">
+    <div className="hidden md:flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em]" role="group" aria-label="Ticker">
       <span className="text-faint">Ticker</span>
-      <div className="flex rounded-md overflow-hidden border border-line">
+      <div className="flex rounded-sm overflow-hidden border border-line">
         {([['motm', 'MotM'], ['live', 'Live']] as const).map(([key, label]) => (
           <button key={key} type="button" onClick={() => choose(key)} aria-pressed={mode === key} className={`px-2 py-1 transition ${mode === key ? 'bg-brand text-white' : 'bg-panel-2 text-dim hover:text-ink'}`}>{label}</button>
         ))}
@@ -55,10 +55,10 @@ function Dot() { return <span>•</span>; }
 function DivisionLine({ label, items, empty }: { label: string; items: string[]; empty: string }) {
   return (
     <span>
-      <span className="text-brand font-bold">{label}:</span>{' '}
+      <span className="text-brand-2 font-bold">{label}:</span>{' '}
       {items.length === 0 ? empty : items.map((item, i) => (
         <span key={i}>
-          {i > 0 && <span className="text-brand font-bold">{'\u00a0|\u00a0'}</span>}
+          {i > 0 && <span className="text-brand-2 font-bold">{'\u00a0|\u00a0'}</span>}
           {item}
         </span>
       ))}
@@ -67,10 +67,10 @@ function DivisionLine({ label, items, empty }: { label: string; items: string[];
 }
 
 function MotmContent({ motm }: { motm: TickerMotm }) {
-  if (!motm) return <><span className="text-brand-2 font-bold">MANAGER OF THE MONTH</span><Dot /><span>Awaiting the first confirmed gameweek</span><Dot /></>;
+  if (!motm) return <><span className="font-display tracking-[0.04em] text-ink">MANAGER OF THE MONTH</span><Dot /><span>Awaiting the first confirmed gameweek</span><Dot /></>;
   return (
     <>
-      <span className="text-brand-2 font-bold">MANAGER OF THE MONTH · {motm.label.toUpperCase()}{motm.complete ? '' : ' SO FAR'}</span>
+      <span className="font-display tracking-[0.04em] text-ink">MANAGER OF THE MONTH · {motm.label.toUpperCase()}{motm.complete ? '' : ' SO FAR'}</span>
       <Dot />
       {motm.divisions.map(d => (
         <span key={d.name} className="flex items-center gap-12">
@@ -85,7 +85,7 @@ function MotmContent({ motm }: { motm: TickerMotm }) {
 function LiveContent({ live }: { live: TickerLive }) {
   return (
     <>
-      <span className={`font-bold ${live.isLive ? 'text-amber-300' : 'text-brand-2'}`}>GW{live.gw} {live.isLive ? 'LIVE' : 'RESULTS'}</span>
+      <span className={`font-display tracking-[0.04em] ${live.isLive ? 'text-live-2' : 'text-ink'}`}>GW{live.gw} {live.isLive ? 'LIVE' : 'RESULTS'}</span>
       <Dot />
       {live.divisions.map(d => (
         <span key={d.name} className="flex items-center gap-12">
@@ -104,7 +104,7 @@ function LiveContent({ live }: { live: TickerLive }) {
 export function TickerBar({ motm, live }: { motm: TickerMotm; live: TickerLive }) {
   const [mode] = useTickerMode();
   return (
-    <div className="hidden md:block fixed bottom-0 left-0 w-full bg-panel text-white shadow-inner overflow-hidden border-t-4 border-brand z-40">
+    <div className="hidden md:block fixed bottom-0 left-0 w-full bg-panel text-white overflow-hidden border-t-[3px] border-brand z-40">
       <Marquee key={mode} speed={mode === 'live' ? 70 : 60}>
         {mode === 'live' ? <LiveContent live={live} /> : <MotmContent motm={motm} />}
       </Marquee>

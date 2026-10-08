@@ -8,15 +8,16 @@ import { positionDeltas } from '@/lib/movement';
 import { getWeekProjection, dueFor } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import { getGameweekStatus } from '@/lib/gameweek-status';
+import PageHeader from '@/components/PageHeader';
+import { compareStanding } from '@/lib/standings';
 
 export default function Index() {
   return (
     <div className="max-w-4xl mx-auto py-2 sm:py-8 font-sans">
-      <header className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2">ITF Open</h1>
+      <PageHeader title="The Open">
         <p className="text-dim">The master leaderboard across all divisions.</p>
-      </header>
-      
+      </PageHeader>
+
       <Suspense fallback={<ITFOpenSkeleton />}>
         <ITFOpenContent />
       </Suspense>
@@ -61,87 +62,72 @@ async function ITFOpenContent() {
   const projection = showingLive ? await getWeekProjection() : null;
   const dueOf = (id: number) => (projection ? dueFor(projection, scoresGw, Number(id)) : null);
   const withDue = (id: number, value: number) => value + (dueOf(id)?.due || 0);
-  if (projection) managers?.sort((a: any, b: any) => withDue(b.manager_fpl_id, b.classic_total_points) - withDue(a.manager_fpl_id, a.classic_total_points));
+  // Ranked by the rule every table shares (lib/standings.ts), including subs due while live.
+  managers?.sort((a: any, b: any) => compareStanding(
+    { total: withDue(a.manager_fpl_id, a.classic_total_points), week: withDue(a.manager_fpl_id, a.points), name: a.season_managers.team_name },
+    { total: withDue(b.manager_fpl_id, b.classic_total_points), week: withDue(b.manager_fpl_id, b.points), name: b.season_managers.team_name },
+  ));
 
   // Live totals move against the last confirmed week; a confirmed week moves against the one before.
   const previousGw = showingLive ? currentGw : currentGw - 1;
   const { data: previousScores } = previousGw >= 1
-    ? await supabase.from('manager_gw_scores').select('manager_fpl_id, classic_total_points').eq('season_id', SEASON_ID).eq('gw_number', previousGw).order('classic_total_points', { ascending: false })
+    ? await supabase.from('manager_gw_scores').select('manager_fpl_id, points, classic_total_points, season_managers!inner (team_name)').eq('season_id', SEASON_ID).eq('gw_number', previousGw)
     : { data: null };
+  const previousOrder = (previousScores || [])
+    .sort((a: any, b: any) => compareStanding(
+      { total: a.classic_total_points, week: a.points, name: a.season_managers.team_name },
+      { total: b.classic_total_points, week: b.points, name: b.season_managers.team_name },
+    ))
+    .map((m: any) => m.manager_fpl_id);
   const movement = previousScores
-    ? positionDeltas((managers || []).map((m: any) => m.manager_fpl_id), previousScores.map((m: any) => m.manager_fpl_id))
+    ? positionDeltas((managers || []).map((m: any) => m.manager_fpl_id), previousOrder)
     : {};
 
   if (error) {
-    return <div className="p-10 text-red-500">Error loading league: {error.message}</div>;
+    return <div className="p-10 text-loss-2">Error loading league: {error.message}</div>;
   }
 
   return (
     <div>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3 text-sm text-dim">
-        <span>Season totals after <strong>GW{scoresGw}</strong></span>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <span className="text-dim">Season totals after <strong className="text-ink">GW{scoresGw}</strong></span>
         <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
       </div>
-      <p className="text-xs text-dim mb-4">{showingLive ? `Includes GW${scoresGw} points so far and any subs due from the bench (marked +n); final once FPL confirms the week.` : 'Confirmed totals.'}</p>
-      <div className="overflow-x-auto hidden md:block">
-      <table className="w-full text-left border-collapse">
+      <p className="text-sm text-dim mb-4">{showingLive ? `Includes GW${scoresGw} points so far and any subs due from the bench (marked +n); final once FPL confirms the week.` : 'Confirmed totals.'}</p>
+      <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b-2 border-line">
-            <th className="p-3">Rank</th>
-            <th className="p-3">Team & Manager</th>
-            <th className="p-3">Division</th>
-            <th className="p-3 text-right">GW{scoresGw}</th>
-            <th className="p-3 text-right">Total</th>
+          <tr className="border-b-2 border-ink/80">
+            <th className="label font-semibold py-2 pr-3 w-12">Pos</th>
+            <th className="label font-semibold py-2 pr-3">Team</th>
+            <th className="label font-semibold py-2 pr-3 hidden md:table-cell">Division</th>
+            <th className="label font-semibold py-2 px-2 text-right">GW{scoresGw}</th>
+            <th className="label font-semibold py-2 pl-2 text-right text-ink">Total</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-line">
           {managers?.map((manager: any, index: number) => (
-            <tr key={manager.manager_fpl_id} className="border-b border-line hover:bg-surface-2">
-              <td className="p-3 font-bold text-ink-2">{index + 1}</td>
-              <td className="p-3">
-                <div className="flex items-center gap-2">
-                  <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold" />
+            <tr key={manager.manager_fpl_id} className="hover:bg-surface">
+              <td className="py-3 pr-3 font-display text-2xl leading-none text-faint">{index + 1}</td>
+              <td className="py-3 pr-3 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                   <MovementArrow delta={movement[manager.manager_fpl_id]} />
                 </div>
-                <div className="text-sm text-dim">{manager.season_managers.managers.real_name}</div>
+                <div className="text-dim">{manager.season_managers.managers.real_name}<span className="md:hidden"> · {manager.season_managers.division}</span></div>
               </td>
-              <td className="p-3">
-                <span className="px-2 py-1 bg-brand-2/15 text-brand-2 text-xs rounded-full">
-                  {manager.season_managers.division}
-                </span>
-              </td>
-              <td className={`p-3 text-right font-semibold ${showingLive ? 'text-amber-300' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
-              <td className="p-3 text-right font-bold text-lg">
-                {withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} />
+              <td className="py-3 pr-3 text-dim hidden md:table-cell">{manager.season_managers.division}</td>
+              <td className={`py-3 px-2 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
+              <td className="py-3 pl-2 text-right whitespace-nowrap">
+                <span className="font-display text-3xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      </div>
-
-      {/* Mobile stacked list */}
-      <div className="md:hidden space-y-3">
-        {managers?.map((manager: any, index: number) => (
-          <div key={manager.manager_fpl_id} className="bg-surface border rounded-lg p-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-bold text-ink-2">{index + 1}. <span className="ml-2"><TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold" /></span> <MovementArrow delta={movement[manager.manager_fpl_id]} className="ml-1" /></div>
-                <div className="text-xs text-dim">{manager.season_managers.managers.real_name}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-black text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></div>
-                <div className={`text-xs ${showingLive ? 'text-amber-300' : 'text-dim'}`}>GW{scoresGw}: {withDue(manager.manager_fpl_id, manager.points)}</div>
-                <div className="text-xs mt-1"><span className="px-2 py-1 bg-brand-2/15 text-brand-2 text-xs rounded-full">{manager.season_managers.division}</span></div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {(!managers || managers.length === 0) && (
         <div className="p-10 text-center text-dim">
-          No scores found yet. The season hasn't started!
+          No scores found yet. The season hasn&apos;t started!
         </div>
       )}
     </div>

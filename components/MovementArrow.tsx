@@ -4,7 +4,7 @@ export default function MovementArrow({ delta, className = '' }: { delta: number
   const up = delta > 0;
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[10px] font-bold ${up ? 'text-green-400' : 'text-red-500'} ${className}`}
+      className={`inline-flex items-center gap-0.5 text-xs font-bold tabular ${up ? 'text-win-2' : 'text-loss-2'} ${className}`}
       title={`${up ? 'Up' : 'Down'} ${Math.abs(delta)} place${Math.abs(delta) === 1 ? '' : 's'} since last gameweek`}
     >
       {up ? '▲' : '▼'}{Math.abs(delta)}
@@ -15,6 +15,6 @@ export default function MovementArrow({ delta, className = '' }: { delta: number
 // Marks a team that has just entered a top-N list; shown in place of its arrow.
 export function NewEntryMark({ className = '' }: { className?: string }) {
   return (
-    <span className={`text-[10px] font-bold tracking-wide text-brand-2 ${className}`} title="New to the top ten since last gameweek">NEW</span>
+    <span className={`text-xs font-bold tracking-wide text-brand-2 ${className}`} title="New to the top ten since last gameweek">NEW</span>
   );
 }
