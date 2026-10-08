@@ -20,6 +20,12 @@ export default function ShrinkingBanner({ className = '', children }: { classNam
     const anchoring = root.style.overflowAnchor;
     root.style.overflowAnchor = 'none';
 
+    // Next keeps a page you leave in the background and re-runs this when you come back, with the
+    // sizes set on the last visit still on the elements. Clear them before measuring, or each
+    // return takes the shrunk size as full height and halves it again.
+    outer.style.height = '';
+    inner.style.height = '';
+    inner.style.top = '';
     let full = outer.offsetHeight, space = full, height = full, frame = 0;
     const update = () => {
       frame = 0;
