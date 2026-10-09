@@ -295,7 +295,8 @@ async function DashboardContent() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line">
-              <th className="label font-semibold py-2 pr-3 w-10">Pos</th>
+              <th className="label font-semibold py-2 pr-1 w-8">Pos</th>
+              <th className="w-11 pr-2"><span className="sr-only">Movement</span></th>
               <th className="label font-semibold py-2 pr-3">Team</th>
               <th className="label font-semibold py-2 px-3 text-right w-24">GW{scoresGw}</th>
               <th className="label font-semibold py-2 px-3 text-right w-28 key-col">Total</th>
@@ -304,12 +305,10 @@ async function DashboardContent() {
           <tbody className="divide-y divide-line">
             {topTenITF.map((manager: any, index: number) => (
               <tr key={manager.manager_fpl_id} className="hover:bg-surface">
-                <td className="py-2.5 pr-3 font-display text-xl leading-none text-faint">{index + 1}</td>
+                <td className="py-2.5 pr-1 font-display text-xl leading-none text-faint">{index + 1}</td>
+                <td className="py-2.5 pr-2 whitespace-nowrap">{itfMark(manager.manager_fpl_id)}</td>
                 <td className="py-2.5 pr-3 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
-                    {itfMark(manager.manager_fpl_id)}
-                  </div>
+                  <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                   <div className="text-dim">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
                 </td>
                 <td className={`py-2.5 px-3 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)}</td>
@@ -349,7 +348,8 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
       <table className="w-full text-sm text-left mt-auto">
         <thead>
           <tr className="border-b border-line">
-            <th className="label font-semibold py-1.5 pr-3 w-10">Pos</th>
+            <th className="label font-semibold py-1.5 pr-1 w-7">Pos</th>
+            <th className="w-10 pr-2"><span className="sr-only">Movement</span></th>
             <th className="label font-semibold py-1.5">{name}</th>
             <th className="label font-semibold py-1.5 px-2 text-right key-col">Pts</th>
           </tr>
@@ -357,18 +357,16 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
         <tbody className="divide-y divide-line">
           {teams.map((team, index) => (
             <tr key={team.manager_fpl_id} className="h-10 hover:bg-surface">
-              <td className="py-1.5 pr-3 text-faint font-semibold">{index + 1}</td>
+              <td className="py-1.5 pr-1 text-faint font-semibold">{index + 1}</td>
+              <td className="py-1.5 pr-2 whitespace-nowrap"><MovementArrow delta={movement[team.manager_fpl_id]} /></td>
               <td className="py-1.5 pr-2 min-w-0 max-w-[1px] w-full">
-                <span className="flex items-center gap-1.5 min-w-0">
-                  <TeamName name={team.season_managers.team_name} managerId={team.manager_fpl_id} inline className="text-ink min-w-0" />
-                  <MovementArrow delta={movement[team.manager_fpl_id]} />
-                </span>
+                <TeamName name={team.season_managers.team_name} managerId={team.manager_fpl_id} inline className="text-ink min-w-0" />
               </td>
               <td className="py-1.5 px-2 text-right font-bold text-ink key-col">{team.h2h_points}</td>
             </tr>
           ))}
           {teams.length === 0 && (
-            <tr><td colSpan={3} className="py-4 text-center text-faint italic">No teams registered.</td></tr>
+            <tr><td colSpan={4} className="py-4 text-center text-faint italic">No teams registered.</td></tr>
           )}
         </tbody>
       </table>

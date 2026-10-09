@@ -97,7 +97,8 @@ async function ITFOpenContent() {
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b-2 border-ink/80">
-            <th className="label font-semibold py-2 pr-3 w-12">Pos</th>
+            <th className="label font-semibold py-2 pr-1 w-9">Pos</th>
+            <th className="w-10 pr-2"><span className="sr-only">Movement</span></th>
             <th className="label font-semibold py-2 pr-3">Team</th>
             <th className="label font-semibold py-2 pr-3 hidden md:table-cell">Division</th>
             <th className="label font-semibold py-2 px-2 text-right">GW{scoresGw}</th>
@@ -107,12 +108,10 @@ async function ITFOpenContent() {
         <tbody className="divide-y divide-line">
           {managers?.map((manager: any, index: number) => (
             <tr key={manager.manager_fpl_id} className="hover:bg-surface">
-              <td className="py-3 pr-3 font-display text-2xl leading-none text-faint">{index + 1}</td>
+              <td className="py-3 pr-1 font-display text-2xl leading-none text-faint">{index + 1}</td>
+              <td className="py-3 pr-2 whitespace-nowrap"><MovementArrow delta={movement[manager.manager_fpl_id]} /></td>
               <td className="py-3 pr-3 min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
-                  <MovementArrow delta={movement[manager.manager_fpl_id]} />
-                </div>
+                <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                 <div className="text-dim">{manager.season_managers.managers.real_name}<span className="md:hidden"> · {manager.season_managers.division}</span></div>
               </td>
               <td className="py-3 pr-3 text-dim hidden md:table-cell">{manager.season_managers.division}</td>

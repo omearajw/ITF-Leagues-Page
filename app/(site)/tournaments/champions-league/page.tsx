@@ -290,7 +290,8 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
     <table className="w-full text-left text-sm">
       <thead>
         <tr className="border-b-2 border-ink/80">
-          <th className="label font-semibold py-2 pr-3 w-10">Pos</th>
+          <th className="label font-semibold py-2 pr-1 w-9">Pos</th>
+          <th className="w-10 pr-2"><span className="sr-only">Movement</span></th>
           <th className="label font-semibold py-2 pr-3">Team</th>
           <th className="label font-semibold py-2 px-2 text-center w-12 hidden md:table-cell">Pld</th>
           <th className="label font-semibold py-2 px-2 text-center w-12 hidden md:table-cell">W</th>
@@ -312,11 +313,11 @@ function StageTable({ data, isLive, eliminateCount, highlightTop, movement = {} 
 
           return (
             <tr key={team.id} className={out ? 'text-faint' : isLive && isBottom ? 'bg-loss/10' : 'hover:bg-surface'}>
-              <td className="py-3 pr-3 font-display text-2xl leading-none text-faint">{index + 1}</td>
+              <td className="py-3 pr-1 font-display text-2xl leading-none text-faint">{index + 1}</td>
+              <td className="py-3 pr-2 whitespace-nowrap"><MovementArrow delta={movement[team.id]} /></td>
               <td className="py-3 pr-3 min-w-0">
                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
                   <TeamName name={team.teamName} managerId={team.id} inline className={`font-semibold min-w-0 ${out ? 'text-dim' : 'text-ink'}`} />
-                  <MovementArrow delta={movement[team.id]} />
                   {tag}
                 </div>
                 <div className="text-dim">
