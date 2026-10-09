@@ -11,8 +11,8 @@ import Image from 'next/image';
 import { wordmarkFont, displayFont, textFont } from '@/lib/fonts';
 
 export const metadata = {
-  title: 'ITF League Hub',
-  description: 'Custom Fantasy Premier League Dashboard',
+  title: 'ITF Fantasy Football',
+  description: 'For all your latest ITF flapdoodle and guff.',
 };
 
 const navLink = 'whitespace-nowrap text-[13px] xl:text-sm font-medium text-ink-2 hover:text-white transition py-2 px-1.5 xl:px-2 rounded-sm';
