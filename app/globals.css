@@ -7,10 +7,9 @@
    follows. Colours are RGB channels (red green blue, 0-255) so Tailwind can apply
    opacity, e.g. bg-brand/20.
 
-   Two themes ship: the default below, and "classic" (the site before the October
-   2026 restyle) further down. Visitors get DEFAULT_THEME from lib/theme.ts; adding
-   ?theme=classic or ?theme=new to any address switches that device until it is
-   switched back.
+   The default theme is below. A "classic" theme (the site before the October 2026
+   restyle) is defined further down but switched off; to offer it again, add 'classic'
+   to THEMES in lib/theme.ts, then ?theme=classic on any address switches that device.
    ========================================================================== */
 :root {
   /* Backgrounds, darkest to lightest */
