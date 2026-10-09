@@ -163,7 +163,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
       <header className={`grid items-start gap-x-4 sm:gap-x-8 gap-y-5 mb-6 ${badgeSrc ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-1'}`}>
         <PageHeader
           className="min-w-0"
-          title={<TeamName name={manager.team_name} inline wrap hideBadge showStars starSize={14} />}
+          title={<TeamName name={manager.team_name} inline wrap showStars starSize={14} />}
         >
           <p className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-dim">
             <span className="font-semibold text-ink-2">{manager.managers.real_name}</span>
