@@ -7,6 +7,8 @@ import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
 import { INTRO_HEAD_SCRIPT } from '@/lib/intro';
 import { THEME_HEAD_SCRIPT } from '@/lib/theme';
+import { FeedbackDialog, FeedbackTrigger } from '@/components/Feedback';
+import { getUnreadFeedbackCount } from '@/lib/feedback-data';
 import Image from 'next/image';
 import { wordmarkFont, displayFont, textFont } from '@/lib/fonts';
 
@@ -32,6 +34,7 @@ async function Navbar() {
   
   const isAdmin = role === process.env.ADMIN_SECRET_TOKEN;
   const isEditor = role === process.env.EDITOR_SECRET_TOKEN;
+  const unreadFeedback = isAdmin ? await getUnreadFeedbackCount() : 0;
 
   return (
     <nav className="bg-panel text-white border-b border-line sticky top-0 z-50">
@@ -60,12 +63,15 @@ async function Navbar() {
                 <div className="hidden lg:flex space-x-4 text-xs font-semibold uppercase tracking-[0.08em] -mr-2">
                   <Link href="/editor" className="text-faint hover:text-white transition px-2 py-2 rounded-sm">Editor</Link>
                   {isAdmin && (
-                    <Link href="/admin" className="text-faint hover:text-white transition px-2 py-2 rounded-sm">Admin</Link>
+                    <Link href="/admin" className="inline-flex items-center gap-1.5 text-faint hover:text-white transition px-2 py-2 rounded-sm">
+                      Admin
+                      {unreadFeedback > 0 && <span className="rounded-sm bg-brand px-1.5 py-0.5 text-[11px] leading-none text-white">{unreadFeedback}<span className="sr-only"> new feedback</span></span>}
+                    </Link>
                   )}
                 </div>
               )}
               <div className="lg:hidden">
-                <MobileNav isAdmin={isAdmin} isEditor={isEditor} />
+                <MobileNav isAdmin={isAdmin} isEditor={isEditor} feedbackCount={unreadFeedback} />
               </div>
             </div>
           </div>
@@ -148,11 +154,13 @@ export default function RootLayout({
                 {link.label}
               </a>
             ))}
+            <FeedbackTrigger className="font-semibold text-dim hover:text-white transition" />
           </div>
           © 2026 ITF League. Data sourced from official FPL API.
         </footer>
         {/* Clears the fixed ticker (48px tall) so it never covers the end of the page */}
         <div className="hidden md:block h-12 bg-panel" aria-hidden="true" />
+        <FeedbackDialog />
         <Analytics />
       </body>
     </html>

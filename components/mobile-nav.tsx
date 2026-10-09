@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { FeedbackTrigger } from '@/components/Feedback';
 
 const LINKS = [
   { href: '/', label: 'ITF Hub' },
@@ -20,11 +21,12 @@ const LINKS = [
   { href: '/motm', label: 'MotM' },
   { href: '/team-of-the-week', label: 'Team of the Week' },
   { href: '/form', label: 'Form' },
+  { action: 'feedback' },
 ] as NavItem[];
 
-type NavItem = { href: string; label: string } | { group: string };
+type NavItem = { href: string; label: string; badge?: number } | { group: string } | { action: 'feedback' };
 
-export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, isEditor?: boolean }) {
+export default function MobileNav({ isAdmin, isEditor, feedbackCount = 0 }: { isAdmin?: boolean, isEditor?: boolean, feedbackCount?: number }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -45,7 +47,7 @@ export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, is
   const links: NavItem[] = [
     ...LINKS,
     ...(isEditor || isAdmin ? [{ group: 'Staff' }, { href: '/editor', label: 'Editor' }] : []),
-    ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin', badge: feedbackCount }] : []),
   ];
 
   return (
@@ -75,6 +77,9 @@ export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, is
                 if ('group' in link) {
                   return <div key={`g-${i}`} className="px-4 pt-4 pb-1 label text-faint">{link.group}</div>;
                 }
+                if ('action' in link) {
+                  return <FeedbackTrigger key="feedback" onClick={() => setOpen(false)} className="block w-full text-left mt-2 border-t border-line py-3 px-4 rounded-sm text-base hover:bg-surface-3" />;
+                }
                 const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
                 return (
                   <Link
@@ -84,6 +89,7 @@ export default function MobileNav({ isAdmin, isEditor }: { isAdmin?: boolean, is
                     className={`block py-3 px-4 rounded-sm text-base ${active ? 'bg-surface-3 text-white font-semibold' : 'hover:bg-surface-3'}`}
                   >
                     {link.label}
+                    {link.badge ? <span className="ml-2 rounded-sm bg-brand px-1.5 py-0.5 text-xs text-white">{link.badge}<span className="sr-only"> new feedback</span></span> : null}
                   </Link>
                 );
               })}

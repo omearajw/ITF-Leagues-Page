@@ -7,7 +7,18 @@ import SaveToast from '@/components/SaveToast';
 import { Suspense } from 'react';
 import { AdminSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
-import { getGameweekStatus } from '@/lib/gameweek-status';
+import { getGameweekStatus, formatUk } from '@/lib/gameweek-status';
+import { createAdminClient } from '@/utils/supabase/admin';
+import { getFeedback } from '@/lib/feedback-data';
+import { FEEDBACK_KINDS } from '@/lib/feedback';
+import { Star } from 'lucide-react';
+
+// The proxy already keeps non-admins off /admin; the feedback actions check again because they write
+// with the service key. Module level on purpose: an inline server action can't capture a function
+// defined inside the component (Next has to serialise everything the action closes over).
+async function isAdminRequest() {
+  return (await cookies()).get('itf_role')?.value === process.env.ADMIN_SECRET_TOKEN;
+}
 
 // 1. FAST-LOADING SHELL
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
@@ -50,6 +61,9 @@ async function AdminContent() {
   const { data: allManagers } = await supabase.from('season_managers').select('manager_fpl_id, team_name').eq('season_id', SEASON_ID).order('team_name');
   const { data: clEntrants } = await supabase.from('champions_league_entrants').select('manager_fpl_id').eq('season_id', SEASON_ID);
   const currentEntrantIds = clEntrants?.map((e: any) => e.manager_fpl_id) || [];
+  const feedback = await getFeedback();
+  const unreadFeedback = feedback.rows.filter(f => !f.read_at).length;
+  const kindLabel: Record<string, string> = Object.fromEntries(FEEDBACK_KINDS.map(k => [k.key, k.label]));
 
   // LOCK LOGIC: If the current gameweek is greater than or equal to the start week, it locks.
   const isObQualifiersLocked = lockGw >= (obConfig?.qualifiers_start_gw || 99);
@@ -86,6 +100,21 @@ async function AdminContent() {
     redirect('/admin?saved=timelines');
   }
 
+  async function markFeedbackRead(formData: FormData) {
+    'use server';
+    if (!(await isAdminRequest())) return;
+    const id = Number(formData.get('id'));
+    if (Number.isInteger(id)) await createAdminClient().from('feedback').update({ read_at: new Date().toISOString() }).eq('id', id);
+    revalidatePath('/admin');
+  }
+
+  async function markAllFeedbackRead() {
+    'use server';
+    if (!(await isAdminRequest())) return;
+    await createAdminClient().from('feedback').update({ read_at: new Date().toISOString() }).is('read_at', null);
+    revalidatePath('/admin');
+  }
+
   async function updateCLEntrants(formData: FormData) {
     'use server';
     const supabaseClient = await createClient();
@@ -102,6 +131,57 @@ async function AdminContent() {
   return (
     <>
       {/* SIMULATOR REMOVED */}
+
+      <section className="mb-8 bg-surface p-6 rounded-xl border shadow-sm">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-2 border-b pb-2">
+          <h2 className="text-xl font-bold text-ink">
+            Feedback
+            {unreadFeedback > 0 && <span className="ml-2 align-middle rounded-sm bg-brand px-1.5 py-0.5 text-xs text-white">{unreadFeedback} new</span>}
+          </h2>
+          {unreadFeedback > 0 && (
+            <form action={markAllFeedbackRead}>
+              <button type="submit" className="text-sm font-semibold text-brand-2 hover:underline">Mark all read</button>
+            </form>
+          )}
+        </div>
+        {feedback.missing ? (
+          <p className="py-3 text-sm text-live-2">The feedback table isn&apos;t set up yet. Run supabase/feedback.sql in the Supabase SQL editor.</p>
+        ) : feedback.rows.length === 0 ? (
+          <p className="py-3 text-sm text-faint italic">No feedback yet.</p>
+        ) : (
+          <ul className="divide-y divide-line max-h-[520px] overflow-y-auto">
+            {feedback.rows.map(f => (
+              <li key={f.id} className="py-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {!f.read_at && <span className="text-xs font-bold uppercase tracking-[0.08em] bg-brand text-white px-1.5 py-0.5 rounded-sm">New</span>}
+                  <span className="font-semibold text-ink">{kindLabel[f.kind] || f.kind}</span>
+                  {f.rating && (
+                    <span className="inline-flex" role="img" aria-label={`${f.rating} out of 5`}>
+                      {[1, 2, 3, 4, 5].map(n => <Star key={n} size={14} aria-hidden="true" className={n <= (f.rating || 0) ? 'fill-live text-live' : 'text-faint'} />)}
+                    </span>
+                  )}
+                  <span className="text-dim">{formatUk(f.created_at)}</span>
+                  {f.page && <span className="text-faint">{f.page}</span>}
+                  {!f.read_at && (
+                    <form action={markFeedbackRead} className="ml-auto">
+                      <input type="hidden" name="id" value={f.id} />
+                      <button type="submit" className="text-sm font-semibold text-brand-2 hover:underline">Mark read</button>
+                    </form>
+                  )}
+                </div>
+                <p className="mt-1.5 text-ink-2 whitespace-pre-line">{f.details}</p>
+                {(f.manager_name || f.email) && (
+                  <p className="mt-1 text-sm text-dim">
+                    {f.manager_name}
+                    {f.manager_name && f.email ? ' · ' : ''}
+                    {f.email && <a href={`mailto:${f.email}`} className="text-brand-2 hover:underline">{f.email}</a>}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* TIMELINES COLUMN */}
