@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
-import TeamName from '@/components/TeamName';
+import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
@@ -53,7 +54,7 @@ async function DashboardContent() {
   // Only this week's write-ups; an older one next to this week's table would mislead.
   const { data: contentData } = await supabase.from('page_content').select('id, content').eq('gw_number', currentGw);
   const leads: Record<string, Lead> = Object.fromEntries((contentData || []).map((item: any) => [item.id, writeUpLead(item.content)]));
-  const noWriteUp = `No GW${currentGw} write-up yet.`;
+  const noWriteUp = 'To follow…';
 
   // F. Fetch tournament configs to display status/stage
   const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }, { data: elStatus }] = await Promise.all([
@@ -100,6 +101,19 @@ async function DashboardContent() {
   const projection = showingLive ? await getWeekProjection() : null;
   const dueOf = (id: number) => (projection ? dueFor(projection, scoresGw, Number(id)) : null);
   const withDue = (id: number, value: number) => value + (dueOf(id)?.due || 0);
+
+  // While a week is live, the Eliminator card lists the three lowest live scores among the survivors
+  // (projected subs included). Before kickoff everyone is level, so nobody is singled out.
+  type ElStatusRow = { manager_fpl_id: number; is_eliminated: boolean };
+  type LiveScoreRow = { manager_fpl_id: number; points: number; season_managers: { team_name: string } };
+  const elAliveIds = new Set(((elStatus || []) as ElStatusRow[]).filter(e => !e.is_eliminated).map(e => Number(e.manager_fpl_id)));
+  const elLive = showingLive && elAliveIds.size > 1
+    ? ((scores || []) as unknown as LiveScoreRow[])
+        .filter(row => elAliveIds.has(Number(row.manager_fpl_id)))
+        .map(row => ({ id: Number(row.manager_fpl_id), name: row.season_managers.team_name, score: withDue(row.manager_fpl_id, row.points) }))
+        .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
+    : [];
+  const elAtRisk = elLive.length > 0 && elLive[0].score !== elLive[elLive.length - 1].score ? elLive.slice(0, 3) : [];
 
   if (error) return <div className="p-10 text-loss-2">Error: {error.message}</div>;
 
@@ -222,25 +236,42 @@ async function DashboardContent() {
             lead={leads['champions-league']}
             placeholder={noWriteUp}
           />
+          {/* No write-up snippet here: the card shows who's left, then who went out last or, while a
+              week is live, who's at risk. */}
           <TournamentWidget
             name="Eliminator"
             stage={`Running since GW${elStart}`}
             pending={currentGw < elStart}
-            status={currentGw < elStart ? `Starts GW${elStart}` : 'Live'}
-            nextLine={nextLines.el}
+            status={currentGw < elStart ? `Starts GW${elStart}` : <GameweekChip gw={gw} week={scoresGw} live={showingLive} />}
+            noSnippet
             summary={elStatus && elStatus.length > 0 ? (
               <>
-                <span className="plate bg-panel font-display text-4xl px-2.5">{elAlive}</span> <span className="label ml-1">remain</span>
-                {elLastCut && (
-                  <span className="block mt-2 text-sm text-dim">
-                    Last cut · GW{elLastCut.eliminated_gw}: <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
-                  </span>
+                <div className="flex items-center gap-2">
+                  <span className="plate bg-panel font-display text-4xl px-2.5">{elAlive}</span>
+                  <span className="label">remain</span>
+                </div>
+                {elAtRisk.length > 0 ? (
+                  <div className="mt-4">
+                    <span className="inline-block text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm animate-pulse">At risk · GW{scoresGw}</span>
+                    <ol className="mt-2 space-y-1">
+                      {elAtRisk.map(m => (
+                        <li key={m.id} className="flex items-center gap-3 min-w-0">
+                          <span className="w-8 shrink-0 text-right font-display text-xl leading-none text-loss-2 tabular">{m.score}</span>
+                          <TeamName name={m.name} managerId={m.id} inline className="text-ink-2 min-w-0" />
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : elLastCut && (
+                  <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-dim">
+                    <span className="text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm">Last eliminated</span>
+                    <span>GW{elLastCut.eliminated_gw}:</span>
+                    <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
+                  </div>
                 )}
               </>
             ) : 'Entrants are registered on the first sync after the start week'}
             link="/tournaments/eliminator"
-            lead={leads['eliminator']}
-            placeholder={noWriteUp}
           />
         </div>
       </section>
@@ -249,7 +280,7 @@ async function DashboardContent() {
         <section>
           <SectionHeading aside={(
             <>
-              <span className="text-dim">{motmLatest.label} · {motmLatest.complete ? 'awarded' : 'in progress'}</span>
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-[0.08em] text-dim">{motmLatest.label} · {motmLatest.complete ? 'awarded' : 'in progress'}</span>
               <Link href="/motm" className="font-semibold text-brand-2 hover:underline whitespace-nowrap">All months &rarr;</Link>
             </>
           )}>
@@ -295,9 +326,9 @@ async function DashboardContent() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line">
-              <th className="label font-semibold py-2 pr-1 w-8">Pos</th>
+              <th className="py-2 pr-1 w-8"><span className="sr-only">Position</span></th>
               <th className="w-11 pr-2"><span className="sr-only">Movement</span></th>
-              <th className="label font-semibold py-2 pr-3">Team</th>
+              <th className="label font-semibold py-2 pr-3">Manager</th>
               <th className="label font-semibold py-2 px-3 text-right w-24">GW{scoresGw}</th>
               <th className="label font-semibold py-2 px-3 text-right w-28 key-col">Total</th>
             </tr>
@@ -307,9 +338,10 @@ async function DashboardContent() {
               <tr key={manager.manager_fpl_id} className="hover:bg-surface">
                 <td className="py-2.5 pr-1 font-display text-xl leading-none text-faint">{index + 1}</td>
                 <td className="py-2.5 pr-2 whitespace-nowrap">{itfMark(manager.manager_fpl_id)}</td>
+                {/* The Open is the race for manager of the season, so the manager leads and the team follows. */}
                 <td className="py-2.5 pr-3 min-w-0">
-                  <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
-                  <div className="text-dim">{manager.season_managers.managers.real_name} · {manager.season_managers.division}</div>
+                  <Link href={`/manager/${manager.manager_fpl_id}`} className="font-semibold text-ink hover:underline decoration-brand-2/60 underline-offset-2">{manager.season_managers.managers.real_name}</Link>
+                  <div className="text-dim">{getTeamNameDisplayText(manager.season_managers.team_name)} · {manager.season_managers.division}</div>
                 </td>
                 <td className={`py-2.5 px-3 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)}</td>
                 <td className="py-2.5 px-3 text-right whitespace-nowrap key-col"><span className="font-display text-2xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
@@ -341,14 +373,14 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
       {headline ? (
         <p className="mt-2 mb-2 text-sm text-dim">
           <Link href={link} className="font-semibold text-brand-2 hover:underline">{name}</Link>
-          {` · GW${gw} write-up`}
+          {` · GW${gw}`}
         </p>
       ) : <div className="mb-2" />}
-      <Snippet preview={lead?.teaser?.slice(0, 180)} full={lead?.teaser} link={link} placeholder={placeholder} />
+      <Snippet text={lead?.teaser} link={link} placeholder={placeholder} />
       <table className="w-full text-sm text-left mt-auto">
         <thead>
           <tr className="border-b border-line">
-            <th className="label font-semibold py-1.5 pr-1 w-7">Pos</th>
+            <th className="py-1.5 pr-1 w-7"><Image src="/brand/itf-logo.png" alt="" width={20} height={20} className="h-5 w-5" /><span className="sr-only">Position</span></th>
             <th className="w-10 pr-2"><span className="sr-only">Movement</span></th>
             <th className="label font-semibold py-1.5">{name}</th>
             <th className="label font-semibold py-1.5 px-2 text-right key-col">Pts</th>
@@ -376,8 +408,8 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
 
 // One tournament's column, led the same way. A tournament that hasn't started says when it
 // does and what it is, rather than greying out a placeholder.
-function TournamentWidget({ name, stage, status, pending, link, lead, nextLine, summary, placeholder }: { name: string, stage: string, status: string, pending: boolean, link: string, lead?: Lead, nextLine?: string, summary?: React.ReactNode, placeholder?: string }) {
-  const headline = !pending ? lead?.headline : null;
+function TournamentWidget({ name, stage, status, pending, link, lead, nextLine, summary, placeholder, noSnippet = false }: { name: string, stage: string, status: React.ReactNode, pending: boolean, link: string, lead?: Lead, nextLine?: string, summary?: React.ReactNode, placeholder?: string, noSnippet?: boolean }) {
+  const headline = !pending && !noSnippet ? lead?.headline : null;
   return (
     <div className="panel flex flex-col">
       <Link href={link} className="group">
@@ -386,10 +418,11 @@ function TournamentWidget({ name, stage, status, pending, link, lead, nextLine, 
       <p className="mt-2 mb-3 text-sm text-dim">
         {headline && <><Link href={link} className="font-semibold text-brand-2 hover:underline">{name}</Link> · </>}
         <span className={pending ? '' : 'font-semibold text-ink-2'}>{status}</span>
-        {!pending && <><br />{stage}{nextLine ? ` · ${nextLine}` : ''}</>}
+        {!pending && !noSnippet && <><br />{stage}{nextLine ? ` · ${nextLine}` : ''}</>}
       </p>
       {summary && <div className={`text-sm leading-snug mb-3 ${pending ? 'text-dim' : 'text-ink-2'}`}>{summary}</div>}
-      {!pending && <Snippet preview={lead?.teaser?.slice(0, 160)} full={lead?.teaser} link={link} placeholder={placeholder} />}
+      {!pending && !noSnippet && <Snippet text={lead?.teaser} link={link} placeholder={placeholder} max={140} />}
+      {!pending && noSnippet && <Link href={link} className="self-end mt-2 py-1 text-sm text-brand-2 font-semibold hover:underline whitespace-nowrap">Read more &rarr;</Link>}
     </div>
   );
 }

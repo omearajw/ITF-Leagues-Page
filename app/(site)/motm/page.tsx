@@ -1,8 +1,8 @@
+import { ChevronDown } from 'lucide-react';
 import { Suspense } from 'react';
 import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
-import GameweekBadge from '@/components/GameweekBadge';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID } from '@/lib/gameweek-status';
 import { buildMotm, type MotmMonth } from '@/lib/motm';
@@ -54,7 +54,9 @@ function MonthCard({ month }: { month: MotmMonth }) {
             )}
             {div.standings.length > div.leaders.length && (
               <details className="mt-2 border-t border-line pt-2">
-                <summary className="text-sm font-semibold text-brand-2 cursor-pointer">Full standings</summary>
+                <summary className="list-none [&::-webkit-details-marker]:hidden flex justify-end">
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand-2 cursor-pointer hover:underline">Full standings <ChevronDown size={14} aria-hidden="true" className="transition-transform [details[open]_&]:rotate-180" /></span>
+                </summary>
                 <ol className="mt-2 divide-y divide-line text-sm text-ink-2">
                   {div.standings.map((m, i) => (
                     <li key={m.id} className="flex justify-between gap-2 py-1.5">
@@ -87,15 +89,7 @@ async function MotmContent() {
 
   return (
     <>
-      <PageHeader
-        title="Manager of the Month"
-        badge={<GameweekBadge provisional={false}>Confirmed weeks through GW{gw.syncedThroughGw}</GameweekBadge>}
-      >
-        <p className="text-dim max-w-[34rem]">
-          Each month the manager in each league with the most points across that month&apos;s gameweeks takes the award. Ties share it.
-          A gameweek belongs to the month its FPL deadline falls in.
-        </p>
-      </PageHeader>
+      <PageHeader title="Manager of the Month" rules />
 
       {!events && (
         <div className="text-live-2 border-y border-live/30 py-3 text-sm">Live FPL status is unavailable, so months cannot be worked out right now.</div>

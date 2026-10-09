@@ -178,7 +178,12 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
         {/* Phones line it up with the top of the name, below the accent rule (5px + 12px). */}
         {badgeSrc && <TeamBadge src={badgeSrc} size={176} className="col-start-2 row-start-1 sm:row-span-2 mt-[17px] sm:mt-0 w-20 h-20 sm:w-36 sm:h-36 lg:w-44 lg:h-44" />}
         <div className="col-span-full sm:col-span-1 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href={`/manager/${managerId}/plan`} className={`${button} bg-brand text-white hover:bg-brand/85`}>Plan next week &rarr;</Link>
+          {/* The planner is for your own team. With no team chosen yet, the button asks which is yours first. */}
+          {isMine ? (
+            <Link href={`/manager/${managerId}/plan`} className={`${button} bg-brand text-white hover:bg-brand/85`}>Plan next week &rarr;</Link>
+          ) : !myTeamId && (
+            <Link href="/my-team?next=plan" className={`${button} bg-brand text-white hover:bg-brand/85`}>Plan next week &rarr;</Link>
+          )}
           {/* The FPL links open the visitor's own FPL account, so they only make sense on their own team. */}
           {isMine ? (
             <span className="flex items-center gap-3 text-sm">

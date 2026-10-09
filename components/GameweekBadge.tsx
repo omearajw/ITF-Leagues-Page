@@ -12,8 +12,9 @@ export default function GameweekBadge({ provisional, children, short, className 
   ) : children;
 
   return (
-    <span className={`inline-flex items-center gap-2 max-w-full whitespace-nowrap text-xs sm:text-sm font-semibold uppercase tracking-[0.08em] ${provisional ? 'text-live-2' : 'text-dim'} ${className}`}>
-      {provisional && <span className="w-2 h-2 rounded-full bg-live animate-pulse shrink-0" aria-hidden="true" />}
+    // Baseline-aligned (the dot is centred on its own) so the label sits on a title's baseline.
+    <span className={`inline-flex items-baseline gap-2 max-w-full whitespace-nowrap text-xs sm:text-sm font-semibold uppercase tracking-[0.08em] ${provisional ? 'text-live-2' : 'text-dim'} ${className}`}>
+      {provisional && <span className="self-center w-2 h-2 rounded-full bg-live animate-pulse shrink-0" aria-hidden="true" />}
       <span className="min-w-0">{label}</span>
     </span>
   );

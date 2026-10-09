@@ -92,6 +92,7 @@ type FplEvent = {
   is_next: boolean;
   finished: boolean;
   data_checked: boolean;
+  average_entry_score: number;
 };
 
 type FplFixture = {
@@ -126,6 +127,7 @@ async function fetchFplSnapshot(): Promise<FplSnapshot | null> {
     const events: FplEvent[] = bootstrap.events.map((e: any) => ({
       id: e.id, name: e.name, deadline_time: e.deadline_time,
       is_previous: e.is_previous, is_current: e.is_current, is_next: e.is_next, finished: e.finished, data_checked: e.data_checked,
+      average_entry_score: e.average_entry_score ?? 0,
     }));
 
     const wanted = events.filter(e => e.is_previous || e.is_current || e.is_next).map(e => e.id);
@@ -151,12 +153,13 @@ async function fetchFplSnapshot(): Promise<FplSnapshot | null> {
   }
 }
 
-export type FplEventLite = { id: number; name: string; deadline_time: string; finished: boolean };
+// `average` is FPL's average score across every entry; 0 until the week has been played.
+export type FplEventLite = { id: number; name: string; deadline_time: string; finished: boolean; average: number };
 
 // The season's gameweek list with deadlines, or null when FPL is unreachable.
 export const getFplEvents = cache(async (): Promise<FplEventLite[] | null> => {
   const snapshot = await fetchFplSnapshot();
-  return snapshot ? snapshot.events.map(e => ({ id: e.id, name: e.name, deadline_time: e.deadline_time, finished: e.finished })) : null;
+  return snapshot ? snapshot.events.map(e => ({ id: e.id, name: e.name, deadline_time: e.deadline_time, finished: e.finished, average: e.average_entry_score })) : null;
 });
 
 export const getGameweekStatus = cache(async (): Promise<GameweekStatus> => {

@@ -113,11 +113,12 @@ async function EliminatorContent() {
       <PageHeader
         className="mb-10 sm:mb-12"
         title="The Eliminator"
+        rules
         titleExtra={<span className={`text-2xl sm:text-4xl ${statusMuted ? 'text-dim' : 'text-brand-2'}`}>{statusLabel}</span>}
         badge={<GameweekChip gw={gw} startGw={startGw} />}
       >
         {!isPreTournament && <p className="text-dim max-w-[34rem]">
-          The lowest net score each week is out.{' '}{nextLine}.
+          {nextLine}.
           {gw.liveGw ? ` Survivors show GW${gw.liveGw} points so far; the cut is made once the week is confirmed.` : ''}
         </p>}
         {contentData?.content && (
@@ -176,7 +177,7 @@ async function EliminatorContent() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
-                        <span className="shrink-0 text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm" title="On the lowest live score: out if it stays this way when the week is confirmed">At risk</span>
+                        <span className="shrink-0 text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm animate-pulse" title="On the lowest live score: out if it stays this way when the week is confirmed">At risk</span>
                       </div>
                       <div className="text-sm text-dim">{mgr.season_managers.managers.real_name}</div>
                     </div>

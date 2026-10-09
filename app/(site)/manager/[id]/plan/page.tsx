@@ -64,7 +64,7 @@ async function PlanContent({ managerId, manager }: { managerId: number; manager:
   if (!players || !picks) {
     return (
       <>
-        <PageHeader title={<TeamName name={manager.team_name} inline />} badge={<GameweekBadge provisional={false}>Planner</GameweekBadge>} />
+        <PageHeader title={<TeamName name={manager.team_name} inline />} titleExtra={<span className="text-brand-2">Planner</span>} />
         <div className="text-live-2 border-y border-live/30 py-4 text-sm">FPL data is not available right now, so the planner cannot load this squad. Try again in a minute.</div>
       </>
     );
@@ -115,7 +115,7 @@ async function PlanContent({ managerId, manager }: { managerId: number; manager:
     <>
       <PageHeader
         title={<TeamName name={manager.team_name} inline className="min-w-0" />}
-        titleExtra={<span className="text-2xl sm:text-4xl text-brand-2">Planner</span>}
+        titleExtra={<span className="text-brand-2">Planner</span>}
         badge={<GameweekBadge provisional={false}>GW{planGw} · deadline {formatUk(deadlineIso)}</GameweekBadge>}
         actions={<Link href={`/manager/${managerId}`} className="text-sm font-semibold border border-line text-ink-2 px-3 py-1.5 rounded-sm hover:text-ink hover:border-faint whitespace-nowrap">&larr; Team page</Link>}
       >

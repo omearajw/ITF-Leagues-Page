@@ -117,6 +117,7 @@ async function ChampionsLeagueContent() {
     <>
       <PageHeader
         title="Champions League"
+        rules
         badge={<GameweekChip gw={gw} startGw={s1Start} />}
       >
         <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">

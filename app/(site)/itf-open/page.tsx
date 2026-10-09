@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
-import TeamName from '@/components/TeamName';
+import Link from 'next/link';
+import { getTeamNameDisplayText } from '@/components/TeamName';
 import { Suspense } from 'react';
 import { ITFOpenSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
@@ -14,11 +15,8 @@ import { compareStanding } from '@/lib/standings';
 export default function Index() {
   return (
     <div className="max-w-4xl mx-auto py-2 sm:py-8 font-sans">
-      <PageHeader title="The Open">
-        <p className="text-dim">The master leaderboard across all divisions.</p>
-      </PageHeader>
-
-      <Suspense fallback={<ITFOpenSkeleton />}>
+      {/* The header renders with the table so the week's status can sit beside the title. */}
+      <Suspense fallback={<><PageHeader title="The Open" rules /><ITFOpenSkeleton /></>}>
         <ITFOpenContent />
       </Suspense>
     </div>
@@ -89,17 +87,14 @@ async function ITFOpenContent() {
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <span className="text-dim">Season totals after <strong className="text-ink">GW{scoresGw}</strong></span>
-        <GameweekChip gw={gw} week={scoresGw} live={showingLive} />
-      </div>
-      <p className="text-sm text-dim mb-4">{showingLive ? `Includes GW${scoresGw} points so far and any subs due from the bench (marked +n); final once FPL confirms the week.` : 'Confirmed totals.'}</p>
+      <PageHeader title="The Open" rules badge={<GameweekChip gw={gw} week={scoresGw} live={showingLive} />} />
+      {showingLive && <p className="text-sm text-dim mb-4">Includes GW{scoresGw} points so far and any subs due from the bench (marked +n); final once FPL confirms the week.</p>}
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b-2 border-ink/80">
-            <th className="label font-semibold py-2 pr-1 w-9">Pos</th>
+            <th className="py-2 pr-1 w-9"><span className="sr-only">Position</span></th>
             <th className="w-10 pr-2"><span className="sr-only">Movement</span></th>
-            <th className="label font-semibold py-2 pr-3">Team</th>
+            <th className="label font-semibold py-2 pr-3">Manager</th>
             <th className="label font-semibold py-2 pr-3 hidden md:table-cell">Division</th>
             <th className="label font-semibold py-2 px-2 text-right">GW{scoresGw}</th>
             <th className="label font-semibold py-2 px-3 text-right text-ink key-col">Total</th>
@@ -110,9 +105,10 @@ async function ITFOpenContent() {
             <tr key={manager.manager_fpl_id} className="hover:bg-surface">
               <td className="py-3 pr-1 font-display text-2xl leading-none text-faint">{index + 1}</td>
               <td className="py-3 pr-2 whitespace-nowrap"><MovementArrow delta={movement[manager.manager_fpl_id]} /></td>
+              {/* The Open is the race for manager of the season, so the manager leads and the team follows. */}
               <td className="py-3 pr-3 min-w-0">
-                <TeamName name={manager.season_managers.team_name} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
-                <div className="text-dim">{manager.season_managers.managers.real_name}<span className="md:hidden"> · {manager.season_managers.division}</span></div>
+                <Link href={`/manager/${manager.manager_fpl_id}`} className="font-semibold text-ink hover:underline decoration-brand-2/60 underline-offset-2">{manager.season_managers.managers.real_name}</Link>
+                <div className="text-dim">{getTeamNameDisplayText(manager.season_managers.team_name)}<span className="md:hidden"> · {manager.season_managers.division}</span></div>
               </td>
               <td className="py-3 pr-3 text-dim hidden md:table-cell">{manager.season_managers.division}</td>
               <td className={`py-3 px-2 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>

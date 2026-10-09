@@ -105,6 +105,7 @@ async function OnionBaggersContent() {
     <>
       <PageHeader
         title="Onion Baggers Cup"
+        rules
         badge={<GameweekChip gw={gw} startGw={qStart} />}
       >
         {/* Qualifying runs for eight gameweeks; knockouts start later so the final lands in the penultimate week. */}

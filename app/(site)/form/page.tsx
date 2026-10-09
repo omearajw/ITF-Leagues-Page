@@ -11,7 +11,7 @@ export default function FormGrid() {
   return (
     <div className="max-w-[1400px] mx-auto pb-12 font-sans">
       <PageHeader title="Form Guide">
-        <p className="text-dim">Win/Draw/Loss record, ranked.<span className="md:hidden"> Showing the last five results on small screens.</span></p>
+        <p className="text-dim md:hidden">Showing the last five results on small screens.</p>
       </PageHeader>
 
       <Suspense fallback={<FormGridSkeleton />}>

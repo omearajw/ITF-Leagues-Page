@@ -4,9 +4,9 @@ import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
 import { GameweekChip } from '@/components/GameweekBadge';
 import GameweekSelector from '@/components/GameweekSelector';
-import TeamOfTheWeekCard from '@/components/TeamOfTheWeekCard';
+import TeamOfTheWeekCard, { TotwFacts } from '@/components/TeamOfTheWeekCard';
 import { DivisionSkeleton } from '@/components/Skeletons';
-import { getGameweekStatus } from '@/lib/gameweek-status';
+import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { getTeamOfTheWeek, getFinalLineup } from '@/lib/team-of-the-week';
 import PitchView from '@/components/PitchView';
 import { getTeamNameDisplayText } from '@/components/TeamName';
@@ -31,19 +31,14 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
   const selectedGw = requestedGw && requestedGw >= 1 && requestedGw <= latestGw ? requestedGw : latestGw;
   const isLatest = selectedGw === latestGw;
 
-  const [totw, { data: contentData }] = await Promise.all([
+  const [totw, { data: contentData }, events] = await Promise.all([
     getTeamOfTheWeek(selectedGw),
     supabase.from('page_content').select('content').eq('id', 'team-of-the-week').eq('gw_number', selectedGw).maybeSingle(),
+    getFplEvents(),
   ]);
   const many = (totw?.winners.length ?? 0) > 1;
   const lineups = totw ? await Promise.all(totw.winners.map(w => getFinalLineup(w.id, totw.gw))) : [];
-  const facts = totw && (
-    <>
-      {totw.nextBest !== null && <span><b className="text-ink tabular">+{totw.winners[0].points - totw.nextBest}</b> clear of the rest</span>}
-      <span>League average <b className="text-ink tabular">{totw.average}</b></span>
-      <span>Left on the bench <b className="text-ink tabular">{totw.winners.map(w => w.benchPoints).join(' / ')}</b></span>
-    </>
-  );
+  const facts = totw && <TotwFacts totw={totw} globalAverage={events?.find(e => e.id === totw.gw)?.average} bench />;
 
   return (
     <>
@@ -56,7 +51,6 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
             <GameweekSelector basePath="/team-of-the-week" latestGw={latestGw} selected={selectedGw} liveGw={gw.liveGw} />
           </div>
         )}
-        <p className="text-dim">The highest score of GW{selectedGw}, across all three leagues.</p>
       </PageHeader>
 
       {!totw ? (
@@ -75,6 +69,15 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
             )}
           </section>
 
+          {/* The write-up comes before the line-up. */}
+          {contentData?.content ? (
+            <article className="max-w-[34rem] mb-10 text-[15px] leading-relaxed text-ink-2">
+              <RichText content={contentData.content} />
+            </article>
+          ) : (
+            <p className="mb-10 text-sm text-faint italic">No GW{selectedGw} write-up yet.</p>
+          )}
+
           {totw.winners.map((team, i) => {
             const lineup = lineups[i];
             if (!lineup) return null;
@@ -90,14 +93,6 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
               />
             );
           })}
-
-          {contentData?.content ? (
-            <article className="max-w-[34rem] border-t border-line pt-5 text-[15px] leading-relaxed text-ink-2">
-              <RichText content={contentData.content} />
-            </article>
-          ) : (
-            <p className="text-sm text-faint italic">No GW{selectedGw} write-up yet.</p>
-          )}
         </>
       )}
     </>
