@@ -2,7 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const COLOURS = ['#f1f5f9', '#f43f5e', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc'];
+// Text colours from the site's default theme (app/globals.css), as hex because they're saved into
+// the write-up itself: ink, brand-2, live-2, win-2 and dim. Each is light enough to read on the
+// dark background; brand (the deep red) is left out because it's too dark for text.
+const COLOURS = [
+  { hex: '#f6f2eb', name: 'Cream' },
+  { hex: '#ff707c', name: 'Red' },
+  { hex: '#fcd34d', name: 'Amber' },
+  { hex: '#4ade80', name: 'Green' },
+  { hex: '#aaa194', name: 'Grey' },
+];
 const EMOJI = ['⚽', '🔥', '😂', '😭', '🏆', '💀', '🧤', '🚀', '🤡', '👀', '🎯', '🥇'];
 
 type Props = { name: string; initialHtml: string; placeholder?: string };
@@ -51,13 +60,13 @@ export default function WriteUpEditor({ name, initialHtml, placeholder }: Props)
         <Btn label="• List" title="Bullet list" onClick={() => run('insertUnorderedList')} />
         <Btn label="1. List" title="Numbered list" onClick={() => run('insertOrderedList')} />
         <span className="w-px h-5 bg-line mx-1" />
-        <Btn label={<span className="inline-block w-4 h-4 rounded-full align-middle" style={{ background: 'linear-gradient(90deg,#f43f5e,#fbbf24,#4ade80,#60a5fa)' }} />} title="Text colour" onClick={() => { setShowColours(v => !v); setShowEmoji(false); }} />
+        <Btn label={<span className="inline-block w-4 h-4 rounded-full align-middle" style={{ background: 'linear-gradient(90deg,#ff707c,#fcd34d,#4ade80,#f6f2eb)' }} />} title="Text colour" onClick={() => { setShowColours(v => !v); setShowEmoji(false); }} />
         <Btn label="😀" title="Emoji" onClick={() => { setShowEmoji(v => !v); setShowColours(false); }} />
         <span className="w-px h-5 bg-line mx-1" />
         <Btn label="✕" title="Clear formatting" onClick={() => { run('removeFormat'); run('formatBlock', 'p'); }} className="text-faint" />
         {showColours && (
           <div className="absolute left-2 top-full mt-1 z-10 flex gap-1 p-2 bg-surface border border-line rounded-lg shadow-lg">
-            {COLOURS.map(c => <button key={c} type="button" onMouseDown={e => e.preventDefault()} onClick={() => { run('foreColor', c); setShowColours(false); }} className="w-6 h-6 rounded-full border border-white/20" style={{ background: c }} title={c} />)}
+            {COLOURS.map(c => <button key={c.hex} type="button" onMouseDown={e => e.preventDefault()} onClick={() => { run('foreColor', c.hex); setShowColours(false); }} className="w-6 h-6 rounded-full border border-white/20" style={{ background: c.hex }} title={c.name} aria-label={c.name} />)}
           </div>
         )}
         {showEmoji && (
