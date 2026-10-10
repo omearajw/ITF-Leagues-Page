@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
@@ -382,7 +381,7 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
       <table className="w-full text-sm text-left mt-auto">
         <thead>
           <tr className="border-b border-line">
-            <th className="py-1.5 pr-1 w-7"><Image src="/brand/itf-logo.png" alt="" width={20} height={20} className="h-5 w-5" /><span className="sr-only">Position</span></th>
+            <th className="py-1.5 pr-1 w-7"><span className="sr-only">Position</span></th>
             <th className="w-10 pr-2"><span className="sr-only">Movement</span></th>
             <th className="label font-semibold py-1.5">{name}</th>
             <th className="label font-semibold py-1.5 px-2 text-right key-col">Pts</th>
