@@ -2,17 +2,67 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Star, X } from 'lucide-react';
+import { MessageSquare, Star, X } from 'lucide-react';
 import { submitFeedback } from '@/lib/feedback-actions';
 import { FEEDBACK_KINDS, OPEN_FEEDBACK_EVENT, type FeedbackState } from '@/lib/feedback';
 
 // Anything that opens the form (the footer link, the phone menu item) just announces it, so the
 // one dialog lives in the layout and survives the phone menu closing.
-export function FeedbackTrigger({ className = '', onClick }: { className?: string; onClick?: () => void }) {
+export function FeedbackTrigger({ className = '', onClick, children = 'Feedback' }: { className?: string; onClick?: () => void; children?: React.ReactNode }) {
   return (
     <button type="button" className={className} onClick={() => { onClick?.(); window.dispatchEvent(new Event(OPEN_FEEDBACK_EVENT)); }}>
-      Feedback
+      {children}
     </button>
+  );
+}
+
+// The navbar's button: an icon with the word, so the banner and ticker can point people to it.
+export function FeedbackNavButton() {
+  return (
+    <FeedbackTrigger className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-semibold text-ink-2 hover:text-white transition px-2 py-1.5 rounded-sm">
+      <MessageSquare size={16} aria-hidden="true" />
+      Feedback
+    </FeedbackTrigger>
+  );
+}
+
+// A quiet line under a write-up or tool, asking while the reader has an opinion.
+export function FeedbackPrompt({ children, className = 'mt-6 pt-3 border-t border-line' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <p className={`text-sm text-dim ${className}`}>
+      {children}{' '}
+      <FeedbackTrigger className="font-semibold text-brand-2 hover:underline">Send feedback</FeedbackTrigger>
+    </p>
+  );
+}
+
+const BANNER_KEY = 'itf_feedback_banner_seen';
+
+// Shown once per device on the hub, then gone for good once dismissed or used. It only appears
+// after mounting (the server can't know whether it has been seen), so it never mismatches.
+export function FeedbackBanner() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    try { if (!localStorage.getItem(BANNER_KEY)) setShow(true); } catch {}
+  }, []);
+  if (!show) return null;
+  const dismiss = () => {
+    setShow(false);
+    try { localStorage.setItem(BANNER_KEY, '1'); } catch {}
+  };
+  return (
+    <aside aria-label="Feedback" className="panel flex flex-wrap items-center gap-x-6 gap-y-3">
+      <p className="flex-1 min-w-[15rem] text-ink-2">
+        <b className="text-ink">The site&apos;s just been rebuilt.</b> Spotted something broken, or got an idea? Tell us.{' '}
+        <span className="text-dim">You&apos;ll always find Feedback in the top bar.</span>
+      </p>
+      <div className="flex items-center gap-2">
+        <FeedbackTrigger onClick={dismiss} className="rounded-sm bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/85 whitespace-nowrap">Send feedback</FeedbackTrigger>
+        <button type="button" onClick={dismiss} aria-label="Dismiss" className="p-1.5 rounded-sm text-dim hover:text-ink">
+          <X size={18} aria-hidden="true" />
+        </button>
+      </div>
+    </aside>
   );
 }
 

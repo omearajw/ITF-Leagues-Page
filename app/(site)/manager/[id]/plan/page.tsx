@@ -6,6 +6,7 @@ import TeamName from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
 import GameweekBadge from '@/components/GameweekBadge';
 import Planner, { type PlanPlayer, type PlanSlot, type PlanStakes } from '@/components/Planner';
+import { FeedbackPrompt } from '@/components/Feedback';
 import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getFixtureRuns } from '@/lib/fpl-manager';
@@ -138,6 +139,7 @@ async function PlanContent({ managerId, manager }: { managerId: number; manager:
         opponent={opponentId && opponentPicks ? { id: opponentId, name: (opponentRow as any)?.team_name || 'Opponent', squad: toSlots(opponentPicks.picks) } : null}
         stakes={{ eliminator, motm, obCup }}
       />
+      <FeedbackPrompt className="mt-10 pt-3 border-t border-line">How&apos;s the planner working for you?</FeedbackPrompt>
     </>
   );
 }

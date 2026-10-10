@@ -9,6 +9,7 @@ import { DivisionSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { getTeamOfTheWeek, getFinalLineup } from '@/lib/team-of-the-week';
 import PitchView from '@/components/PitchView';
+import { FeedbackPrompt } from '@/components/Feedback';
 import { getTeamNameDisplayText } from '@/components/TeamName';
 
 export default async function TeamOfTheWeekPage({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
@@ -73,6 +74,7 @@ async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
           {contentData?.content ? (
             <article className="max-w-[34rem] mb-10 text-[15px] leading-relaxed text-ink-2">
               <RichText content={contentData.content} />
+              <FeedbackPrompt>Thoughts on this week&apos;s write-up?</FeedbackPrompt>
             </article>
           ) : (
             <p className="mb-10 text-sm text-faint italic">No GW{selectedGw} write-up yet.</p>

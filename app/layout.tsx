@@ -7,7 +7,7 @@ import { Analytics } from '@vercel/analytics/next';
 import TickerServer from '@/components/TickerServer';
 import { INTRO_HEAD_SCRIPT } from '@/lib/intro';
 import { THEME_HEAD_SCRIPT } from '@/lib/theme';
-import { FeedbackDialog, FeedbackTrigger } from '@/components/Feedback';
+import { FeedbackDialog, FeedbackTrigger, FeedbackNavButton } from '@/components/Feedback';
 import { getUnreadFeedbackCount } from '@/lib/feedback-data';
 import Image from 'next/image';
 import { wordmarkFont, displayFont, textFont } from '@/lib/fonts';
@@ -54,6 +54,7 @@ async function Navbar() {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-4">
+              <FeedbackNavButton />
               <div className="hidden lg:flex items-center gap-2 text-sm font-semibold">
                 <Link href="/my-team" className="whitespace-nowrap border border-line text-ink-2 hover:text-white hover:border-faint transition px-3 py-1.5 rounded-sm">My team</Link>
                 <Link href="/plan" className="whitespace-nowrap border border-brand bg-brand text-white hover:bg-brand/85 transition px-3 py-1.5 rounded-sm">Plan next week</Link>

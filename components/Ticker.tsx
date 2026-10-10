@@ -49,6 +49,11 @@ const DIVISION_LABEL: Record<string, string> = { 'Premier League': 'PREMIER LEAG
 
 function Dot() { return <span>•</span>; }
 
+// Once per loop, a plain reminder of where feedback goes (the ticker itself isn't clickable).
+function FeedbackReminder() {
+  return <><span className="text-dim">Spotted a bug or got an idea for the site? Use Feedback in the top bar.</span><Dot /></>;
+}
+
 // The league and the pipes between its entries carry the brand colour; the managers,
 // fixtures and scores stay white so they are what you read.
 function DivisionLine({ label, items, empty }: { label: string; items: string[]; empty: string }) {
@@ -77,6 +82,7 @@ function MotmContent({ motm }: { motm: TickerMotm }) {
           <Dot />
         </span>
       ))}
+      <FeedbackReminder />
     </>
   );
 }
@@ -96,6 +102,7 @@ function LiveContent({ live }: { live: TickerLive }) {
           <Dot />
         </span>
       ))}
+      <FeedbackReminder />
     </>
   );
 }

@@ -10,6 +10,7 @@ import { eliminatorNextLine } from '@/lib/tournament-next';
 import { getWeekProjection, dueFor } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
+import { FeedbackPrompt } from '@/components/Feedback';
 
 export default async function EliminatorPage() {
   const supabase = await createClient();
@@ -124,6 +125,7 @@ async function EliminatorContent() {
         {contentData?.content && (
           <article className="max-w-[34rem] border-t border-line pt-5 mt-5 text-[15px] leading-relaxed text-ink-2">
             <RichText content={contentData.content} />
+            <FeedbackPrompt>Thoughts on this week&apos;s write-up?</FeedbackPrompt>
           </article>
         )}
       </PageHeader>

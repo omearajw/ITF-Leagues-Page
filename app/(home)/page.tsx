@@ -13,6 +13,7 @@ import { compareStanding } from '@/lib/standings';
 import { getWeekProjection, dueFor } from '@/lib/projection';
 import { writeUpLead } from '@/lib/richtext';
 import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
+import { FeedbackBanner } from '@/components/Feedback';
 import SectionHeading from '@/components/SectionHeading';
 import DueMark from '@/components/DueMark';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
@@ -199,6 +200,7 @@ async function DashboardContent() {
 
   return (
     <div className="flex flex-col gap-12">
+      <FeedbackBanner />
       <TeamOfTheWeekBanner gw={currentGw} />
 
       <section>

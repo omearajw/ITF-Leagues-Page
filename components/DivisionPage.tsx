@@ -7,6 +7,7 @@ import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
 import DivisionFixtures from '@/components/DivisionFixtures';
+import { FeedbackPrompt } from '@/components/Feedback';
 import { DIVISIONS } from '@/lib/divisions';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
@@ -140,6 +141,7 @@ async function DivisionContent({ division, requestedGw }: { division: Division; 
         {contentData?.content && (
           <article className="max-w-[34rem] border-t border-line pt-5 xl:border-t-0 xl:pt-0 xl:border-r xl:pr-8 text-[15px] leading-relaxed text-ink-2">
             <RichText content={contentData.content} />
+            <FeedbackPrompt>Thoughts on this week&apos;s write-up?</FeedbackPrompt>
           </article>
         )}
 
