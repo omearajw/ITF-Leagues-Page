@@ -6,10 +6,13 @@ import { useState } from 'react';
 const PAGE = 5;
 
 // Five weeks at a time, with arrows paging the window by five. Selecting a week is a
-// link, so the page re-renders server-side with that week's data.
-export default function GameweekSelector({ basePath, latestGw, selected, liveGw }: { basePath: string; latestGw: number; selected: number; liveGw?: number | null }) {
+// link, so the page re-renders server-side with that week's data. `latestGw` is the last week
+// offered (it can be a live week); `defaultGw` is the one the bare address shows, if different.
+export default function GameweekSelector({ basePath, latestGw, defaultGw = latestGw, selected, liveGw }: { basePath: string; latestGw: number; defaultGw?: number; selected: number; liveGw?: number | null }) {
   const maxStart = Math.max(1, latestGw - PAGE + 1);
-  const [start, setStart] = useState(Math.min(maxStart, Math.max(1, Math.floor((selected - 1) / PAGE) * PAGE + 1)));
+  // Open on the newest weeks when the selected one is among them, so a live week sits beside the
+  // finished week shown by default; an older selected week opens on its own window instead.
+  const [start, setStart] = useState(Math.max(1, Math.min(selected, maxStart)));
   const visible = Array.from({ length: Math.min(PAGE, latestGw - start + 1) }, (_, i) => start + i);
   const atStart = start <= 1;
   const atEnd = start >= maxStart;
@@ -23,18 +26,19 @@ export default function GameweekSelector({ basePath, latestGw, selected, liveGw 
         {visible.map(week => (
           <Link
             key={week}
-            href={week === latestGw ? basePath : `${basePath}?gw=${week}`}
+            href={week === defaultGw ? basePath : `${basePath}?gw=${week}`}
             aria-current={week === selected ? 'page' : undefined}
-            className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold border whitespace-nowrap ${week === selected ? 'bg-brand text-white border-brand' : 'bg-surface border-line text-dim hover:text-ink'}`}
+            className={`shrink-0 inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold border whitespace-nowrap ${week === selected ? 'bg-brand text-white border-brand' : 'bg-surface border-line text-dim hover:text-ink'}`}
           >
-            GW{week}{week === liveGw ? ' ·' : ''}
+            GW{week}
+            {week === liveGw && <><span className="w-1.5 h-1.5 rounded-full bg-live animate-pulse" aria-hidden="true" /><span className="sr-only sm:not-sr-only">Live</span></>}
           </Link>
         ))}
       </div>
       <button type="button" onClick={() => setStart(s => Math.min(maxStart, s + PAGE))} disabled={atEnd} aria-label="Later gameweeks" className={arrow}>›</button>
-      {selected !== latestGw && (
+      {selected !== defaultGw && (
         <Link href={basePath} className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border border-brand-2/40 bg-brand-2/10 text-brand-2 hover:bg-brand-2/20 whitespace-nowrap">
-          Back to GW{latestGw}
+          Back to GW{defaultGw}
         </Link>
       )}
     </div>

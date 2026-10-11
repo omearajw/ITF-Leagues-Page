@@ -131,22 +131,26 @@ async function DashboardContent() {
   };
   const matchPointsMap = buildMatchPoints(currentGw);
 
-  // E. Map H2H points to teams and rank them (see lib/standings.ts)
-  const processedTeams = scores?.map(team => ({
+  // E. Map H2H points to teams and rank them (see lib/standings.ts). The league tables hold at the
+  // last finished week, totals included, so tied teams don't swap places while a week is live; the
+  // division pages offer the live week as it stands.
+  const leagueScores = showingLive && currentGw >= 1 ? ((await fetchScores(currentGw)).data || []) : (scores || []);
+  const processedTeams = leagueScores.map(team => ({
     ...team,
     h2h_points: matchPointsMap[team.manager_fpl_id] || 0
   })).sort((a: any, b: any) => compareStanding(
     { pts: a.h2h_points, total: a.classic_total_points, week: a.points, name: a.season_managers.team_name },
     { pts: b.h2h_points, total: b.classic_total_points, week: b.points, name: b.season_managers.team_name },
-  )) || [];
+  ));
 
   const premierLeagueTeams = processedTeams.filter((s: any) => s.season_managers.division === 'Premier League');
   const championshipTeams = processedTeams.filter((s: any) => s.season_managers.division === 'Championship');
   const leagueOneTeams = processedTeams.filter((s: any) => s.season_managers.division === 'League One');
+  const liveTableGw = showingLive && currentGw >= 1 ? scoresGw : null;
   
-  // The Open ranks on total points, including any subs due while a week is live.
+  // The Open stays live: it ranks on total points, including any subs due while a week is live.
   const openStanding = (t: any) => ({ total: withDue(t.manager_fpl_id, t.classic_total_points), week: withDue(t.manager_fpl_id, t.points), name: t.season_managers.team_name });
-  const openOrder = [...processedTeams].sort((a, b) => compareStanding(openStanding(a), openStanding(b)));
+  const openOrder = [...(scores || [])].sort((a, b) => compareStanding(openStanding(a), openStanding(b)));
   const topTenITF = openOrder.slice(0, 10);
 
   // Movement: divisions compare with last week's confirmed standings; the ITF Open
@@ -203,12 +207,11 @@ async function DashboardContent() {
       <TeamOfTheWeekBanner gw={currentGw} />
 
       <section>
-        <SectionHeading aside={<GameweekChip gw={gw} />}>League</SectionHeading>
-        {gw.liveGw && <p className="text-sm text-dim -mt-2 mb-4">Pts and positions update once GW{gw.liveGw} is confirmed.</p>}
+        <SectionHeading aside={currentGw >= 1 ? <GameweekChip gw={gw} week={currentGw} live={false} /> : <GameweekChip gw={gw} />}>League</SectionHeading>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 col-rules">
-          <DivisionWidget name="Premier League" link="/divisions/premier-league" lead={leads['premier-league']} gw={currentGw} teams={premierLeagueTeams} placeholder={noWriteUp} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
-          <DivisionWidget name="Championship" link="/divisions/championship" lead={leads['championship']} gw={currentGw} teams={championshipTeams} placeholder={noWriteUp} movement={divisionMovement(championshipTeams, 'Championship')} />
-          <DivisionWidget name="League One" link="/divisions/league-one" lead={leads['league-one']} gw={currentGw} teams={leagueOneTeams} placeholder={noWriteUp} movement={divisionMovement(leagueOneTeams, 'League One')} />
+          <DivisionWidget name="Premier League" link="/divisions/premier-league" lead={leads['premier-league']} gw={currentGw} liveGw={liveTableGw} teams={premierLeagueTeams} placeholder={noWriteUp} movement={divisionMovement(premierLeagueTeams, 'Premier League')} />
+          <DivisionWidget name="Championship" link="/divisions/championship" lead={leads['championship']} gw={currentGw} liveGw={liveTableGw} teams={championshipTeams} placeholder={noWriteUp} movement={divisionMovement(championshipTeams, 'Championship')} />
+          <DivisionWidget name="League One" link="/divisions/league-one" lead={leads['league-one']} gw={currentGw} liveGw={liveTableGw} teams={leagueOneTeams} placeholder={noWriteUp} movement={divisionMovement(leagueOneTeams, 'League One')} />
         </div>
       </section>
 
@@ -364,7 +367,7 @@ type Lead = { headline: string | null; teaser: string };
 // One division's column, led like a back-page story: the write-up's own headline in the
 // display face, a line saying which league it is, the teaser, then the table. With no
 // write-up the division's name takes the headline's place.
-function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: { name: string, link: string, lead?: Lead, gw: number, teams: any[], movement: Record<number, number | null>, placeholder?: string }) {
+function DivisionWidget({ name, link, lead, gw, liveGw, teams, movement, placeholder }: { name: string, link: string, lead?: Lead, gw: number, liveGw?: number | null, teams: any[], movement: Record<number, number | null>, placeholder?: string }) {
   const headline = lead?.headline;
   return (
     <div className="flex flex-col col-head">
@@ -403,6 +406,9 @@ function DivisionWidget({ name, link, lead, gw, teams, movement, placeholder }: 
           )}
         </tbody>
       </table>
+      {liveGw && (
+        <Link href={`${link}?gw=${liveGw}`} className="self-end mt-2 py-1 text-sm font-semibold text-brand-2 hover:underline whitespace-nowrap">GW{liveGw} as it stands &rarr;</Link>
+      )}
     </div>
   );
 }
