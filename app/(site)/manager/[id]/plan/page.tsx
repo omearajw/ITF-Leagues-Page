@@ -47,7 +47,7 @@ async function PlanContent({ managerId, manager }: { managerId: number; manager:
   const [players, picks, fixtures, league, opponentId] = await Promise.all([
     getPlayers(),
     getManagerPicks(managerId, latestGw, latestIsFinal),
-    getFixtureRuns(planGw, 3),
+    getFixtureRuns(planGw, 5),
     getLeagueOwnership(latestGw, latestIsFinal),
     division ? getNextOpponent(managerId, division.fplId, planGw) : Promise.resolve(null),
   ]);

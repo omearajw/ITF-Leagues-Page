@@ -34,18 +34,70 @@ export type PlannerProps = {
 };
 
 const DIFF_CLASS: Record<number, string> = { 1: 'bg-win text-white', 2: 'bg-win/70 text-white', 3: 'bg-surface-3 text-ink', 4: 'bg-loss/70 text-white', 5: 'bg-loss text-white' };
+const PLATE_KEY = 'itf-planner-plate';
+const FIXTURE_WEEKS = 5;
 const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`;
 
-function FixtureChips({ fixtures, size = 'sm' }: { fixtures: PlanFixture[] | undefined; size?: 'sm' | 'md' }) {
+function FixtureChips({ fixtures, size = 'sm', count = 3 }: { fixtures: PlanFixture[] | undefined; size?: 'sm' | 'md'; count?: number }) {
   if (!fixtures || fixtures.length === 0) return <span className="text-xs text-faint">No fixtures</span>;
   return (
-    <span className="flex gap-1">
-      {fixtures.slice(0, 3).map((f, i) => (
+    <span className="flex flex-wrap gap-1">
+      {fixtures.slice(0, count).map((f, i) => (
         <span key={i} className={`${size === 'md' ? 'text-xs px-2 py-0.5' : 'text-[9px] px-1'} font-bold rounded ${DIFF_CLASS[f.difficulty] || DIFF_CLASS[3]}`} title={`GW${f.gw} ${f.home ? 'vs' : 'at'} ${f.opponent} · difficulty ${f.difficulty}`}>
           {f.opponent}{f.home ? '' : ' (A)'}
         </span>
       ))}
     </span>
+  );
+}
+
+// The squad down the side and the next few gameweeks across, so fixture runs can be compared at a
+// glance instead of opening each player in turn.
+function FixtureGrid({ rows, fixtures, fromGw, count }: { rows: { player: PlanPlayer; bench: boolean; isNew: boolean }[]; fixtures: Record<number, PlanFixture[]>; fromGw: number; count: number }) {
+  const weeks = Array.from({ length: count }, (_, i) => fromGw + i).filter(gw => gw <= 38);
+  const benchStart = rows.findIndex(r => r.bench);
+  return (
+    <div className="overflow-x-auto no-scrollbar">
+      <table className="w-full min-w-[21rem] text-left text-sm">
+        <thead>
+          <tr className="border-b border-line">
+            <th className="label font-semibold pb-2 pr-2">Player</th>
+            {weeks.map(gw => <th key={gw} className="label font-semibold pb-2 px-0.5 text-center w-[13%]">GW{gw}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.player.id} className={i === benchStart ? 'border-t-2 border-line' : ''}>
+              <td className={`py-1 pr-2 ${r.bench ? 'text-dim' : 'text-ink'}`}>
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-semibold truncate max-w-[7.5rem] sm:max-w-none">{r.player.name}</span>
+                  <span className="hidden sm:inline text-xs text-faint">{r.player.team}</span>
+                  {r.isNew && <span className="shrink-0 text-[10px] font-black rounded-sm px-1 bg-win text-white">IN</span>}
+                </span>
+              </td>
+              {weeks.map(gw => {
+                const games = (fixtures[r.player.teamId] || []).filter(f => f.gw === gw);
+                return (
+                  <td key={gw} className="py-1 px-0.5 align-middle">
+                    {games.length === 0 ? (
+                      <span className="block text-center text-xs text-faint py-1" title={`No GW${gw} fixture`}>–</span>
+                    ) : (
+                      <span className="flex flex-col gap-0.5">
+                        {games.map((f, j) => (
+                          <span key={j} className={`block text-center text-[11px] font-bold rounded-sm px-0.5 py-1 whitespace-nowrap ${DIFF_CLASS[f.difficulty] || DIFF_CLASS[3]}`} title={`GW${gw} ${f.home ? 'vs' : 'at'} ${f.opponent} · difficulty ${f.difficulty}`}>
+                            {f.opponent}<span className="ml-0.5 font-semibold opacity-80">{f.home ? 'H' : 'A'}</span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -74,7 +126,9 @@ export default function Planner(props: PlannerProps) {
   const [freeTransfers, setFreeTransfers] = useState(1);
   const [selected, setSelected] = useState<number | null>(null); // slot index shown in the sheet
   const [swapping, setSwapping] = useState<number | null>(null); // slot index being replaced
-  const [tab, setTab] = useState<'matchup' | 'stakes' | 'apply'>('matchup');
+  const [tab, setTab] = useState<'matchup' | 'fixtures' | 'stakes' | 'apply'>('matchup');
+  // What the second line of each player's label shows. Price by default; the choice is kept per device.
+  const [plateInfo, setPlateInfo] = useState<'price' | 'fixture'>('price');
   const [flipped, setFlipped] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -89,6 +143,14 @@ export default function Planner(props: PlannerProps) {
     } catch {}
     setLoaded(true);
   }, [storageKey, props.baseSquad.length]);
+
+  useEffect(() => {
+    try { if (window.localStorage.getItem(PLATE_KEY) === 'fixture') setPlateInfo('fixture'); } catch {}
+  }, []);
+  const choosePlateInfo = (value: 'price' | 'fixture') => {
+    setPlateInfo(value);
+    try { window.localStorage.setItem(PLATE_KEY, value); } catch {}
+  };
 
   useEffect(() => {
     if (!loaded) return;
@@ -136,6 +198,18 @@ export default function Planner(props: PlannerProps) {
   };
   const reset = () => { setSquad(props.baseSquad); setFreeTransfers(1); setSelected(null); };
 
+  // The label's second line: today's price, or the club's opponent(s) in the planned week.
+  const plateLine = (p: PlanPlayer) => {
+    if (plateInfo === 'price') return <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-on-light">£{p.price.toFixed(1)}m</div>;
+    const week = (fixtures[p.teamId] || []).filter(f => f.gw === planGw);
+    if (week.length === 0) return <div className="px-1.5 py-0.5 text-[11px] font-bold bg-surface-3 text-dim">No match</div>;
+    return (
+      <div className="flex">
+        {week.map((f, i) => <span key={i} className={`flex-1 px-1 py-0.5 text-[11px] font-bold ${DIFF_CLASS[f.difficulty] || DIFF_CLASS[3]}`}>{f.opponent} ({f.home ? 'H' : 'A'})</span>)}
+      </div>
+    );
+  };
+
   const tile = (s: PlanSlot, index: number) => {
     const p = byId[s.element];
     if (!p) return null;
@@ -152,7 +226,7 @@ export default function Planner(props: PlannerProps) {
         <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
         <div className="mt-1 w-full max-w-[7.5rem] rounded-sm overflow-hidden text-center transition group-hover:ring-2 group-hover:ring-white/60">
           <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : differential ? 'bg-brand text-white' : 'bg-plate text-white'}`}>{p.name}</div>
-          <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-on-light">£{p.price.toFixed(1)}m</div>
+          {plateLine(p)}
         </div>
       </button>
     );
@@ -168,7 +242,7 @@ export default function Planner(props: PlannerProps) {
         <Visual player={{ element: p.id, team: p.team, teamCode: p.teamCode, code: p.code, position: p.position }} />
         <div className="mt-1 w-full max-w-[7.5rem] rounded-sm overflow-hidden text-center">
           <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onBench ? 'bg-surface-3 text-ink' : !both ? 'bg-live text-on-light' : 'bg-plate text-white'}`}>{p.name}</div>
-          <div className="px-1.5 py-0.5 text-[11px] font-bold bg-white text-on-light">£{p.price.toFixed(1)}m</div>
+          {plateLine(p)}
         </div>
       </div>
     );
@@ -211,7 +285,14 @@ export default function Planner(props: PlannerProps) {
       {/* Pitch */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-bold text-ink">{flipped && opponent ? <>{opponent.name} <span className="text-faint font-normal">({your} GW{planGw} opponent)</span></> : `${Your} squad`}</div>
-        {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`View GW${planGw} opponent (${opponent.name})`} />}
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Under each player" className="flex rounded-sm overflow-hidden border border-line text-xs font-semibold">
+            {([['price', 'Price'], ['fixture', 'Next fixture']] as const).map(([key, label]) => (
+              <button key={key} type="button" onClick={() => choosePlateInfo(key)} aria-pressed={plateInfo === key} className={`px-2.5 py-1.5 transition ${plateInfo === key ? 'bg-surface-3 text-ink' : 'text-dim hover:text-ink'}`}>{label}</button>
+            ))}
+          </div>
+          {opponent && <FlipButton flipped={flipped} onToggle={() => setFlipped(f => !f)} label={`View GW${planGw} opponent (${opponent.name})`} />}
+        </div>
       </div>
       {(() => {
         const indexed = squad.map((s, i) => ({ s, i }));
@@ -248,9 +329,9 @@ export default function Planner(props: PlannerProps) {
 
       {/* Tabs */}
       <div>
-        <div className="flex gap-1 border-b border-line mb-4">
-          {([['matchup', opponent ? `GW${planGw} match-up v ${opponent.name}` : 'Match-up'], ['stakes', 'What it means'], ['apply', changed ? `Apply (${transfersIn.length + (captain !== baseCaptain ? 1 : 0)})` : 'Apply on FPL']] as const).map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setTab(key)} className={`px-3 sm:px-4 py-2 text-sm font-bold border-b-2 -mb-px whitespace-nowrap truncate max-w-[45%] ${tab === key ? 'border-brand text-ink' : 'border-transparent text-dim hover:text-ink'}`}>{label}</button>
+        <div className="flex gap-1 border-b border-line mb-4 overflow-x-auto no-scrollbar">
+          {([['matchup', opponent ? `GW${planGw} match-up v ${opponent.name}` : 'Match-up'], ['fixtures', 'Fixtures'], ['stakes', 'What it means'], ['apply', changed ? `Apply (${transfersIn.length + (captain !== baseCaptain ? 1 : 0)})` : 'Apply on FPL']] as const).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setTab(key)} className={`shrink-0 px-3 sm:px-4 py-2 text-sm font-bold border-b-2 -mb-px whitespace-nowrap truncate max-w-[60vw] sm:max-w-[45%] ${tab === key ? 'border-brand text-ink' : 'border-transparent text-dim hover:text-ink'}`}>{label}</button>
           ))}
         </div>
 
@@ -267,6 +348,18 @@ export default function Planner(props: PlannerProps) {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {tab === 'fixtures' && (
+          <div className="bg-surface border border-line rounded-xl p-3 sm:p-5">
+            <FixtureGrid
+              rows={[...squad].sort((a, b) => a.position - b.position).map(s => ({ player: byId[s.element], bench: s.position > 11, isNew: !baseIds.includes(s.element) })).filter(r => r.player)}
+              fixtures={fixtures}
+              fromGw={planGw}
+              count={FIXTURE_WEEKS}
+            />
+            <p className="mt-3 text-xs text-dim">Colours are FPL&apos;s fixture difficulty: green easier, red harder. H home, A away; two in a week is a double gameweek. Updates as you plan transfers.</p>
           </div>
         )}
 
@@ -343,7 +436,7 @@ export default function Planner(props: PlannerProps) {
           </div>
           <div className="mt-4">
             <div className="label mb-1">Next fixtures</div>
-            <FixtureChips fixtures={fixtures[selectedPlayer.teamId]} size="md" />
+            <FixtureChips fixtures={fixtures[selectedPlayer.teamId]} size="md" count={FIXTURE_WEEKS} />
           </div>
           {opponent && (
             <div className="mt-3 text-xs text-dim">
