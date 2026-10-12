@@ -216,7 +216,7 @@ async function OnionBaggersContent() {
                             <div className="text-sm text-dim">{teamMap[entrant.manager_fpl_id]?.realName} · GW{entrant.qualified_in_gw}</div>
                           </div>
                         </div>
-                        <span className="plate shrink-0 font-display text-2xl min-w-[3.25rem] text-win-2">{getScore(entrant.manager_fpl_id, entrant.qualified_in_gw)}</span>
+                        <span className="plate shrink-0 font-display text-2xl w-14 text-win-2">{getScore(entrant.manager_fpl_id, entrant.qualified_in_gw)}</span>
                       </div>
                     );
                   })}
@@ -236,7 +236,7 @@ async function OnionBaggersContent() {
                           <TeamName name={teamMap[manager.manager_fpl_id]?.teamName} managerId={manager.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                           <div className="text-sm text-dim">{teamMap[manager.manager_fpl_id]?.realName}</div>
                         </div>
-                        <span className="plate shrink-0 font-display text-2xl min-w-[3.25rem]">{getScore(manager.manager_fpl_id, displayGw)} <DueMark due={dueOf(manager.manager_fpl_id)} className="font-sans" /></span>
+                        <span className="shrink-0 flex flex-col items-end"><span className="plate w-14 py-1 font-display text-2xl leading-none">{getScore(manager.manager_fpl_id, displayGw)}</span><DueMark due={dueOf(manager.manager_fpl_id)} compact /></span>
                       </div>
                       {recent.length > 0 && (
                         <div className="mt-1 text-sm text-dim tabular">
@@ -357,7 +357,7 @@ function MatchRow({ managerId, score, due, isWinner, isPlayed, isLive, teamMap }
       />
       {isPlayed && (
         <span className={`plate font-display text-xl whitespace-nowrap ${isLive ? 'text-live-2' : isWinner ? 'text-ink' : 'text-faint'}`}>
-          {score} <DueMark due={due} className="font-sans" />
+          {score} <DueMark due={due} />
         </span>
       )}
     </div>

@@ -259,19 +259,26 @@ function FixtureLog({ fixtures, entrants, liveGw, projection }: { fixtures: any[
               <span className="label flex items-center gap-2">GW{fix.gw_number} {isLiveFix && <LiveChip />}</span>
               <span className="label">{fix.stage}</span>
             </div>
-            <div className="flex justify-between items-center gap-2">
-              <span className={`flex min-w-0 w-2/5 ${!isPlayed ? 'text-dim' : won1 ? 'font-bold text-ink' : 'text-ink-2'}`}>
-                <TeamName name={entrants[fix.manager_1_id]?.teamName} managerId={fix.manager_1_id} inline className="min-w-0" />
+            <div className="flex justify-between items-start gap-2">
+              {/* Fixed-width score box with the subs-due marks on a line under it, so scores line up down the log. */}
+              <span className={`flex min-w-0 w-2/5 mt-1 ${!isPlayed ? 'text-dim' : won1 ? 'font-bold text-ink' : 'text-ink-2'}`}>
+                <TeamName name={entrants[fix.manager_1_id]?.teamName} managerId={fix.manager_1_id} inline className="min-w-0 max-w-full" />
               </span>
-              {isPlayed ? (
-                <span className={`plate font-display text-xl shrink-0 whitespace-nowrap ${isLiveFix ? 'text-live-2' : 'text-ink'}`}>
-                  <DueMark due={d1} className="mr-1 font-sans" />{s1}<span className="text-faint mx-1">-</span>{s2}<DueMark due={d2} className="ml-1 font-sans" />
+              <span className="shrink-0 flex flex-col items-center">
+                {isPlayed ? (
+                  <span className={`plate w-[5.5rem] h-7 font-display text-xl leading-none whitespace-nowrap ${isLiveFix ? 'text-live-2' : 'text-ink'}`}>
+                    {s1}<span className="text-faint mx-1">-</span>{s2}
+                  </span>
+                ) : (
+                  <span className="plate w-[5.5rem] h-7 label">v</span>
+                )}
+                <span className="grid grid-cols-2 justify-items-center items-start w-[7.5rem] -mx-4 h-[11px] whitespace-nowrap">
+                  <span className="flex">{isPlayed && <DueMark due={d1} compact />}</span>
+                  <span className="flex">{isPlayed && <DueMark due={d2} compact />}</span>
                 </span>
-              ) : (
-                <span className="plate label shrink-0 px-2.5">v</span>
-              )}
-              <span className={`flex justify-end min-w-0 w-2/5 text-right ${!isPlayed ? 'text-dim' : won2 ? 'font-bold text-ink' : 'text-ink-2'}`}>
-                <TeamName name={entrants[fix.manager_2_id]?.teamName} managerId={fix.manager_2_id} inline className="min-w-0" />
+              </span>
+              <span className={`flex justify-end min-w-0 w-2/5 mt-1 text-right ${!isPlayed ? 'text-dim' : won2 ? 'font-bold text-ink' : 'text-ink-2'}`}>
+                <TeamName name={entrants[fix.manager_2_id]?.teamName} managerId={fix.manager_2_id} inline className="min-w-0 max-w-full" />
               </span>
             </div>
           </div>

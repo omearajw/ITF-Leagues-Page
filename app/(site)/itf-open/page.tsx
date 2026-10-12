@@ -88,7 +88,7 @@ async function ITFOpenContent() {
   return (
     <div>
       <PageHeader title="The Open" rules badge={<GameweekChip gw={gw} week={scoresGw} live={showingLive} />} />
-      {showingLive && <p className="text-sm text-dim mb-4">Includes GW{scoresGw} points so far and any subs due from the bench (marked +n); final once FPL confirms the week.</p>}
+      {showingLive && <p className="text-sm text-dim mb-4">Includes GW{scoresGw} points so far, with subs due from the bench already counted (marked incl. +n); final once FPL confirms the week.</p>}
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b-2 border-ink/80">

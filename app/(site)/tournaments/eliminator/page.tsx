@@ -183,7 +183,7 @@ async function EliminatorContent() {
                       </div>
                       <div className="text-sm text-dim">{mgr.season_managers.managers.real_name}</div>
                     </div>
-                    <span className="plate shrink-0 bg-loss text-white font-display text-2xl min-w-[3.25rem]">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
+                    <span className="shrink-0 flex flex-col items-end"><span className="plate w-14 py-1 font-display text-2xl leading-none bg-loss text-white">{getScore(mgr.manager_fpl_id, displayGw)}</span><DueMark due={dueOf(mgr.manager_fpl_id)} compact /></span>
                   </div>
                 ))}
                 <div className="flex items-center gap-3 mt-1" aria-hidden="true">
@@ -193,6 +193,7 @@ async function EliminatorContent() {
                 </div>
               </div>
             )}
+            {/* Score boxes are a fixed width with any subs-due mark tucked underneath, so they line up. */}
             <ol className="columns-1 sm:columns-2 lg:columns-3 gap-x-12 flow-rules">
               {survivors.filter(m => !atRisk.has(m.manager_fpl_id)).map((mgr: any) => (
                 <li key={mgr.season_managers.team_name} className="break-inside-avoid flex items-center justify-between gap-3 py-2.5 border-b border-line">
@@ -200,7 +201,7 @@ async function EliminatorContent() {
                     <TeamName name={mgr.season_managers.team_name} managerId={mgr.manager_fpl_id} inline className="font-semibold text-ink min-w-0" />
                     <div className="text-sm text-dim">{mgr.season_managers.managers.real_name}</div>
                   </div>
-                  <span className="plate shrink-0 font-display text-2xl min-w-[3.25rem]">{getScore(mgr.manager_fpl_id, displayGw)} <DueMark due={dueOf(mgr.manager_fpl_id)} className="font-sans" /></span>
+                  <span className="shrink-0 flex flex-col items-end"><span className="plate w-14 py-1 font-display text-2xl leading-none">{getScore(mgr.manager_fpl_id, displayGw)}</span><DueMark due={dueOf(mgr.manager_fpl_id)} compact /></span>
                 </li>
               ))}
             </ol>
