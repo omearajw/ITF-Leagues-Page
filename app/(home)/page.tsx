@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
-import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
+import TeamName from '@/components/TeamName';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { DashboardSkeleton } from '@/components/Skeletons';
@@ -14,7 +14,7 @@ import { writeUpLead } from '@/lib/richtext';
 import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
 import { FeedbackBanner } from '@/components/Feedback';
 import SectionHeading from '@/components/SectionHeading';
-import DueMark from '@/components/DueMark';
+import OpenTable from '@/components/OpenTable';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
@@ -327,32 +327,20 @@ async function DashboardContent() {
         )}>
           The Open <span className="text-dim">· Top 10</span>
         </SectionHeading>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-line">
-              <th className="py-2 pr-1 w-8"><span className="sr-only">Position</span></th>
-              <th className="w-11 pr-2"><span className="sr-only">Movement</span></th>
-              <th className="label font-semibold py-2 pr-3">Manager</th>
-              <th className="label font-semibold py-2 px-3 text-right w-24">GW{scoresGw}</th>
-              <th className="label font-semibold py-2 px-3 text-right w-28 key-col">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {topTenITF.map((manager: any, index: number) => (
-              <tr key={manager.manager_fpl_id} className="hover:bg-surface">
-                <td className="py-2.5 pr-1 font-display text-xl leading-none text-faint">{index + 1}</td>
-                <td className="py-2.5 pr-2 whitespace-nowrap">{itfMark(manager.manager_fpl_id)}</td>
-                {/* The Open is the race for manager of the season, so the manager leads and the team follows. */}
-                <td className="py-2.5 pr-3 min-w-0">
-                  <Link href={`/manager/${manager.manager_fpl_id}`} className="font-semibold text-ink hover:underline decoration-brand-2/60 underline-offset-2">{manager.season_managers.managers.real_name}</Link>
-                  <div className="text-dim">{getTeamNameDisplayText(manager.season_managers.team_name)} · {manager.season_managers.division}</div>
-                </td>
-                <td className={`py-2.5 px-3 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)}</td>
-                <td className="py-2.5 px-3 text-right whitespace-nowrap key-col"><span className="font-display text-2xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <OpenTable
+          scoresGw={scoresGw}
+          live={showingLive}
+          rows={topTenITF.map((manager: any) => ({
+            id: Number(manager.manager_fpl_id),
+            manager: manager.season_managers.managers.real_name,
+            team: manager.season_managers.team_name,
+            division: manager.season_managers.division,
+            week: withDue(manager.manager_fpl_id, manager.points),
+            total: withDue(manager.manager_fpl_id, manager.classic_total_points),
+            due: dueOf(manager.manager_fpl_id),
+            mark: itfMark(manager.manager_fpl_id),
+          }))}
+        />
       </section>
     </div>
   );

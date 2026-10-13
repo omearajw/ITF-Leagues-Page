@@ -356,8 +356,9 @@ function MatchRow({ managerId, score, due, isWinner, isPlayed, isLive, teamMap }
         className={`text-sm min-w-0 max-w-[60vw] sm:max-w-[160px] ${isWinner ? 'font-bold text-ink' : lost ? 'text-faint' : 'text-ink-2'}`}
       />
       {isPlayed && (
-        <span className={`plate font-display text-xl whitespace-nowrap ${isLive ? 'text-live-2' : isWinner ? 'text-ink' : 'text-faint'}`}>
-          {score} <DueMark due={due} />
+        <span className="shrink-0 flex flex-col items-end">
+          <span className={`plate w-14 h-7 font-display text-xl leading-none whitespace-nowrap ${isLive ? 'text-live-2' : isWinner ? 'text-ink' : 'text-faint'}`}>{score}</span>
+          <DueMark due={due} compact />
         </span>
       )}
     </div>

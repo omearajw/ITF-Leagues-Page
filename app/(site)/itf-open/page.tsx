@@ -1,13 +1,11 @@
 import { createClient } from '@/utils/supabase/server';
-import Link from 'next/link';
-import { getTeamNameDisplayText } from '@/components/TeamName';
+import OpenTable from '@/components/OpenTable';
 import { Suspense } from 'react';
 import { ITFOpenSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { getWeekProjection, dueFor } from '@/lib/projection';
-import DueMark from '@/components/DueMark';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import PageHeader from '@/components/PageHeader';
 import { compareStanding } from '@/lib/standings';
@@ -89,36 +87,20 @@ async function ITFOpenContent() {
     <div>
       <PageHeader title="The Open" rules badge={<GameweekChip gw={gw} week={scoresGw} live={showingLive} />} />
       {showingLive && <p className="text-sm text-dim mb-4">Includes GW{scoresGw} points so far, with subs due from the bench already counted (marked incl. +n); final once FPL confirms the week.</p>}
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b-2 border-ink/80">
-            <th className="py-2 pr-1 w-9"><span className="sr-only">Position</span></th>
-            <th className="w-10 pr-2"><span className="sr-only">Movement</span></th>
-            <th className="label font-semibold py-2 pr-3">Manager</th>
-            <th className="label font-semibold py-2 pr-3 hidden md:table-cell">Division</th>
-            <th className="label font-semibold py-2 px-2 text-right">GW{scoresGw}</th>
-            <th className="label font-semibold py-2 px-3 text-right text-ink key-col">Total</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {managers?.map((manager: any, index: number) => (
-            <tr key={manager.manager_fpl_id} className="hover:bg-surface">
-              <td className="py-3 pr-1 font-display text-2xl leading-none text-faint">{index + 1}</td>
-              <td className="py-3 pr-2 whitespace-nowrap"><MovementArrow delta={movement[manager.manager_fpl_id]} /></td>
-              {/* The Open is the race for manager of the season, so the manager leads and the team follows. */}
-              <td className="py-3 pr-3 min-w-0">
-                <Link href={`/manager/${manager.manager_fpl_id}`} className="font-semibold text-ink hover:underline decoration-brand-2/60 underline-offset-2">{manager.season_managers.managers.real_name}</Link>
-                <div className="text-dim">{getTeamNameDisplayText(manager.season_managers.team_name)}<span className="md:hidden"> · {manager.season_managers.division}</span></div>
-              </td>
-              <td className="py-3 pr-3 text-dim hidden md:table-cell">{manager.season_managers.division}</td>
-              <td className={`py-3 px-2 text-right font-semibold whitespace-nowrap ${showingLive ? 'text-live-2' : 'text-ink-2'}`}>{withDue(manager.manager_fpl_id, manager.points)} <DueMark due={dueOf(manager.manager_fpl_id)} /></td>
-              <td className="py-3 px-3 text-right whitespace-nowrap key-col">
-                <span className="font-display text-3xl leading-none text-ink">{withDue(manager.manager_fpl_id, manager.classic_total_points)}</span> <DueMark due={dueOf(manager.manager_fpl_id)} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <OpenTable
+        scoresGw={scoresGw}
+        live={showingLive}
+        rows={(managers || []).map((manager: any) => ({
+          id: Number(manager.manager_fpl_id),
+          manager: manager.season_managers.managers.real_name,
+          team: manager.season_managers.team_name,
+          division: manager.season_managers.division,
+          week: withDue(manager.manager_fpl_id, manager.points),
+          total: withDue(manager.manager_fpl_id, manager.classic_total_points),
+          due: dueOf(manager.manager_fpl_id),
+          mark: <MovementArrow delta={movement[manager.manager_fpl_id]} />,
+        }))}
+      />
 
       {(!managers || managers.length === 0) && (
         <div className="p-10 text-center text-dim">
