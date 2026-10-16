@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import SaveToast from '@/components/SaveToast';
 import WriteUpEditor from '@/components/WriteUpEditor';
@@ -70,7 +71,11 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
     if (!toPlainText(content).trim()) redirect(`/editor?gw=${parseInt(formData.get('gw_number') as string)}`);
     const gwNumber = parseInt(formData.get('gw_number') as string);
     
-    const supabaseClient = await createClient();
+    // Only staff may save, and the save goes through the service key: the public key can only read
+    // once RLS is on.
+    const role = (await cookies()).get('itf_role')?.value;
+    if (role !== process.env.ADMIN_SECRET_TOKEN && role !== process.env.EDITOR_SECRET_TOKEN) return;
+    const supabaseClient = createAdminClient();
     
     const { error: upsertError } = await supabaseClient
       .from('page_content')

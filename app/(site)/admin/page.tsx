@@ -76,7 +76,9 @@ async function AdminContent() {
   // SERVER ACTIONS
   async function updateTimelines(formData: FormData) {
     'use server';
-    const supabaseClient = await createClient();
+    if (!(await isAdminRequest())) return;
+    // Writes go through the service key: the public key can only read once RLS is on.
+    const supabaseClient = createAdminClient();
     
     // We conditionally update to prevent bad data from being submitted if a user bypasses HTML disabled state
     const clUpdates: any = {};
@@ -117,7 +119,9 @@ async function AdminContent() {
 
   async function updateCLEntrants(formData: FormData) {
     'use server';
-    const supabaseClient = await createClient();
+    if (!(await isAdminRequest())) return;
+    // Writes go through the service key: the public key can only read once RLS is on.
+    const supabaseClient = createAdminClient();
     const selectedIds = formData.getAll('entrants').map(id => parseInt(id as string));
     await supabaseClient.from('champions_league_entrants').delete().eq('season_id', SEASON_ID);
     if (selectedIds.length > 0) {
