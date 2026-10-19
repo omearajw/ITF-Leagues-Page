@@ -1,4 +1,6 @@
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName from '@/components/TeamName';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -42,12 +44,16 @@ export default function Dashboard() {
 // =========================================
 // 2. THE HEAVY DATA-FETCHING COMPONENT
 // =========================================
+// Cached, so the page is built once per ingest and served ready-made (see lib/site-cache.ts).
 async function DashboardContent() {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
 
   // A. Gameweek status: the synced week, plus the live week when one is in progress
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   const currentGw = gw.syncedThroughGw;
 
   // B. Fetch CMS content
@@ -202,7 +208,7 @@ async function DashboardContent() {
     : <MovementArrow delta={itfMovement[id]} />;
 
   return (
-    <div className="flex flex-col gap-12">
+    <div className="settle-in flex flex-col gap-12">
       <FeedbackBanner />
       <TeamOfTheWeekBanner gw={currentGw} />
 

@@ -1,33 +1,43 @@
 import { Suspense } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
 import { GameweekChip } from '@/components/GameweekBadge';
 import GameweekSelector from '@/components/GameweekSelector';
 import TeamOfTheWeekCard, { TotwFacts } from '@/components/TeamOfTheWeekCard';
-import { DivisionSkeleton } from '@/components/Skeletons';
+import { TotwSkeleton, BadgeSkeleton, SelectorSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { getTeamOfTheWeek, getFinalLineup } from '@/lib/team-of-the-week';
 import PitchView from '@/components/PitchView';
 import { FeedbackPrompt } from '@/components/Feedback';
 import { getTeamNameDisplayText } from '@/components/TeamName';
 
-export default async function TeamOfTheWeekPage({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
-  const { gw } = await searchParams;
-  const requested = gw ? parseInt(gw, 10) : NaN;
-
+export default function TeamOfTheWeekPage({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
   return (
     <div className="max-w-5xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<DivisionSkeleton />}>
-        <TotwContent requestedGw={Number.isFinite(requested) ? requested : null} />
+      <Suspense fallback={<><PageHeader pending title="Team of the Week" badge={<BadgeSkeleton />}><div className="mb-4"><SelectorSkeleton /></div></PageHeader><TotwSkeleton /></>}>
+        <TotwContent searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function TotwContent({ requestedGw }: { requestedGw: number | null }) {
-  const supabase = await createClient();
+// The query string is read in here, inside the Suspense, so the header can show while it waits.
+async function TotwContent({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
+  const { gw: gwParam } = await searchParams;
+  const parsed = gwParam ? parseInt(gwParam, 10) : NaN;
+  return <TotwView requestedGw={Number.isFinite(parsed) ? parsed : null} />;
+}
+
+// Cached per week in the shared remote cache, as the query string makes this render on request.
+async function TotwView({ requestedGw }: { requestedGw: number | null }) {
+  'use cache: remote';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   const latestGw = Math.max(1, gw.syncedThroughGw);
   const selectedGw = requestedGw && requestedGw >= 1 && requestedGw <= latestGw ? requestedGw : latestGw;
   const isLatest = selectedGw === latestGw;

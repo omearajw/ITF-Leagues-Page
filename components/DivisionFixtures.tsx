@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createPublicClient } from '@/utils/supabase/public';
 import TeamName from '@/components/TeamName';
 import { LiveChip } from '@/components/GameweekBadge';
 import { getDivisionFixtures, type H2HFixture } from '@/lib/h2h-fixtures';
@@ -58,7 +58,7 @@ export default async function DivisionFixtures({ leagueId, gw, teamNames, week }
   const nextGw = thisGw + 1;
   const isLive = thisGw === gw.liveGw;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const [thisWeek, nextWeek, { data: scoreRows }, projection] = await Promise.all([
     thisGw >= 1 ? getDivisionFixtures(leagueId, thisGw) : Promise.resolve(null),
     nextGw <= 38 ? getDivisionFixtures(leagueId, nextGw) : Promise.resolve(null),

@@ -1,5 +1,7 @@
 import { cache } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
+import { createPublicClient } from '@/utils/supabase/public';
 
 export const SEASON_ID = '2026-27';
 
@@ -158,12 +160,19 @@ export type FplEventLite = { id: number; name: string; deadline_time: string; fi
 
 // The season's gameweek list with deadlines, or null when FPL is unreachable.
 export const getFplEvents = cache(async (): Promise<FplEventLite[] | null> => {
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
   const snapshot = await fetchFplSnapshot();
+  if (snapshot) cacheLife('clock'); else cacheLife('brief');
   return snapshot ? snapshot.events.map(e => ({ id: e.id, name: e.name, deadline_time: e.deadline_time, finished: e.finished, average: e.average_entry_score })) : null;
 });
 
+// The site's clock: which week is live and how far through it is. Cached for a minute, as the
+// phase moves with FPL's fixtures and the time of day as well as with our own data.
 export const getGameweekStatus = cache(async (): Promise<GameweekStatus> => {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const [snapshot, { data: gwRows }] = await Promise.all([
     fetchFplSnapshot(),
     supabase.from('gameweeks').select('gw_number, is_finished').eq('season_id', SEASON_ID),
@@ -173,6 +182,7 @@ export const getGameweekStatus = cache(async (): Promise<GameweekStatus> => {
   const syncedThroughGw = syncedSet.size > 0 ? Math.max(...syncedSet) : 0;
 
   if (!snapshot) {
+    cacheLife('brief');
     // Any score rows beyond the synced week were written live by the ingest.
     const { data: liveRow } = await supabase
       .from('manager_gw_scores')
@@ -194,6 +204,7 @@ export const getGameweekStatus = cache(async (): Promise<GameweekStatus> => {
     };
   }
 
+  cacheLife('clock');
   const now = Date.now();
   const { events } = snapshot;
   const current = events.find(e => e.is_current) || null;

@@ -1,8 +1,10 @@
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import TeamName from '@/components/TeamName';
-import { DivisionSkeleton } from '@/components/Skeletons';
+import { DivisionSkeleton, BadgeSkeleton, SelectorSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
@@ -19,24 +21,36 @@ import GameweekSelector from '@/components/GameweekSelector';
 type Division = (typeof DIVISIONS)[number];
 
 // The three division pages are identical apart from the division, so each route renders this.
-export default async function DivisionPage({ slug, searchParams }: { slug: Division['slug']; searchParams: Promise<{ gw?: string }> }) {
+export default function DivisionPage({ slug, searchParams }: { slug: Division['slug']; searchParams: Promise<{ gw?: string }> }) {
   const division = DIVISIONS.find(d => d.slug === slug)!;
-  const { gw } = await searchParams;
-  const requested = gw ? parseInt(gw, 10) : NaN;
 
   return (
     <div className="max-w-7xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<DivisionSkeleton />}>
-        <DivisionContent division={division} requestedGw={Number.isFinite(requested) ? requested : null} />
+      {/* While the table loads, the header (division name, links) shows for real. */}
+      <Suspense fallback={<><DivisionHeader division={division} badge={<BadgeSkeleton />} pending><SelectorSkeleton /></DivisionHeader><DivisionSkeleton /></>}>
+        <DivisionContent division={division} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function DivisionContent({ division, requestedGw }: { division: Division; requestedGw: number | null }) {
-  const supabase = await createClient();
+// Reading the query string waits on the request, so it happens in here, inside the Suspense;
+// above it, the whole page would wait and show only the root loading screen.
+async function DivisionContent({ division, searchParams }: { division: Division; searchParams: Promise<{ gw?: string }> }) {
+  const { gw: gwParam } = await searchParams;
+  const parsed = gwParam ? parseInt(gwParam, 10) : NaN;
+  return <DivisionView division={division} requestedGw={Number.isFinite(parsed) ? parsed : null} />;
+}
+
+// Cached per division and week. The query string makes this page render on request, so the
+// shared remote cache is used: one copy for every visitor, refreshed by each ingest.
+async function DivisionView({ division, requestedGw }: { division: Division; requestedGw: number | null }) {
+  'use cache: remote';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   // The table holds at the last finished week, totals and positions included. A live week can be
   // opened on purpose to see the table as it stands, but it is never the default.
   const latestGw = Math.max(1, gw.syncedThroughGw);
@@ -143,22 +157,11 @@ async function DivisionContent({ division, requestedGw }: { division: Division; 
 
   return (
     <>
-      <PageHeader
-        title={DIVISION_NAME}
-        rules
-        badge={(
-          <GameweekChip gw={gw} week={selectedGw} live={isLive} />
-        )}
-        actions={(
-          <Link href="/form" className="text-sm font-semibold text-brand-2 hover:underline whitespace-nowrap">
-            Form guide &rarr;
-          </Link>
-        )}
-      >
+      <DivisionHeader division={division} badge={<GameweekChip gw={gw} week={selectedGw} live={isLive} />}>
         {maxGw > 1 && (
           <GameweekSelector basePath={`/divisions/${division.slug}`} latestGw={maxGw} defaultGw={latestGw} selected={selectedGw} liveGw={liveGw} />
         )}
-      </PageHeader>
+      </DivisionHeader>
 
       {/* The week's write-up leads on the left with the table beside it on wide screens, like a story
           and its standings box; stacked (write-up first) below that. */}
@@ -231,5 +234,24 @@ async function DivisionContent({ division, requestedGw }: { division: Division; 
 
       <DivisionFixtures leagueId={division.fplId} gw={gw} teamNames={teamNames} week={isLatest || isLive ? undefined : selectedGw} />
     </>
+  );
+}
+
+// The same header in the loading state and the loaded page, so it doesn't move when data lands.
+function DivisionHeader({ division, badge, pending = false, children }: { division: Division; badge: React.ReactNode; pending?: boolean; children?: React.ReactNode }) {
+  return (
+    <PageHeader
+      pending={pending}
+      title={division.name}
+      rules
+      badge={badge}
+      actions={(
+        <Link href="/form" className="text-sm font-semibold text-brand-2 hover:underline whitespace-nowrap">
+          Form guide &rarr;
+        </Link>
+      )}
+    >
+      {children}
+    </PageHeader>
   );
 }

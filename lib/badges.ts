@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { createPublicClient } from '@/utils/supabase/public';
 import { SEASON_ID } from '@/lib/gameweek-status';
 import { getManagerEntry } from '@/lib/fpl-manager';
 
@@ -10,7 +10,7 @@ const TTL = 60 * 60_000;
 
 export const getLeagueBadges = cache(async (): Promise<Record<number, string>> => {
   if (memo && Date.now() - memo.at < TTL) return memo.value;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from('season_managers').select('manager_fpl_id').eq('season_id', SEASON_ID);
   const ids = (data || []).map((m: any) => Number(m.manager_fpl_id));
   const entries = await Promise.all(ids.map(id => getManagerEntry(id)));

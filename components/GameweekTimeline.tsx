@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { getGameweekStatus, formatUk, formatUkShort, stageOf, stageProgress, STAGE_ORDER, STAGE_LABEL, type GameweekStage } from '@/lib/gameweek-status';
 import { ACTIVE_DOT, StripRow } from '@/components/GameweekStrip';
 import { getLastSyncedAt, describeAgo } from '@/lib/sync-status';
@@ -71,6 +72,9 @@ function matchesLabel(first: string | null, last: string | null): string {
 // The hub's version of the strip: collapsed it is the same bar as every other page, and it
 // opens to show the full timeline. Uses <details> so it needs no client JavaScript.
 export default async function GameweekTimeline() {
+  // "Updated n min ago" is worked out per request, so this renders at request time; the data it
+  // shows comes from the cache.
+  await connection();
   const [gw, lastSynced] = await Promise.all([getGameweekStatus(), getLastSyncedAt()]);
   const stage = stageOf(gw.phase);
   const now = Date.now();

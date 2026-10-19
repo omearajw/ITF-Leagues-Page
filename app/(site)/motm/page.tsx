@@ -1,9 +1,11 @@
 import { ChevronDown } from 'lucide-react';
 import { Suspense } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
-import { DivisionSkeleton } from '@/components/Skeletons';
+import { MotmSkeleton } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID } from '@/lib/gameweek-status';
 import { buildMotm, type MotmMonth } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
@@ -12,7 +14,7 @@ import SectionHeading from '@/components/SectionHeading';
 export default function MotmPage() {
   return (
     <div className="max-w-5xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<DivisionSkeleton />}>
+      <Suspense fallback={<><PageHeader title="Manager of the Month" rules pending /><MotmSkeleton /></>}>
         <MotmContent />
       </Suspense>
     </div>
@@ -74,14 +76,18 @@ function MonthCard({ month }: { month: MotmMonth }) {
   );
 }
 
+// Cached, so the page is built once per ingest and served ready-made (see lib/site-cache.ts).
 async function MotmContent() {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const [gw, events, { data: managerRows }, { data: scoreRows }] = await Promise.all([
     getGameweekStatus(),
     getFplEvents(),
     supabase.from('season_managers').select('manager_fpl_id, team_name, division, managers!inner (real_name)').eq('season_id', SEASON_ID),
     supabase.from('manager_gw_scores').select('manager_fpl_id, gw_number, points').eq('season_id', SEASON_ID),
   ]);
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
 
   const managers = (managerRows || []).map((m: any) => ({ id: Number(m.manager_fpl_id), teamName: m.team_name, realName: m.managers.real_name, division: m.division }));
   const scores = (scoreRows || []).map((s: any) => ({ manager_fpl_id: Number(s.manager_fpl_id), gw_number: s.gw_number, points: s.points }));

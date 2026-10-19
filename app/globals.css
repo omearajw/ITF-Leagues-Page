@@ -60,6 +60,13 @@
   --radius-lg: 3px;
   --radius-xl: 4px;
   --radius-2xl: 5px;
+
+  /* Motion (see "Motion" below). Durations and distances; set a duration to 0ms to switch one off. */
+  --motion-settle: 280ms;         /* content fading in as a page lands */
+  --motion-settle-rise: 6px;      /* how far it rises as it fades in */
+  --motion-settle-step: 55ms;     /* the gap between one section and the next */
+  --motion-rule: 520ms;           /* the red rules over titles and headings drawing across */
+  --motion-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 /* Classic: navy, rose and blue in the system font with softer corners. Only what differs from
@@ -236,6 +243,43 @@ html[data-intro="play"] .intro-splash.is-driven { animation: none; }
 /* The lettering animates as separate letters, then becomes the banner's single shape at rest. */
 .intro-splash:not([data-settled]) [data-mark-union],
 .intro-splash[data-settled] [data-glyph] { display: none; }
+
+/* Motion. As a page lands its content settles in (a short fade and a few pixels' rise), section by
+   section, and the red rules over titles and section heads draw across like a masthead being set.
+   Page headers do not fade: a loading page shows its real header, which is swapped for the finished
+   one, and a fade would make it blink. A loading header instead keeps its rule undrawn
+   (rule-pending), so the rule draws once, when the finished header arrives. The fills only run
+   backwards, so nothing keeps a transform once it has landed. */
+@keyframes settle {
+  from { opacity: 0; transform: translateY(var(--motion-settle-rise)); }
+}
+@keyframes rule-draw {
+  from { transform: scaleX(0); }
+}
+.page-settle > div > :not(header):not(.settle-in),
+.settle-in > :not(header) {
+  animation: settle var(--motion-settle) var(--motion-ease) var(--settle-delay, 0ms) backwards;
+}
+.page-settle > div > :nth-child(2), .settle-in > :nth-child(2) { --settle-delay: calc(var(--motion-settle-step) * 1); }
+.page-settle > div > :nth-child(3), .settle-in > :nth-child(3) { --settle-delay: calc(var(--motion-settle-step) * 2); }
+.page-settle > div > :nth-child(4), .settle-in > :nth-child(4) { --settle-delay: calc(var(--motion-settle-step) * 3); }
+.page-settle > div > :nth-child(5), .settle-in > :nth-child(5) { --settle-delay: calc(var(--motion-settle-step) * 4); }
+.page-settle > div > :nth-child(n+6), .settle-in > :nth-child(n+6) { --settle-delay: calc(var(--motion-settle-step) * 5); }
+/* A rule starts a moment after the section it heads (--settle-delay is inherited from it). */
+.rule-draw,
+.section-rule::before {
+  transform-origin: left;
+  animation: rule-draw var(--motion-rule) var(--motion-ease) calc(var(--settle-delay, 0ms) + 90ms) backwards;
+}
+.rule-pending,
+.section-rule-pending::before { transform: scaleX(0); }
+/* The same selectors as above, so this always outranks them. */
+@media (prefers-reduced-motion: reduce) {
+  .page-settle > div > :not(header):not(.settle-in),
+  .settle-in > :not(header),
+  .rule-draw,
+  .section-rule::before { animation: none; }
+}
 
 /* Thin rules between columns, set on the left edge only so each column's heavy top rule keeps
    its colour (Tailwind's divide colour would recolour every side). */

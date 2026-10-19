@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import SaveToast from '@/components/SaveToast';
 import WriteUpEditor from '@/components/WriteUpEditor';
 import { toPlainText } from '@/lib/richtext';
@@ -91,6 +92,7 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
       console.error('Failed to update:', upsertError);
     }
 
+    updateTag(SITE_DATA_TAG);
     revalidatePath('/editor');
     revalidatePath('/');
     redirect(`/editor?gw=${gwNumber}&saved=${encodeURIComponent(title)}`);

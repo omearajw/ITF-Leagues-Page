@@ -1,7 +1,9 @@
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
-import { OnionBaggersSkeleton } from '@/components/Skeletons';
+import { OnionBaggersSkeleton, BadgeSkeleton } from '@/components/Skeletons';
 import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
@@ -11,39 +13,26 @@ import { getWeekProjection, dueFor, type WeekProjection, type WeekDue } from '@/
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
 
-export default async function OnionBaggersPage() {
-  const supabase = await createClient();
-  const SEASON_ID = '2026-27';
-
-  const gw = await getGameweekStatus();
-  const currentGw = gw.syncedThroughGw;
-
-  const { data: config } = await supabase
-    .from('onion_baggers_config')
-    .select('*')
-    .eq('season_id', SEASON_ID)
-    .single();
-
-  const qStart = config?.qualifiers_start_gw || 1;
-  const kStart = config?.knockout_start_gw || 9;
-  const isPreTournament = currentGw < qStart;
-  const isQualifying = currentGw >= qStart && currentGw < kStart;
-  const fallbackPhase = isPreTournament ? 'pre' : isQualifying ? 'qualifying' : 'knockouts';
-
+// The header shows for real at once; only the qualifiers and bracket wait on data.
+export default function OnionBaggersPage() {
   return (
     <div className="max-w-7xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<OnionBaggersSkeleton phase={fallbackPhase} />}>
+      <Suspense fallback={<><PageHeader title="Onion Baggers Cup" rules pending badge={<BadgeSkeleton />} /><OnionBaggersSkeleton /></>}>
         <OnionBaggersContent />
       </Suspense>
     </div>
   );
 }
 
+// Cached, so the page is built once per ingest and served ready-made (see lib/site-cache.ts).
 async function OnionBaggersContent() {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
 
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
   const projection = displayGw === gw.liveGw ? await getWeekProjection() : null;

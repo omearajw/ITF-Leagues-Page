@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { getGameweekStatus, describePhase, stageOf, STAGE_ORDER, STAGE_LABEL, type GameweekStage, type GameweekStatus } from '@/lib/gameweek-status';
 import { getLastSyncedAt, describeAgo } from '@/lib/sync-status';
 
@@ -42,6 +43,9 @@ export function StripRow({ gw, ago, trailing }: { gw: GameweekStatus; ago: strin
 }
 
 export default async function GameweekStrip() {
+  // "Updated n min ago" is worked out per request, so this renders at request time; the data it
+  // shows comes from the cache.
+  await connection();
   const [gw, lastSynced] = await Promise.all([getGameweekStatus(), getLastSyncedAt()]);
   return (
     <div className="bg-surface border-b border-line">

@@ -1,7 +1,9 @@
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import OpenTable from '@/components/OpenTable';
 import { Suspense } from 'react';
-import { ITFOpenSkeleton } from '@/components/Skeletons';
+import { ITFOpenSkeleton, BadgeSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
@@ -14,18 +16,22 @@ export default function Index() {
   return (
     <div className="max-w-4xl mx-auto py-2 sm:py-8 font-sans">
       {/* The header renders with the table so the week's status can sit beside the title. */}
-      <Suspense fallback={<><PageHeader title="The Open" rules /><ITFOpenSkeleton /></>}>
+      <Suspense fallback={<><PageHeader title="The Open" rules pending badge={<BadgeSkeleton />} /><ITFOpenSkeleton /></>}>
         <ITFOpenContent />
       </Suspense>
     </div>
   );
 }
 
+// Cached, so the page is built once per ingest and served ready-made (see lib/site-cache.ts).
 async function ITFOpenContent() {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
 
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   const currentGw = gw.syncedThroughGw;
 
   // Show the live week's totals when one is in progress; fall back to the synced week

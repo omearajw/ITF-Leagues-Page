@@ -9,7 +9,7 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
       <Suspense fallback={<GameweekStripSkeleton />}>
         <GameweekTimeline />
       </Suspense>
-      <main className="flex-grow max-w-7xl mx-auto w-full p-4 sm:p-7 lg:p-8 overflow-x-clip">
+      <main className="page-settle flex-grow max-w-7xl mx-auto w-full p-4 sm:p-7 lg:p-8 overflow-x-clip">
         {children}
       </main>
     </>

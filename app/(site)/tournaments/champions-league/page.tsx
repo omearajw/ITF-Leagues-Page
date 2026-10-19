@@ -1,7 +1,9 @@
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
-import { ChampionsLeagueSkeleton } from '@/components/Skeletons';
+import { ChampionsLeagueSkeleton, BadgeSkeleton } from '@/components/Skeletons';
 import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import MovementArrow from '@/components/MovementArrow';
@@ -15,18 +17,22 @@ import SectionHeading from '@/components/SectionHeading';
 export default function ChampionsLeaguePage() {
   return (
     <div className="max-w-7xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<ChampionsLeagueSkeleton />}>
+      <Suspense fallback={<><PageHeader title="Champions League" rules pending badge={<BadgeSkeleton />} /><ChampionsLeagueSkeleton /></>}>
         <ChampionsLeagueContent />
       </Suspense>
     </div>
   );
 }
 
+// Cached, so the page is built once per ingest and served ready-made (see lib/site-cache.ts).
 async function ChampionsLeagueContent() {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
 
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
   const projection = gw.liveGw ? await getWeekProjection() : null;

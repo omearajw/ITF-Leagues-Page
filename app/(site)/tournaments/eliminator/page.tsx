@@ -1,7 +1,9 @@
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName from '@/components/TeamName';
 import { Suspense } from 'react';
-import { EliminatorSkeleton } from '@/components/Skeletons';
+import { EliminatorSkeleton, BadgeSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
@@ -12,37 +14,27 @@ import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
 import { FeedbackPrompt } from '@/components/Feedback';
 
-export default async function EliminatorPage() {
-  const supabase = await createClient();
-  const SEASON_ID = '2026-27';
-
-  const gw = await getGameweekStatus();
-  const currentGw = gw.syncedThroughGw;
-
-  const { data: config } = await supabase
-    .from('eliminator_config')
-    .select('start_gw')
-    .eq('season_id', SEASON_ID)
-    .single();
-
-  const startGw = config?.start_gw || 1;
-  const isPreTournament = currentGw < startGw;
-
+// The header shows for real at once; only the survivors and write-up wait on data.
+export default function EliminatorPage() {
   return (
     <div className="max-w-5xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<EliminatorSkeleton phase={isPreTournament ? 'pre' : 'active'} />}>
+      <Suspense fallback={<><PageHeader className="mb-10 sm:mb-12" title="The Eliminator" rules pending badge={<BadgeSkeleton />} /><EliminatorSkeleton /></>}>
         <EliminatorContent />
       </Suspense>
     </div>
   );
 }
 
+// Cached, so the page is built once per ingest and served ready-made (see lib/site-cache.ts).
 async function EliminatorContent() {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
 
   // 1. Gameweek status: eliminations are decided on the synced week, survivors show the live week
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
   const projection = displayGw === gw.liveGw ? await getWeekProjection() : null;

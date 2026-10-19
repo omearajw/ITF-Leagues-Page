@@ -1,12 +1,14 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
 import { GameweekChip } from '@/components/GameweekBadge';
 import PitchView, { type PitchPlayer, type PitchOpponent } from '@/components/PitchView';
-import { DivisionSkeleton } from '@/components/Skeletons';
+import { ManagerSkeleton, Bone } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, getGwFixtureStatus, type ManagerPicks, type LiveStats, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
 import { projectAutoSubs, type FixtureState } from '@/lib/autosubs';
@@ -16,33 +18,73 @@ import TeamBadge from '@/components/TeamBadge';
 import SectionHeading from '@/components/SectionHeading';
 import { getLeagueBadges } from '@/lib/badges';
 
-export default async function ManagerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ gw?: string }> }) {
+// Three steps, each showing as soon as it can: the page frame straight away, the team's name once
+// it is looked up, then the week's data. Anything awaited up here, outside a Suspense, would hold
+// the whole page on the root loading screen instead.
+export default function ManagerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ gw?: string }> }) {
+  return (
+    <div className="max-w-5xl mx-auto py-2 sm:py-8 font-sans">
+      <Suspense fallback={<><ManagerHeader /><ManagerSkeleton /></>}>
+        <ManagerLoader params={params} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function ManagerLoader({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ gw?: string }> }) {
   const { id } = await params;
   const { gw } = await searchParams;
   const managerId = parseInt(id, 10);
   if (!Number.isFinite(managerId)) notFound();
   const requestedGw = gw ? parseInt(gw, 10) : NaN;
 
-  const supabase = await createClient();
-  const { data: seasonRow } = await supabase
+  const [seasonRow, myTeamId] = await Promise.all([getSeasonManager(managerId), getMyTeamId()]);
+  if (!seasonRow) notFound();
+
+  return (
+    <Suspense fallback={<><ManagerHeader team={seasonRow.team_name} manager={(seasonRow as any).managers.real_name} division={seasonRow.division} /><ManagerSkeleton /></>}>
+      <ManagerContent managerId={managerId} manager={seasonRow} requestedGw={Number.isFinite(requestedGw) ? requestedGw : null} myTeamId={myTeamId} />
+    </Suspense>
+  );
+}
+
+// The loading header: the real name, manager and division once known, placeholders before.
+function ManagerHeader({ team, manager, division }: { team?: string; manager?: string; division?: string }) {
+  return (
+    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 sm:gap-x-8 gap-y-5 mb-6">
+      <PageHeader pending className="min-w-0" title={team ? <TeamName name={team} inline wrap showStars starSize={14} /> : <Bone className="h-10 sm:h-14 w-72 max-w-full" />}>
+        {manager ? (
+          <p className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-dim">
+            <span className="font-semibold text-ink-2">{manager}</span>
+            <span className="whitespace-nowrap"><span aria-hidden="true" className="mr-2">·</span>{division}</span>
+          </p>
+        ) : <Bone className="-mt-1 h-4 w-48" />}
+      </PageHeader>
+      <Bone className="col-start-2 row-start-1 sm:row-span-2 mt-[17px] sm:mt-0 w-20 h-20 sm:w-36 sm:h-36 lg:w-44 lg:h-44" />
+      <div className="col-span-full sm:col-span-1"><Bone className="h-8 w-36" /></div>
+    </header>
+  );
+}
+
+async function getSeasonManager(managerId: number) {
+  'use cache: remote';
+  cacheTag(SITE_DATA_TAG);
+  cacheLife('league');
+  const { data } = await createPublicClient()
     .from('season_managers')
     .select('manager_fpl_id, team_name, division, managers!inner (real_name)')
     .eq('season_id', SEASON_ID)
     .eq('manager_fpl_id', managerId)
     .maybeSingle();
-  if (!seasonRow) notFound();
-
-  return (
-    <div className="max-w-5xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<DivisionSkeleton />}>
-        <ManagerContent managerId={managerId} manager={seasonRow} requestedGw={Number.isFinite(requestedGw) ? requestedGw : null} />
-      </Suspense>
-    </div>
-  );
+  return data;
 }
 
-async function ManagerContent({ managerId, manager, requestedGw }: { managerId: number; manager: any; requestedGw: number | null }) {
-  const supabase = await createClient();
+// Cached per team, week and visitor's own team (which only changes the buttons). A live week is
+// kept for a minute, as its points come straight from FPL; a finished week until the next ingest.
+async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { managerId: number; manager: any; requestedGw: number | null; myTeamId: number | null }) {
+  'use cache: remote';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const [gw, events] = await Promise.all([getGameweekStatus(), getFplEvents()]);
 
   // Picks exist for any gameweek whose deadline has passed
@@ -51,7 +93,7 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
   const isLiveWeek = selectedGw === gw.liveGw;
   const isFinal = selectedGw <= gw.syncedThroughGw || !!events?.find(e => e.id === selectedGw)?.finished;
 
-  const [players, picks, live, transfers, entry, { data: scoreRow }, { data: h2h }, { data: elim }, { data: recent }, fixtureStatus, myTeamId, badges] = await Promise.all([
+  const [players, picks, live, transfers, entry, { data: scoreRow }, { data: h2h }, { data: elim }, { data: recent }, fixtureStatus, badges] = await Promise.all([
     getPlayers(),
     getManagerPicks(managerId, selectedGw, isFinal),
     getLivePoints(selectedGw, isFinal),
@@ -62,9 +104,11 @@ async function ManagerContent({ managerId, manager, requestedGw }: { managerId: 
     supabase.from('eliminator_status').select('is_eliminated, eliminated_gw').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).maybeSingle(),
     supabase.from('h2h_fixtures').select('gw_number, result').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).lte('gw_number', gw.syncedThroughGw).order('gw_number', { ascending: false }).limit(5),
     getGwFixtureStatus(selectedGw, isFinal),
-    getMyTeamId(),
     getLeagueBadges(),
   ]);
+  if (!gw.fplAvailable || !players || !picks) cacheLife('brief');
+  else if (isLiveWeek) cacheLife('clock');
+  else cacheLife('league');
   const isUnprocessed = !isFinal;
 
   const opponentId = h2h ? Number((h2h as any).opponent_fpl_id) : null;

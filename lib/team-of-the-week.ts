@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { createPublicClient } from '@/utils/supabase/public';
 import { SEASON_ID } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getLivePoints, type Pick } from '@/lib/fpl-manager';
 import type { PitchPlayer } from '@/components/PitchView';
@@ -25,7 +25,7 @@ export type TeamOfTheWeek = {
 // The team (or teams) with the highest net score in a gameweek, across all three leagues.
 export const getTeamOfTheWeek = cache(async (gw: number): Promise<TeamOfTheWeek | null> => {
   if (!gw || gw < 1) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from('manager_gw_scores')
     .select('manager_fpl_id, points, bench_points, transfers_cost, season_managers!inner (team_name, division, managers!inner (real_name))')

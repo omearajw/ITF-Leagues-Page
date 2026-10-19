@@ -1,13 +1,15 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
 import GameweekBadge from '@/components/GameweekBadge';
 import Planner, { type PlanPlayer, type PlanSlot, type PlanStakes } from '@/components/Planner';
 import { FeedbackPrompt } from '@/components/Feedback';
-import { DivisionSkeleton } from '@/components/Skeletons';
+import { PlannerSkeleton, BadgeSkeleton, Bone } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getFixtureRuns } from '@/lib/fpl-manager';
 import { getLeagueOwnership, getNextOpponent } from '@/lib/planner-data';
@@ -15,27 +17,60 @@ import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
 import { getMyTeamId } from '@/lib/my-team';
 
-export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const managerId = parseInt(id, 10);
-  if (!Number.isFinite(managerId)) notFound();
-
-  const supabase = await createClient();
-  const { data: seasonRow } = await supabase.from('season_managers').select('manager_fpl_id, team_name, division, managers!inner (real_name)').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).maybeSingle();
-  if (!seasonRow) notFound();
-
+// As on the team page: the frame shows straight away, the name once looked up, then the squad.
+// Awaiting params up here, outside a Suspense, would hold the page on the root loading screen.
+export default function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <div className="max-w-7xl mx-auto py-2 sm:py-8 font-sans">
-      <Suspense fallback={<DivisionSkeleton />}>
-        <PlanContent managerId={managerId} manager={seasonRow} />
+      <Suspense fallback={<><PlanHeader /><PlannerSkeleton /></>}>
+        <PlanLoader params={params} />
       </Suspense>
     </div>
   );
 }
 
-async function PlanContent({ managerId, manager }: { managerId: number; manager: any }) {
-  const supabase = await createClient();
-  const [gw, events, myTeamId] = await Promise.all([getGameweekStatus(), getFplEvents(), getMyTeamId()]);
+async function PlanLoader({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const managerId = parseInt(id, 10);
+  if (!Number.isFinite(managerId)) notFound();
+
+  const [seasonRow, myTeamId] = await Promise.all([getSeasonManager(managerId), getMyTeamId()]);
+  if (!seasonRow) notFound();
+
+  return (
+    <Suspense fallback={<><PlanHeader managerId={managerId} team={seasonRow.team_name} /><PlannerSkeleton /></>}>
+      <PlanContent managerId={managerId} manager={seasonRow} myTeamId={myTeamId} />
+    </Suspense>
+  );
+}
+
+function PlanHeader({ managerId, team }: { managerId?: number; team?: string }) {
+  return (
+    <PageHeader
+      pending
+      title={team ? <TeamName name={team} inline className="min-w-0" /> : <Bone className="h-10 sm:h-14 w-72 max-w-full" />}
+      titleExtra={<span className="text-brand-2">Planner</span>}
+      badge={<BadgeSkeleton />}
+      actions={managerId && <Link href={`/manager/${managerId}`} className="text-sm font-semibold border border-line text-ink-2 px-3 py-1.5 rounded-sm hover:text-ink hover:border-faint whitespace-nowrap">&larr; Team page</Link>}
+    />
+  );
+}
+
+async function getSeasonManager(managerId: number) {
+  'use cache: remote';
+  cacheTag(SITE_DATA_TAG);
+  cacheLife('league');
+  const { data } = await createPublicClient().from('season_managers').select('manager_fpl_id, team_name, division, managers!inner (real_name)').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId).maybeSingle();
+  return data;
+}
+
+// Cached per team for a minute: the squad comes straight from FPL, and a manager who has just made
+// a transfer there should see it here soon after.
+async function PlanContent({ managerId, manager, myTeamId }: { managerId: number; manager: any; myTeamId: number | null }) {
+  'use cache: remote';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
+  const [gw, events] = await Promise.all([getGameweekStatus(), getFplEvents()]);
   const isMine = myTeamId === managerId;
 
   // Plan for the next deadline; the base squad is the latest one FPL exposes
@@ -51,6 +86,8 @@ async function PlanContent({ managerId, manager }: { managerId: number; manager:
     getLeagueOwnership(latestGw, latestIsFinal),
     division ? getNextOpponent(managerId, division.fplId, planGw) : Promise.resolve(null),
   ]);
+  if (!gw.fplAvailable || !players || !picks) cacheLife('brief');
+  else cacheLife('clock');
 
   const [opponentPicks, { data: opponentRow }, { data: elimRows }, { data: lastWeekScores }, { data: managerRows }, { data: allScores }, { data: obConfig }] = await Promise.all([
     opponentId ? getManagerPicks(opponentId, latestGw, latestIsFinal) : Promise.resolve(null),

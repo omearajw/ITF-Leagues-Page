@@ -1,5 +1,7 @@
 import { cache } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
+import { createPublicClient } from '@/utils/supabase/public';
 import { getGameweekStatus, getFplEvents, SEASON_ID } from '@/lib/gameweek-status';
 import { getDivisionFixtures } from '@/lib/h2h-fixtures';
 import { buildMotm } from '@/lib/motm';
@@ -16,13 +18,16 @@ export type TickerMotm = { label: string; complete: boolean; divisions: { name: 
 
 // Everything the bottom ticker can show: the Manager of the Month race and this week's H2H ties.
 export const getTickerData = cache(async (): Promise<{ motm: TickerMotm; live: TickerLive }> => {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const [gw, events, { data: managerRows }, { data: scoreRows }] = await Promise.all([
     getGameweekStatus(),
     getFplEvents(),
     supabase.from('season_managers').select('manager_fpl_id, team_name, division, managers!inner (real_name)').eq('season_id', SEASON_ID),
     supabase.from('manager_gw_scores').select('manager_fpl_id, gw_number, points').eq('season_id', SEASON_ID),
   ]);
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
   const names: Record<number, string> = {};
   (managerRows || []).forEach((m: any) => { names[Number(m.manager_fpl_id)] = getTeamNameDisplayText(m.team_name); });
 

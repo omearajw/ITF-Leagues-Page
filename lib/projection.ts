@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { createPublicClient } from '@/utils/supabase/public';
 import { getGameweekStatus, SEASON_ID } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getLivePoints, getGwFixtureStatus, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
 import { projectAutoSubs, type FixtureState } from '@/lib/autosubs';
@@ -27,7 +27,7 @@ export const getWeekProjection = cache(async (): Promise<WeekProjection> => {
   if (!gw.liveGw) return EMPTY;
   if (memo && memo.value.gw === gw.liveGw && Date.now() - memo.at < TTL) return memo.value;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const [{ data: members }, players, live, status] = await Promise.all([
     supabase.from('season_managers').select('manager_fpl_id').eq('season_id', SEASON_ID),
     getPlayers(),

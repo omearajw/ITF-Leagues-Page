@@ -2,7 +2,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import TeamName from '@/components/TeamName';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import SaveToast from '@/components/SaveToast';
 import { Suspense } from 'react';
 import { AdminSkeleton } from '@/components/Skeletons';
@@ -98,6 +99,7 @@ async function AdminContent() {
       }).eq('season_id', SEASON_ID);
     }
     
+    updateTag(SITE_DATA_TAG);
     revalidatePath('/admin');
     redirect('/admin?saved=timelines');
   }
@@ -128,6 +130,7 @@ async function AdminContent() {
       const inserts = selectedIds.map(id => ({ season_id: SEASON_ID, manager_fpl_id: id }));
       await supabaseClient.from('champions_league_entrants').insert(inserts);
     }
+    updateTag(SITE_DATA_TAG);
     revalidatePath('/admin');
     redirect('/admin?saved=entrants');
   }

@@ -1,12 +1,17 @@
 import { cache } from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
+import { createPublicClient } from '@/utils/supabase/public';
 
 // The ingest records when it last ran. Stored as a reserved page_content row because the
 // schema has no timestamp column yet; swap the read/write here if one is added.
 export const SYNC_ROW = { id: 'sync-status', gw_number: 0, title: 'Last ingest' };
 
 export const getLastSyncedAt = cache(async (): Promise<string | null> => {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  cacheLife('league');
+  const supabase = createPublicClient();
   const { data } = await supabase.from('page_content').select('content').eq('id', SYNC_ROW.id).eq('gw_number', SYNC_ROW.gw_number).maybeSingle();
   return data?.content || null;
 });

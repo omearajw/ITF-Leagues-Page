@@ -6,21 +6,23 @@ export const RULEBOOK_URL = 'https://itf1718.wordpress.com/itf-rulebook/';
 // Shared page header, set like the hub masthead: an accent rule over the headline face. The title,
 // any extra words and the status share one baseline, and wrap onto separate lines on phones
 // instead of squeezing a single row. `rules` adds a quiet link to the rulebook, which stands in for
-// a description of the competition.
+// a description of the competition. `pending` is for a loading page's header: the rule keeps its
+// space but stays undrawn, and draws in when the finished header replaces it (globals.css, Motion).
 export default function PageHeader({
-  title, titleExtra, badge, actions, rules = false, children, className = 'mb-8 sm:mb-10',
+  title, titleExtra, badge, actions, rules = false, pending = false, children, className = 'mb-8 sm:mb-10',
 }: {
   title: React.ReactNode;
   titleExtra?: React.ReactNode;
   badge?: React.ReactNode;
   actions?: React.ReactNode;
   rules?: boolean;
+  pending?: boolean;
   children?: React.ReactNode;
   className?: string;
 }) {
   return (
     <header className={className}>
-      <span aria-hidden="true" className="block h-[5px] w-12 bg-brand mb-3" />
+      <span aria-hidden="true" className={`block h-[5px] w-12 bg-brand mb-3 ${pending ? 'rule-pending' : 'rule-draw'}`} />
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-3 mb-5">
         <h1 className="font-display text-[2.6rem] sm:text-6xl leading-display tracking-[0.01em] text-ink flex flex-wrap items-baseline gap-x-3 gap-y-2 min-w-0">
           <span className="min-w-0">{title}</span>

@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createPublicClient } from '@/utils/supabase/public';
 import { SEASON_ID } from '@/lib/gameweek-status';
 import { getManagerPicks } from '@/lib/fpl-manager';
 import { getDivisionFixtures } from '@/lib/h2h-fixtures';
@@ -8,7 +8,7 @@ export type LeagueOwnership = Record<number, { owners: number; starters: number;
 // Every league member's latest squad, folded into per-player ownership and captaincy counts.
 // This is the league-level view FPL cannot offer.
 export async function getLeagueOwnership(gw: number, isFinal: boolean): Promise<{ ownership: LeagueOwnership; managers: number }> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: members } = await supabase.from('season_managers').select('manager_fpl_id').eq('season_id', SEASON_ID);
   const ids = (members || []).map((m: any) => Number(m.manager_fpl_id));
   const all = await Promise.all(ids.map(id => getManagerPicks(id, gw, isFinal)));

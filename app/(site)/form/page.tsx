@@ -1,4 +1,6 @@
-import { createClient } from '@/utils/supabase/server';
+import { cacheLife, cacheTag } from 'next/cache';
+import { createPublicClient } from '@/utils/supabase/public';
+import { SITE_DATA_TAG } from '@/lib/site-cache';
 import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import { Suspense } from 'react';
 import { FormGridSkeleton } from '@/components/Skeletons';
@@ -21,11 +23,15 @@ export default function FormGrid() {
   );
 }
 
+// Cached, so the page is built once per ingest and served ready-made (see lib/site-cache.ts).
 async function FormGridContent() {
-  const supabase = await createClient();
+  'use cache';
+  cacheTag(SITE_DATA_TAG);
+  const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
   const TOTAL_GW = 38;
   const gw = await getGameweekStatus();
+  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
 
   const { data: managers, error } = await supabase
     .from('season_managers')
