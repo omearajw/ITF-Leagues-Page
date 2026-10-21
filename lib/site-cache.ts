@@ -1,6 +1,4 @@
-import { after } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { DIVISIONS } from '@/lib/divisions';
 
 // Every cached read of league data carries this tag, so one call refreshes the whole site.
 // The lifetimes it is cached for are the cacheLife profiles in next.config.ts:
@@ -9,26 +7,11 @@ import { DIVISIONS } from '@/lib/divisions';
 //   brief   used instead when FPL could not be reached, so a gap is not kept for long
 export const SITE_DATA_TAG = 'itf-data';
 
-// The pages most visitors open, requested once after each ingest so the first real visitor
-// gets the new data straight away rather than the copy from before the ingest.
-const WARM_PATHS = [
-  '/',
-  ...DIVISIONS.map(d => `/divisions/${d.slug}`),
-  '/itf-open',
-  '/motm',
-  '/team-of-the-week',
-  '/form',
-  '/tournaments/eliminator',
-  '/tournaments/champions-league',
-  '/tournaments/onion-baggers-cup',
-];
-
-// Called by the ingest once its writes are done. Marking the tag stale (rather than expiring it)
-// keeps pages fast: anyone arriving mid-refresh gets the previous copy, never a slow page. The
-// warm-up runs after the ingest has responded, so it adds nothing to the cron job's run time.
-export function refreshSiteData(origin: string) {
-  revalidateTag(SITE_DATA_TAG, 'max');
-  after(async () => {
-    await Promise.allSettled(WARM_PATHS.map(path => fetch(new URL(path, origin), { cache: 'no-store', signal: AbortSignal.timeout(20_000) })));
-  });
+// Called by the ingest once its writes are done. The cache is expired outright rather than marked
+// stale, so the first visitor to each page after an ingest gets the new data (waiting about as
+// long as an uncached page took), and everyone after them gets the cached copy. Pages are not
+// requested here to pre-build them: that rebuilt all of them on every run, 96 times a day, whether
+// anyone visited or not, and multiplied the site's Vercel CPU use several times over.
+export function refreshSiteData() {
+  revalidateTag(SITE_DATA_TAG, { expire: 0 });
 }

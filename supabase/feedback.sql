@@ -15,3 +15,8 @@ create table if not exists public.feedback (
 -- Row level security on, with no policies: the public keys can neither read nor write this table.
 -- Only the site's server (using the service role key) saves and lists feedback.
 alter table public.feedback enable row level security;
+
+-- Supabase stopped granting API access to new tables automatically on 30 October 2026, so a table
+-- created after that needs this to be reachable at all. Granted to the service role only, so the
+-- public keys still can't reach it. Harmless to re-run on a table that already has it.
+grant select, insert, update, delete on public.feedback to service_role;

@@ -451,7 +451,7 @@ export async function GET(request: Request) {
     // Lets the site show "updated n min ago". Stored as a reserved page_content row (see lib/sync-status.ts).
     await supabase.from('page_content').upsert({ id: 'sync-status', gw_number: 0, title: 'Last ingest', content: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'id,gw_number' });
 
-    refreshSiteData(new URL(request.url).origin);
+    refreshSiteData();
 
     return NextResponse.json({ success: true, message: `Caught up to GW ${activeApiGw} successfully.` });
 
