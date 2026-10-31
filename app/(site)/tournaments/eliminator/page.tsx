@@ -9,7 +9,7 @@ import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { eliminatorNextLine } from '@/lib/tournament-next';
-import { getWeekProjection, dueFor } from '@/lib/projection';
+import { getWeekProjection, dueFor, liveWeekScore } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
 import { FeedbackPrompt } from '@/components/Feedback';
@@ -34,7 +34,8 @@ async function EliminatorContent() {
 
   // 1. Gameweek status: eliminations are decided on the synced week, survivors show the live week
   const gw = await getGameweekStatus();
-  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
+  // A live week's scores move every minute; otherwise the page changes only with the ingest.
+  if (!gw.fplAvailable) cacheLife('brief'); else if (gw.liveGw) cacheLife('clock'); else cacheLife('league');
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
   const projection = displayGw === gw.liveGw ? await getWeekProjection() : null;
@@ -71,7 +72,7 @@ async function EliminatorContent() {
   // Helper to find a specific week's score
   const getScore = (managerId: number, gw: number) => {
     const base = allScores?.find(s => s.manager_fpl_id === managerId && s.gw_number === gw)?.points || 0;
-    return base + (gw === displayGw ? (dueOf(managerId)?.due || 0) : 0);
+    return gw === displayGw ? liveWeekScore(dueOf(managerId), base) : base;
   };
 
   // 4. Split, Sort, and Check Status

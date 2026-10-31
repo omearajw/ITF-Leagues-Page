@@ -11,7 +11,7 @@ import { positionDeltas } from '@/lib/movement';
 import { getGameweekStatus, getFplEvents, formatUk } from '@/lib/gameweek-status';
 import { uniqueTies } from '@/lib/tournament-fixtures';
 import { championsLeagueNextLine } from '@/lib/tournament-next';
-import { getWeekProjection, dueFor, type WeekProjection } from '@/lib/projection';
+import { getWeekProjection, dueFor, type WeekProjection, liveWeekScore } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
 import ScrollFade from '@/components/ScrollFade';
@@ -34,7 +34,8 @@ async function ChampionsLeagueContent() {
   const SEASON_ID = '2026-27';
 
   const gw = await getGameweekStatus();
-  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
+  // A live week's scores move every minute; otherwise the page changes only with the ingest.
+  if (!gw.fplAvailable) cacheLife('brief'); else if (gw.liveGw) cacheLife('clock'); else cacheLife('league');
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
   const projection = gw.liveGw ? await getWeekProjection() : null;
@@ -308,8 +309,8 @@ function TieRow({ fix, entrants, liveGw, projection }: { fix: any, entrants: Rec
   const isLiveFix = isPlayed && fix.gw_number === liveGw;
   const d1 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_1_id) : null;
   const d2 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_2_id) : null;
-  const s1 = isPlayed ? fix.manager_1_score + (d1?.due || 0) : null;
-  const s2 = isPlayed ? fix.manager_2_score + (d2?.due || 0) : null;
+  const s1 = isPlayed ? liveWeekScore(d1, fix.manager_1_score) : null;
+  const s2 = isPlayed ? liveWeekScore(d2, fix.manager_2_score) : null;
   const won1 = isPlayed && !isLiveFix && fix.winner_id === fix.manager_1_id;
   const won2 = isPlayed && !isLiveFix && fix.winner_id === fix.manager_2_id;
   const marks = !!(d1?.due || d2?.due);

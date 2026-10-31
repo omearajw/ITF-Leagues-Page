@@ -9,7 +9,7 @@ import PageHeader from '@/components/PageHeader';
 import RichText from '@/components/RichText';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import { onionBaggersNextLine } from '@/lib/tournament-next';
-import { getWeekProjection, dueFor, type WeekProjection, type WeekDue } from '@/lib/projection';
+import { getWeekProjection, dueFor, type WeekProjection, type WeekDue, liveWeekScore } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
 
@@ -32,7 +32,8 @@ async function OnionBaggersContent() {
   const SEASON_ID = '2026-27';
 
   const gw = await getGameweekStatus();
-  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
+  // A live week's scores move every minute; otherwise the page changes only with the ingest.
+  if (!gw.fplAvailable) cacheLife('brief'); else if (gw.liveGw) cacheLife('clock'); else cacheLife('league');
   const currentGw = gw.syncedThroughGw;
   const displayGw = gw.displayGw;
   const projection = displayGw === gw.liveGw ? await getWeekProjection() : null;
@@ -73,7 +74,7 @@ async function OnionBaggersContent() {
 
   const getScore = (mgrId: number, gw: number) => {
     const s = allScores?.find(score => score.manager_fpl_id === mgrId && score.gw_number === gw);
-    return s ? s.points + (gw === displayGw ? (dueOf(mgrId)?.due || 0) : 0) : '-';
+    return s ? (gw === displayGw ? liveWeekScore(dueOf(mgrId), s.points) : s.points) : '-';
   };
 
   // Generate Gameweek Columns for the Matrix (e.g. GW1 to GW8)
@@ -324,8 +325,8 @@ function BracketMatch({ fix, teamMap, isFinal, liveGw, projection }: { fix: any,
         {fix.winner_id && isFinal && !isLiveFix && <span className="text-xs font-bold uppercase tracking-[0.08em] bg-brand text-white px-1.5 py-0.5 rounded-sm">Champion</span>}
       </div>
       <div className="divide-y divide-line border-b border-line">
-        <MatchRow managerId={fix.manager_1_id} score={isPlayed ? fix.manager_1_score + (d1?.due || 0) : fix.manager_1_score} due={d1} isWinner={!isLiveFix && fix.winner_id === fix.manager_1_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
-        <MatchRow managerId={fix.manager_2_id} score={isPlayed ? fix.manager_2_score + (d2?.due || 0) : fix.manager_2_score} due={d2} isWinner={!isLiveFix && fix.winner_id === fix.manager_2_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
+        <MatchRow managerId={fix.manager_1_id} score={isPlayed ? liveWeekScore(d1, fix.manager_1_score) : fix.manager_1_score} due={d1} isWinner={!isLiveFix && fix.winner_id === fix.manager_1_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
+        <MatchRow managerId={fix.manager_2_id} score={isPlayed ? liveWeekScore(d2, fix.manager_2_score) : fix.manager_2_score} due={d2} isWinner={!isLiveFix && fix.winner_id === fix.manager_2_id} isPlayed={isPlayed} isLive={isLiveFix} teamMap={teamMap} />
       </div>
     </div>
   );

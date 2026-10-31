@@ -3,7 +3,7 @@ import TeamName from '@/components/TeamName';
 import { LiveChip } from '@/components/GameweekBadge';
 import { getDivisionFixtures, type H2HFixture } from '@/lib/h2h-fixtures';
 import { SEASON_ID, type GameweekStatus } from '@/lib/gameweek-status';
-import { getWeekProjection, dueFor, type WeekProjection } from '@/lib/projection';
+import { getWeekProjection, dueFor, type WeekProjection, liveWeekScore } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
 
@@ -17,8 +17,8 @@ type Props = {
 function FixtureRow({ fix, scores, teamNames, live, projection }: { fix: H2HFixture; scores: Record<number, number> | null; teamNames: Record<number, string>; live: boolean; projection: WeekProjection | null }) {
   const d1 = projection ? dueFor(projection, fix.gw, fix.m1) : null;
   const d2 = projection ? dueFor(projection, fix.gw, fix.m2) : null;
-  const s1 = scores && scores[fix.m1] !== undefined ? scores[fix.m1] + (d1?.due || 0) : undefined;
-  const s2 = scores && scores[fix.m2] !== undefined ? scores[fix.m2] + (d2?.due || 0) : undefined;
+  const s1 = scores && scores[fix.m1] !== undefined ? liveWeekScore(d1, scores[fix.m1]) : undefined;
+  const s2 = scores && scores[fix.m2] !== undefined ? liveWeekScore(d2, scores[fix.m2]) : undefined;
   const played = s1 !== undefined && s2 !== undefined;
   const lead1 = played && !live && (s1 as number) > (s2 as number);
   const lead2 = played && !live && (s2 as number) > (s1 as number);

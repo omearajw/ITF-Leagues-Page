@@ -11,7 +11,7 @@ import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow, { NewEntryMark } from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { compareStanding } from '@/lib/standings';
-import { getWeekProjection, dueFor } from '@/lib/projection';
+import { getWeekProjection, dueFor, liveWeekScore, liveTotal } from '@/lib/projection';
 import { writeUpLead } from '@/lib/richtext';
 import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
 import { FeedbackBanner } from '@/components/Feedback';
@@ -53,7 +53,8 @@ async function DashboardContent() {
 
   // A. Gameweek status: the synced week, plus the live week when one is in progress
   const gw = await getGameweekStatus();
-  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
+  // A live week's scores move every minute; otherwise the page changes only with the ingest.
+  if (!gw.fplAvailable) cacheLife('brief'); else if (gw.liveGw) cacheLife('clock'); else cacheLife('league');
   const currentGw = gw.syncedThroughGw;
 
   // B. Fetch CMS content
@@ -106,7 +107,8 @@ async function DashboardContent() {
   const showingLive = scoresGw === gw.liveGw;
   const projection = showingLive ? await getWeekProjection() : null;
   const dueOf = (id: number) => (projection ? dueFor(projection, scoresGw, Number(id)) : null);
-  const withDue = (id: number, value: number) => value + (dueOf(id)?.due || 0);
+  const liveWeek = (id: number, week: number) => liveWeekScore(dueOf(id), week);
+  const liveSeason = (id: number, total: number, week: number) => liveTotal(dueOf(id), total, week);
 
   // While a week is live, the Eliminator card lists the three lowest live scores among the survivors
   // (projected subs included). Before kickoff everyone is level, so nobody is singled out.
@@ -116,7 +118,7 @@ async function DashboardContent() {
   const elLive = showingLive && elAliveIds.size > 1
     ? ((scores || []) as unknown as LiveScoreRow[])
         .filter(row => elAliveIds.has(Number(row.manager_fpl_id)))
-        .map(row => ({ id: Number(row.manager_fpl_id), name: row.season_managers.team_name, score: withDue(row.manager_fpl_id, row.points) }))
+        .map(row => ({ id: Number(row.manager_fpl_id), name: row.season_managers.team_name, score: liveWeek(row.manager_fpl_id, row.points) }))
         .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
     : [];
   const elAtRisk = elLive.length > 0 && elLive[0].score !== elLive[elLive.length - 1].score ? elLive.slice(0, 3) : [];
@@ -155,7 +157,7 @@ async function DashboardContent() {
   const liveTableGw = showingLive && currentGw >= 1 ? scoresGw : null;
   
   // The Open stays live: it ranks on total points, including any subs due while a week is live.
-  const openStanding = (t: any) => ({ total: withDue(t.manager_fpl_id, t.classic_total_points), week: withDue(t.manager_fpl_id, t.points), name: t.season_managers.team_name });
+  const openStanding = (t: any) => ({ total: liveSeason(t.manager_fpl_id, t.classic_total_points, t.points), week: liveWeek(t.manager_fpl_id, t.points), name: t.season_managers.team_name });
   const openOrder = [...(scores || [])].sort((a, b) => compareStanding(openStanding(a), openStanding(b)));
   const topTenITF = openOrder.slice(0, 10);
 
@@ -341,8 +343,8 @@ async function DashboardContent() {
             manager: manager.season_managers.managers.real_name,
             team: manager.season_managers.team_name,
             division: manager.season_managers.division,
-            week: withDue(manager.manager_fpl_id, manager.points),
-            total: withDue(manager.manager_fpl_id, manager.classic_total_points),
+            week: liveWeek(manager.manager_fpl_id, manager.points),
+            total: liveSeason(manager.manager_fpl_id, manager.classic_total_points, manager.points),
             due: dueOf(manager.manager_fpl_id),
             mark: itfMark(manager.manager_fpl_id),
           }))}

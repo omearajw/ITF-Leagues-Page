@@ -1,15 +1,13 @@
-import { cache } from 'react';
+import { cacheLife } from 'next/cache';
 import { createPublicClient } from '@/utils/supabase/public';
 import { SEASON_ID } from '@/lib/gameweek-status';
 import { getManagerEntry } from '@/lib/fpl-manager';
 
-// FPL's Adobe Express team badges, keyed by manager id. Badges change rarely, so the
-// league-wide map is memoised for an hour; React cache dedupes within a request.
-let memo: { at: number; value: Record<number, string> } | null = null;
-const TTL = 60 * 60_000;
-
-export const getLeagueBadges = cache(async (): Promise<Record<number, string>> => {
-  if (memo && Date.now() - memo.at < TTL) return memo.value;
+// FPL's Adobe Express team badges, keyed by manager id. Badges change rarely, so the league-wide
+// map is kept in the shared cache for six hours: one lookup of every team for the whole site,
+// rather than one per server every hour.
+export async function getLeagueBadges(): Promise<Record<number, string>> {
+  'use cache: remote';
   const supabase = createPublicClient();
   const { data } = await supabase.from('season_managers').select('manager_fpl_id').eq('season_id', SEASON_ID);
   const ids = (data || []).map((m: any) => Number(m.manager_fpl_id));
@@ -24,6 +22,8 @@ export const getLeagueBadges = cache(async (): Promise<Record<number, string>> =
   }));
   const value: Record<number, string> = {};
   checks.forEach(c => { if (c) value[c[0]] = c[1]; });
-  memo = { at: Date.now(), value };
+  // A run where FPL failed for most teams is kept briefly, so the badges come back soon after.
+  if (entries.filter(Boolean).length < ids.length / 2) cacheLife('brief');
+  else cacheLife({ stale: 300, revalidate: 6 * 3600, expire: 24 * 3600 });
   return value;
-});
+}

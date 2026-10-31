@@ -7,7 +7,7 @@ import { getDivisionFixtures } from '@/lib/h2h-fixtures';
 import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
 import { getTeamNameDisplayText } from '@/components/TeamName';
-import { getWeekProjection, dueFor } from '@/lib/projection';
+import { getWeekProjection, dueFor, liveWeekScore } from '@/lib/projection';
 
 export type TickerLive = {
   gw: number;
@@ -18,7 +18,7 @@ export type TickerMotm = { label: string; complete: boolean; divisions: { name: 
 
 // Everything the bottom ticker can show: the Manager of the Month race and this week's H2H ties.
 export const getTickerData = cache(async (): Promise<{ motm: TickerMotm; live: TickerLive }> => {
-  'use cache';
+  'use cache: remote';
   cacheTag(SITE_DATA_TAG);
   const supabase = createPublicClient();
   const [gw, events, { data: managerRows }, { data: scoreRows }] = await Promise.all([
@@ -27,7 +27,8 @@ export const getTickerData = cache(async (): Promise<{ motm: TickerMotm; live: T
     supabase.from('season_managers').select('manager_fpl_id, team_name, division, managers!inner (real_name)').eq('season_id', SEASON_ID),
     supabase.from('manager_gw_scores').select('manager_fpl_id, gw_number, points').eq('season_id', SEASON_ID),
   ]);
-  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
+  // A live week's scores move every minute; otherwise the page changes only with the ingest.
+  if (!gw.fplAvailable) cacheLife('brief'); else if (gw.liveGw) cacheLife('clock'); else cacheLife('league');
   const names: Record<number, string> = {};
   (managerRows || []).forEach((m: any) => { names[Number(m.manager_fpl_id)] = getTeamNameDisplayText(m.team_name); });
 
@@ -50,7 +51,7 @@ export const getTickerData = cache(async (): Promise<{ motm: TickerMotm; live: T
   const weekScores: Record<number, number> = {};
   (scoreRows || []).filter((s: any) => s.gw_number === weekGw).forEach((s: any) => {
     const id = Number(s.manager_fpl_id);
-    weekScores[id] = s.points + (projection ? (dueFor(projection, weekGw, id)?.due || 0) : 0);
+    weekScores[id] = projection ? liveWeekScore(dueFor(projection, weekGw, id), s.points) : s.points;
   });
   const fixtureLists = await Promise.all(DIVISIONS.map(d => getDivisionFixtures(d.fplId, weekGw)));
   const live: TickerLive = {

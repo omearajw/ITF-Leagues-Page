@@ -7,7 +7,7 @@ import { ITFOpenSkeleton, BadgeSkeleton } from '@/components/Skeletons';
 import { GameweekChip } from '@/components/GameweekBadge';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
-import { getWeekProjection, dueFor } from '@/lib/projection';
+import { getWeekProjection, dueFor, liveWeekScore, liveTotal } from '@/lib/projection';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import PageHeader from '@/components/PageHeader';
 import { compareStanding } from '@/lib/standings';
@@ -31,7 +31,8 @@ async function ITFOpenContent() {
   const SEASON_ID = '2026-27';
 
   const gw = await getGameweekStatus();
-  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
+  // A live week's scores move every minute; otherwise the page changes only with the ingest.
+  if (!gw.fplAvailable) cacheLife('brief'); else if (gw.liveGw) cacheLife('clock'); else cacheLife('league');
   const currentGw = gw.syncedThroughGw;
 
   // Show the live week's totals when one is in progress; fall back to the synced week
@@ -63,11 +64,12 @@ async function ITFOpenContent() {
   const showingLive = scoresGw === gw.liveGw;
   const projection = showingLive ? await getWeekProjection() : null;
   const dueOf = (id: number) => (projection ? dueFor(projection, scoresGw, Number(id)) : null);
-  const withDue = (id: number, value: number) => value + (dueOf(id)?.due || 0);
+  const liveWeek = (id: number, week: number) => liveWeekScore(dueOf(id), week);
+  const liveSeason = (id: number, total: number, week: number) => liveTotal(dueOf(id), total, week);
   // Ranked by the rule every table shares (lib/standings.ts), including subs due while live.
   managers?.sort((a: any, b: any) => compareStanding(
-    { total: withDue(a.manager_fpl_id, a.classic_total_points), week: withDue(a.manager_fpl_id, a.points), name: a.season_managers.team_name },
-    { total: withDue(b.manager_fpl_id, b.classic_total_points), week: withDue(b.manager_fpl_id, b.points), name: b.season_managers.team_name },
+    { total: liveSeason(a.manager_fpl_id, a.classic_total_points, a.points), week: liveWeek(a.manager_fpl_id, a.points), name: a.season_managers.team_name },
+    { total: liveSeason(b.manager_fpl_id, b.classic_total_points, b.points), week: liveWeek(b.manager_fpl_id, b.points), name: b.season_managers.team_name },
   ));
 
   // Live totals move against the last confirmed week; a confirmed week moves against the one before.
@@ -101,8 +103,8 @@ async function ITFOpenContent() {
           manager: manager.season_managers.managers.real_name,
           team: manager.season_managers.team_name,
           division: manager.season_managers.division,
-          week: withDue(manager.manager_fpl_id, manager.points),
-          total: withDue(manager.manager_fpl_id, manager.classic_total_points),
+          week: liveWeek(manager.manager_fpl_id, manager.points),
+          total: liveSeason(manager.manager_fpl_id, manager.classic_total_points, manager.points),
           due: dueOf(manager.manager_fpl_id),
           mark: <MovementArrow delta={movement[manager.manager_fpl_id]} />,
         }))}

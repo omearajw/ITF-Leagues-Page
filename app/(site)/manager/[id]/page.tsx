@@ -11,7 +11,8 @@ import PitchView, { type PitchPlayer, type PitchOpponent } from '@/components/Pi
 import { ManagerSkeleton, Bone } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, getGwFixtureStatus, type ManagerPicks, type LiveStats, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
-import { projectAutoSubs, type FixtureState } from '@/lib/autosubs';
+import { projectAutoSubs, type FixtureState, type AutoSubProjection } from '@/lib/autosubs';
+import { getLiveWeekPicks } from '@/lib/projection';
 import { getMyTeamId } from '@/lib/my-team';
 import { DIVISIONS } from '@/lib/divisions';
 import TeamBadge from '@/components/TeamBadge';
@@ -95,7 +96,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
 
   const [players, picks, live, transfers, entry, { data: scoreRow }, { data: h2h }, { data: elim }, { data: recent }, fixtureStatus, badges] = await Promise.all([
     getPlayers(),
-    getManagerPicks(managerId, selectedGw, isFinal),
+    isLiveWeek ? getLiveWeekPicks(managerId, selectedGw) : getManagerPicks(managerId, selectedGw, isFinal),
     getLivePoints(selectedGw, isFinal),
     getManagerTransfers(managerId),
     getManagerEntry(managerId),
@@ -115,15 +116,13 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   const [opponentRow, opponentPicks] = opponentId
     ? await Promise.all([
         supabase.from('season_managers').select('team_name').eq('season_id', SEASON_ID).eq('manager_fpl_id', opponentId).maybeSingle().then(r => r.data),
-        getManagerPicks(opponentId, selectedGw, isFinal),
+        isLiveWeek ? getLiveWeekPicks(opponentId, selectedGw) : getManagerPicks(opponentId, selectedGw, isFinal),
       ])
     : [null, null];
   const opponentName = opponentRow ? getTeamNameDisplayText(opponentRow.team_name) : null;
 
   const division = DIVISIONS.find(d => d.name === manager.division);
-  const gross = picks?.entry_history.points ?? null;
   const cost = picks?.entry_history.event_transfers_cost ?? scoreRow?.transfers_cost ?? 0;
-  const net = scoreRow?.points ?? (gross !== null ? gross - cost : null);
   const fixtureStateFor = (pl: Player | undefined): FixtureState => {
     const list: TeamGwFixture[] = pl ? (fixtureStatus?.[pl.teamId] || []) : [];
     if (!fixtureStatus) return 'finished';
@@ -173,8 +172,31 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   const benchDue = (mine?.projection?.benchDue || 0) + (mine?.projection?.captainExtra || 0);
   const benchBoostOn = !!mine?.projection?.benchBoost;
   const theirs = opponentPicks ? decorate(opponentPicks, live) : null;
+
+  // In the live week every figure is worked out from the same live points the pitch shows, for
+  // both teams. FPL's own summary (entry_history) stays at 0 until the week is processed, and the
+  // stored scores only move with the ingest every 15 minutes, so either would disagree with the
+  // pitch and with the opponent's page.
+  const liveFigures = (set: ManagerPicks | null, projection: AutoSubProjection | null | undefined) => {
+    if (!isLiveWeek || !live || !set) return null;
+    const pts = (element: number) => live[element]?.total_points ?? 0;
+    const gross = set.picks.reduce((sum, p) => sum + pts(p.element) * p.multiplier, 0);
+    const hits = set.entry_history.event_transfers_cost || 0;
+    const benchPoints = set.picks.filter(p => p.position > 11).reduce((sum, p) => sum + pts(p.element), 0);
+    const due = (projection?.benchDue || 0) + (projection?.captainExtra || 0);
+    return { gross, net: gross - hits, bench: benchPoints, score: gross - hits + due };
+  };
+  const mineLive = liveFigures(picks, mine?.projection);
+  const theirsLive = liveFigures(opponentPicks, theirs?.projection);
+  const gross = mineLive?.gross ?? picks?.entry_history.points ?? null;
+  const net = mineLive?.net ?? scoreRow?.points ?? (gross !== null ? gross - cost : null);
+  const benchPoints = mineLive?.bench ?? picks?.entry_history.points_on_bench ?? 0;
+  // Season points as the Open counts them: the stored total with this week's stored score swapped
+  // for the live one. FPL's own running total (entry) is refreshed less often and can disagree.
+  const seasonPoints = mineLive && scoreRow ? scoreRow.classic_total_points - scoreRow.points + mineLive.score : entry?.summary_overall_points;
+
   const pitchOpponent: PitchOpponent | null = theirs && opponentName ? {
-    name: opponentName, week: selectedGw, starters: theirs.starters, bench: theirs.bench, benchPoints: opponentPicks!.entry_history.points_on_bench,
+    name: opponentName, week: selectedGw, starters: theirs.starters, bench: theirs.bench, benchPoints: theirsLive?.bench ?? opponentPicks!.entry_history.points_on_bench,
   } : null;
   const weekTransfers = (transfers || []).filter(t => t.event === selectedGw);
   // Net effect of the week's business: what the new players scored, less what the sold ones
@@ -190,7 +212,8 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   // The result only stands once the week is synced; until then it is read from the live scores.
   const tie = h2h as { manager_score: number; opponent_score: number; result: string | null } | null;
   const tieSettled = selectedGw <= gw.syncedThroughGw;
-  const tieMargin = tie ? Number(tie.manager_score) - Number(tie.opponent_score) : 0;
+  const matchScore = mineLive && theirsLive ? [mineLive.score, theirsLive.score] : tie ? [Number(tie.manager_score), Number(tie.opponent_score)] : null;
+  const tieMargin = matchScore ? matchScore[0] - matchScore[1] : 0;
   const tieOutcome = !tie ? null
     : tieSettled ? (tie.result === 'W' ? 'Beat' : tie.result === 'L' ? 'Lost to' : 'Drew with')
     : tieMargin > 0 ? 'Beating' : tieMargin < 0 ? 'Losing to' : 'Drawing with';
@@ -248,10 +271,10 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
               <dd className="mt-1 text-lg font-semibold text-ink tabular">{entry.summary_overall_rank?.toLocaleString('en-GB') ?? '–'}</dd>
             </div>
           )}
-          {entry && (
+          {seasonPoints !== undefined && (
             <div>
               <dt className="label">Season points</dt>
-              <dd className="mt-1 text-lg font-semibold text-ink tabular">{entry.summary_overall_points}</dd>
+              <dd className="mt-1 text-lg font-semibold text-ink tabular">{seasonPoints}</dd>
             </div>
           )}
           {recent && recent.length > 0 && (
@@ -302,9 +325,9 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
               { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
               { label: 'Team points', value: gross ?? '–', sub: 'before hits' },
               { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
-              { label: 'On bench', value: picks.entry_history.points_on_bench, sub: 'points' },
+              { label: 'On bench', value: benchPoints, sub: 'points' },
               { label: 'Chip', value: picks.active_chip ? (chipLabel[picks.active_chip] || picks.active_chip) : 'None', sub: picks.active_chip ? 'played' : '', played: !!picks.active_chip },
-              { label: 'League match', value: tie ? `${tie.manager_score} - ${tie.opponent_score}` : '–', sub: tie ? `${tieOutcome} ${opponentName || 'opponent'}` : 'no match recorded' },
+              { label: 'League match', value: tie && matchScore ? `${matchScore[0]} - ${matchScore[1]}` : '–', sub: tie ? `${tieOutcome} ${opponentName || 'opponent'}` : 'no match recorded' },
             ].map(tile => {
               const filled = 'played' in tile && tile.played;
               return (
@@ -317,7 +340,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
             })}
           </div>
 
-          <PitchView starters={starters} bench={bench} benchPoints={picks.entry_history.points_on_bench} live={isLiveWeek} pointsUnavailable={live === null} opponent={pitchOpponent} />
+          <PitchView starters={starters} bench={bench} benchPoints={benchPoints} live={isLiveWeek} pointsUnavailable={live === null} opponent={pitchOpponent} />
 
           <section className="mb-10">
             <SectionHeading className="mb-1">Transfers · GW{selectedGw}</SectionHeading>

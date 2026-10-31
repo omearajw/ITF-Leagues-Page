@@ -15,7 +15,7 @@ import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
 import { compareStanding } from '@/lib/standings';
 import { getGameweekStatus } from '@/lib/gameweek-status';
-import { getWeekProjection, dueFor } from '@/lib/projection';
+import { getWeekProjection, dueFor, liveWeekScore, liveTotal } from '@/lib/projection';
 import GameweekSelector from '@/components/GameweekSelector';
 
 type Division = (typeof DIVISIONS)[number];
@@ -50,7 +50,8 @@ async function DivisionView({ division, requestedGw }: { division: Division; req
   const supabase = createPublicClient();
   const SEASON_ID = '2026-27';
   const gw = await getGameweekStatus();
-  if (gw.fplAvailable) cacheLife('league'); else cacheLife('brief');
+  // A live week's scores move every minute; otherwise the page changes only with the ingest.
+  if (!gw.fplAvailable) cacheLife('brief'); else if (gw.liveGw) cacheLife('clock'); else cacheLife('league');
   // The table holds at the last finished week, totals and positions included. A live week can be
   // opened on purpose to see the table as it stands, but it is never the default.
   const latestGw = Math.max(1, gw.syncedThroughGw);
@@ -90,10 +91,10 @@ async function DivisionView({ division, requestedGw }: { division: Division; req
   // As it stands in the live week: live scores plus subs due from the bench, the same figures the
   // fixtures list below shows. Null until a manager has a live score.
   const projection = isLive ? await getWeekProjection() : null;
-  const dueNow = (id: number) => (projection && liveGw ? dueFor(projection, liveGw, id)?.due || 0 : 0);
+  const liveOf = (id: number) => (projection && liveGw ? dueFor(projection, liveGw, id) : null);
   const liveScore: Record<number, number | null> = Object.fromEntries((managers || []).map((m: any) => {
     const row = ((m.manager_gw_scores || []) as { gw_number: number; points: number }[]).find(s => s.gw_number === liveGw);
-    return [Number(m.manager_fpl_id), row ? row.points + dueNow(Number(m.manager_fpl_id)) : null];
+    return [Number(m.manager_fpl_id), row ? liveWeekScore(liveOf(Number(m.manager_fpl_id)), row.points) : null];
   }));
 
   // Everything counts up to `throughGw`. A finished week uses the stored results and totals; the
@@ -122,7 +123,7 @@ async function DivisionView({ division, requestedGw }: { division: Division; req
         .filter((row: any) => row.gw_number <= throughGw)
         .reduce((best: any, row: any) => (!best || row.gw_number > best.gw_number ? row : best), null);
       const live = asItStands && latestRow?.gw_number === liveGw;
-      const totalPoints = (latestRow?.classic_total_points ?? 0) + (live ? dueNow(id) : 0);
+      const totalPoints = live ? liveTotal(liveOf(id), latestRow?.classic_total_points ?? 0, latestRow?.points ?? 0) : latestRow?.classic_total_points ?? 0;
       const weekPoints = live ? liveScore[id] ?? 0 : latestRow?.points ?? 0;
 
       const matchPoints = (w * 3) + (d * 1);
