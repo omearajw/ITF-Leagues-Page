@@ -8,11 +8,13 @@ import { GameweekChip, LiveChip } from '@/components/GameweekBadge';
 import PageHeader from '@/components/PageHeader';
 import MovementArrow from '@/components/MovementArrow';
 import { positionDeltas } from '@/lib/movement';
-import { getGameweekStatus } from '@/lib/gameweek-status';
+import { getGameweekStatus, getFplEvents, formatUk } from '@/lib/gameweek-status';
+import { uniqueTies } from '@/lib/tournament-fixtures';
 import { championsLeagueNextLine } from '@/lib/tournament-next';
 import { getWeekProjection, dueFor, type WeekProjection } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
+import ScrollFade from '@/components/ScrollFade';
 
 export default function ChampionsLeaguePage() {
   return (
@@ -47,7 +49,9 @@ async function ChampionsLeagueContent() {
   const { data: config } = await supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single();
   const { data: entrantsData } = await supabase.from('champions_league_entrants').select(`manager_fpl_id, season_managers!inner (team_name, managers!inner (real_name))`).eq('season_id', SEASON_ID);
   
-  const { data: fixtures } = await supabase.from('tournament_fixtures').select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'CHAMPIONS_LEAGUE').order('gw_number', { ascending: false });
+  const { data: fixtureRows } = await supabase.from('tournament_fixtures').select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'CHAMPIONS_LEAGUE');
+  const fixtures = uniqueTies(fixtureRows as any[]).sort((a, b) => a.gw_number - b.gw_number || a.id - b.id);
+  const events = await getFplEvents();
 
   const entrants: Record<number, any> = {};
   entrantsData?.forEach((e: any) => { entrants[e.manager_fpl_id] = { id: e.manager_fpl_id, teamName: e.season_managers.team_name, managerName: e.season_managers.managers.real_name }; });
@@ -117,6 +121,17 @@ async function ChampionsLeagueContent() {
   const stage1Movement = stageMovement(stage1Fix, Object.keys(entrants).map(Number), stage1Table);
   const stage2Movement = stageMovement(stage2Fix, stage2EntrantIds, stage2Table);
 
+  // Who plays in each stage, so a week's list can say who sits it out (odd numbers leave one idle).
+  const stagePool: Record<string, number[]> = { 'Stage 1': Object.keys(entrants).map(Number), 'Stage 2': stage2EntrantIds };
+  const sittingOut = (stage: string, ties: any[]) => (stagePool[stage] || []).filter(id => !ties.some(t => t.manager_1_id === id || t.manager_2_id === id));
+
+  // Next up: the first week after the one in play, so managers know their opponent while they
+  // set their team for it. The Final has its own section.
+  const afterGw = gw.liveGw ?? currentGw;
+  const nextGw = fixtures.filter(f => f.stage !== 'Final' && f.gw_number > afterGw).reduce((min: number | null, f) => (min === null || f.gw_number < min ? f.gw_number : min), null);
+  const nextTies = nextGw === null ? [] : fixtures.filter(f => f.stage !== 'Final' && f.gw_number === nextGw);
+  const nextDeadline = nextGw === null ? null : events?.find(e => e.id === nextGw)?.deadline_time ?? null;
+
   const stageTab = (on: boolean) => `font-display text-lg sm:text-xl leading-none tracking-[0.03em] pb-1.5 border-b-[3px] ${on ? 'text-ink border-brand' : 'text-faint border-transparent'}`;
 
   return (
@@ -139,6 +154,16 @@ async function ChampionsLeagueContent() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 xl:gap-0 xl:divide-x xl:divide-line">
         <div className="xl:col-span-2 space-y-12 xl:pr-8">
+
+          {nextTies.length > 0 && (
+            <section>
+              <SectionHeading aside={nextDeadline ? <span className="text-dim">Deadline <b className="text-ink">{formatUk(nextDeadline)}</b></span> : undefined}>Next up · GW{nextGw}</SectionHeading>
+              <div className="max-w-xl mx-auto">
+                {nextTies.map(fix => <TieRow key={fix.id} fix={fix} entrants={entrants} liveGw={gw.liveGw} projection={projection} />)}
+                <SitsOut ids={sittingOut(nextTies[0].stage, nextTies)} entrants={entrants} className="mt-2 text-center" />
+              </div>
+            </section>
+          )}
 
           {isPreTournament && (
             <section>
@@ -217,22 +242,16 @@ async function ChampionsLeagueContent() {
           )}
         </div>
 
-        {/* Fixture log: collapsible below xl, where it sits under the tables */}
-        <div className="xl:col-span-1 xl:pl-8">
-          <details className="xl:hidden border-y border-line">
-            <summary className="py-3 flex justify-between items-center gap-3 cursor-pointer list-none">
-              <h2 className="font-display text-2xl leading-none tracking-[0.01em] text-ink">Fixtures &amp; Results</h2>
-              <span className="text-sm text-dim text-right">{fixtures?.filter(f => f.stage !== 'Final').length || 0} fixtures · tap to expand</span>
-            </summary>
-            <div className="pb-3">
-              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} projection={projection} />
-            </div>
-          </details>
-          <div className="hidden xl:block sticky top-28">
+        {/* Fixture log: open at every width. Below xl it follows the tables at the foot of the
+            page at full length. At xl it is a side column exactly as tall as the left-hand column
+            (its content is positioned out of the flow, so the left side alone sets the row's
+            height), scrolling inside with a fade at the foot while there is more. */}
+        <div className="xl:col-span-1 xl:relative xl:min-h-[36rem]">
+          <div className="xl:absolute xl:inset-0 xl:pl-8 xl:flex xl:flex-col">
             <SectionHeading className="mb-1">Fixtures &amp; Results</SectionHeading>
-            <div className="max-h-[800px] overflow-y-auto pr-1">
-              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} projection={projection} />
-            </div>
+            <ScrollFade className="xl:flex-1 xl:min-h-0" boxClassName="xl:h-full xl:overflow-y-auto xl:pr-1 xl:overscroll-contain">
+              <FixtureLog fixtures={fixtures} entrants={entrants} liveGw={gw.liveGw} nextGw={nextGw} projection={projection} sittingOut={sittingOut} />
+            </ScrollFade>
           </div>
         </div>
       </div>
@@ -241,55 +260,83 @@ async function ChampionsLeagueContent() {
 }
 
 // ==========================================
-// FIXTURE LOG (shared by the sticky desktop column and the mobile accordion)
+// FIXTURE LOG (open at every width): every week of the competition in order, results then the
+// ties still to come. One heading per week carries who sits it out, and the names sit either side
+// of the score box rather than at the edges, so each tie reads as one line.
 // ==========================================
-function FixtureLog({ fixtures, entrants, liveGw, projection }: { fixtures: any[] | null | undefined, entrants: Record<number, any>, liveGw: number | null, projection: WeekProjection | null }) {
-  const list = fixtures?.filter(f => f.stage !== 'Final') || [];
+function FixtureLog({ fixtures, entrants, liveGw, nextGw, projection, sittingOut }: { fixtures: any[], entrants: Record<number, any>, liveGw: number | null, nextGw: number | null, projection: WeekProjection | null, sittingOut: (stage: string, ties: any[]) => number[] }) {
+  const list = fixtures.filter(f => f.stage !== 'Final');
   if (list.length === 0) return <div className="text-center text-dim italic py-8">Schedule pending.</div>;
+  const weeks = [...new Set(list.map(f => f.gw_number))];
 
   return (
-    <div className="divide-y divide-line">
-      {list.map((fix) => {
-        const isPlayed = fix.manager_1_score !== null;
-        const isLiveFix = isPlayed && fix.gw_number === liveGw;
-        const d1 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_1_id) : null;
-        const d2 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_2_id) : null;
-        const s1 = isPlayed ? fix.manager_1_score + (d1?.due || 0) : null;
-        const s2 = isPlayed ? fix.manager_2_score + (d2?.due || 0) : null;
-        const won1 = isPlayed && !isLiveFix && fix.winner_id === fix.manager_1_id;
-        const won2 = isPlayed && !isLiveFix && fix.winner_id === fix.manager_2_id;
-
+    <div>
+      {weeks.map((week, i) => {
+        const ties = list.filter(f => f.gw_number === week);
+        const stage = ties[0].stage;
+        const newStage = i > 0 && list.find(f => f.gw_number === weeks[i - 1])?.stage !== stage;
         return (
-          <div key={fix.id} className="py-2.5 text-sm">
-            <div className="flex justify-between items-center gap-2 mb-1">
-              <span className="label flex items-center gap-2">GW{fix.gw_number} {isLiveFix && <LiveChip />}</span>
-              <span className="label">{fix.stage}</span>
+          <div key={week} className="border-t border-line first:border-t-0 pt-3 pb-4">
+            {newStage && <div className="label text-brand-2 mb-2">{stage}</div>}
+            <div className="flex items-center justify-between gap-3 mb-1.5">
+              <span className="flex items-center gap-2">
+                <span className="font-display text-xl leading-none tracking-[0.02em] text-ink">GW{week}</span>
+                {week === liveGw && ties.some(t => t.manager_1_score !== null) && <LiveChip />}
+                {week === nextGw && <span className="label text-brand-2">Next up</span>}
+              </span>
+              <SitsOut ids={sittingOut(stage, ties)} entrants={entrants} className="text-right" />
             </div>
-            <div className="flex justify-between items-start gap-2">
-              {/* Fixed-width score box with the subs-due marks on a line under it, so scores line up down the log. */}
-              <span className={`flex min-w-0 w-2/5 mt-1 ${!isPlayed ? 'text-dim' : won1 ? 'font-bold text-ink' : 'text-ink-2'}`}>
-                <TeamName name={entrants[fix.manager_1_id]?.teamName} managerId={fix.manager_1_id} inline className="min-w-0 max-w-full" />
-              </span>
-              <span className="shrink-0 flex flex-col items-center">
-                {isPlayed ? (
-                  <span className={`plate w-[5.5rem] h-7 font-display text-xl leading-none whitespace-nowrap ${isLiveFix ? 'text-live-2' : 'text-ink'}`}>
-                    {s1}<span className="text-faint mx-1">-</span>{s2}
-                  </span>
-                ) : (
-                  <span className="plate w-[5.5rem] h-7 label">v</span>
-                )}
-                <span className="grid grid-cols-2 justify-items-center items-start w-[7.5rem] -mx-4 h-[11px] whitespace-nowrap">
-                  <span className="flex">{isPlayed && <DueMark due={d1} compact />}</span>
-                  <span className="flex">{isPlayed && <DueMark due={d2} compact />}</span>
-                </span>
-              </span>
-              <span className={`flex justify-end min-w-0 w-2/5 mt-1 text-right ${!isPlayed ? 'text-dim' : won2 ? 'font-bold text-ink' : 'text-ink-2'}`}>
-                <TeamName name={entrants[fix.manager_2_id]?.teamName} managerId={fix.manager_2_id} inline className="min-w-0 max-w-full" />
-              </span>
-            </div>
+            {ties.map(fix => <TieRow key={fix.id} fix={fix} entrants={entrants} liveGw={liveGw} projection={projection} />)}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function SitsOut({ ids, entrants, className = '' }: { ids: number[], entrants: Record<number, any>, className?: string }) {
+  if (ids.length === 0) return null;
+  return (
+    <p className={`text-xs text-dim min-w-0 ${className}`}>
+      Sits out: {ids.map((id, i) => <span key={id}>{i > 0 && ', '}<TeamName name={entrants[id]?.teamName} managerId={id} inline className="text-ink-2" /></span>)}
+    </p>
+  );
+}
+
+function TieRow({ fix, entrants, liveGw, projection }: { fix: any, entrants: Record<number, any>, liveGw: number | null, projection: WeekProjection | null }) {
+  const isPlayed = fix.manager_1_score !== null;
+  const isLiveFix = isPlayed && fix.gw_number === liveGw;
+  const d1 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_1_id) : null;
+  const d2 = isLiveFix && projection ? dueFor(projection, fix.gw_number, fix.manager_2_id) : null;
+  const s1 = isPlayed ? fix.manager_1_score + (d1?.due || 0) : null;
+  const s2 = isPlayed ? fix.manager_2_score + (d2?.due || 0) : null;
+  const won1 = isPlayed && !isLiveFix && fix.winner_id === fix.manager_1_id;
+  const won2 = isPlayed && !isLiveFix && fix.winner_id === fix.manager_2_id;
+  const marks = !!(d1?.due || d2?.due);
+  const nameCls = (won: boolean) => won ? 'font-bold text-ink' : 'font-semibold text-ink-2';
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 py-1 text-sm">
+      <span className={`flex justify-end text-right min-w-0 ${nameCls(won1)}`}>
+        <TeamName name={entrants[fix.manager_1_id]?.teamName} managerId={fix.manager_1_id} inline className="min-w-0 max-w-full" />
+      </span>
+      {isPlayed ? (
+        <span className={`plate w-[5.5rem] h-7 font-display text-xl leading-none whitespace-nowrap ${isLiveFix ? 'text-live-2' : 'text-ink'}`}>
+          {s1}<span className="text-faint mx-1">-</span>{s2}
+        </span>
+      ) : (
+        <span className="plate w-[5.5rem] h-7 label">v</span>
+      )}
+      <span className={`flex min-w-0 ${nameCls(won2)}`}>
+        <TeamName name={entrants[fix.manager_2_id]?.teamName} managerId={fix.manager_2_id} inline className="min-w-0 max-w-full" />
+      </span>
+      {/* Only a tie with subs due gets the extra line, so the list stays tight otherwise. */}
+      {marks && (
+        <span className="col-start-2 grid grid-cols-2 justify-items-center w-[5.5rem] mt-0.5 whitespace-nowrap">
+          <span className="flex"><DueMark due={d1} compact /></span>
+          <span className="flex"><DueMark due={d2} compact /></span>
+        </span>
+      )}
     </div>
   );
 }

@@ -4,7 +4,9 @@ import { getGameweekStatus, SEASON_ID } from '@/lib/gameweek-status';
 import { getPlayers, getManagerPicks, getLivePoints, getGwFixtureStatus, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
 import { projectAutoSubs, type FixtureState } from '@/lib/autosubs';
 
-export type WeekDue = { due: number; undecided: number; benchBoost: boolean };
+// Only substitutions that are certain count: the league owner wants scores to show what is known,
+// not what might still happen, so there is no "maybe" figure alongside.
+export type WeekDue = { due: number; benchBoost: boolean };
 export type WeekProjection = { gw: number; byManager: Record<number, WeekDue> };
 
 const EMPTY: WeekProjection = { gw: 0, byManager: {} };
@@ -43,7 +45,7 @@ export const getWeekProjection = cache(async (): Promise<WeekProjection> => {
     if (!set) return;
     // FPL applies the real substitutions once every match has finished; the picks then
     // already reflect them, so there is nothing left to project.
-    if (set.automatic_subs.length > 0) { byManager[ids[i]] = { due: 0, undecided: 0, benchBoost: set.active_chip === 'bboost' }; return; }
+    if (set.automatic_subs.length > 0) { byManager[ids[i]] = { due: 0, benchBoost: set.active_chip === 'bboost' }; return; }
     const projection = projectAutoSubs(set.picks.map(p => {
       const pl = players[p.element];
       return {
@@ -52,7 +54,7 @@ export const getWeekProjection = cache(async (): Promise<WeekProjection> => {
         fixtureState: stateFor(pl, status), isCaptain: p.is_captain, isVice: p.is_vice_captain,
       };
     }), set.active_chip);
-    byManager[ids[i]] = { due: projection.benchDue + projection.captainExtra, undecided: projection.undecided.length, benchBoost: projection.benchBoost };
+    byManager[ids[i]] = { due: projection.benchDue + projection.captainExtra, benchBoost: projection.benchBoost };
   });
 
   const value = { gw: gw.liveGw, byManager };

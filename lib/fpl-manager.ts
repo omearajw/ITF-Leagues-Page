@@ -1,8 +1,8 @@
 import { cache } from 'react';
+import { fplGet, FPL_FALLBACK_MS } from '@/lib/fpl-fetch';
 
 // Public FPL endpoints for a manager's team. A confirmed gameweek never changes, so
 // those responses are memoised for a day; the in-progress week refreshes every minute.
-const FPL_API = 'https://fantasy.premierleague.com/api';
 const LIVE_TTL = 60_000;
 const FINAL_TTL = 24 * 60 * 60_000;
 const memos = new Map<string, { at: number; value: unknown }>();
@@ -16,15 +16,13 @@ async function memoized<T>(key: string, ttl: number, load: () => Promise<T>): Pr
     return value;
   } catch (err) {
     console.error(`FPL ${key} failed:`, err instanceof Error ? err.message : err);
+    // A recent copy beats an error page while FPL is overloaded.
+    if (hit && Date.now() - hit.at < FPL_FALLBACK_MS) return hit.value as T;
     return null;
   }
 }
 
-async function fplJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${FPL_API}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(6000) });
-  if (!res.ok) throw new Error(`${path} responded ${res.status}`);
-  return res.json();
-}
+const fplJson = fplGet;
 
 export type Player = {
   id: number; code: number; name: string;

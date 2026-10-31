@@ -11,8 +11,20 @@ const supabase = createClient(
 import { DIVISIONS } from '@/lib/divisions';
 import { refreshSiteData } from '@/lib/site-cache';
 import { loadTieFacts, resolveEliminatorTie } from '@/lib/eliminator-tiebreak';
+import { uniqueTies } from '@/lib/tournament-fixtures';
 
 const SEASON_ID = '2026-27';
+
+// Runs `work` over `items` with at most `limit` running at once, keeping the input order.
+async function mapLimit<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) { const i = next++; results[i] = await work(items[i]); }
+  });
+  await Promise.all(runners);
+  return results;
+}
 
 // Helper: Champions League Stage Standings
 async function getStageStandings(stage: string, entrants: number[]) {
@@ -26,7 +38,7 @@ async function getStageStandings(stage: string, entrants: number[]) {
   const stats: Record<number, { pts: number, totalScore: number }> = {};
   entrants.forEach(e => stats[e] = { pts: 0, totalScore: 0 });
 
-  fixtures?.forEach((f: any) => {
+  uniqueTies(fixtures as any[]).forEach((f: any) => {
     if (f.manager_1_score === null) return;
     if (stats[f.manager_1_id]) {
       stats[f.manager_1_id].totalScore += f.manager_1_score || 0;
@@ -148,9 +160,13 @@ export async function GET(request: Request) {
       // If we are processing a past week, it is definitely finished. Otherwise, check live status.
       const isGwFinished = currentProcessingGw < activeApiGw ? true : (currentGwData.finished && currentGwData.data_checked);
 
-      await supabase.from('gameweeks').upsert({ 
-        season_id: SEASON_ID, gw_number: currentProcessingGw, is_finished: isGwFinished, data_checked: currentGwData.data_checked 
+      // The week is only marked finished at the end of this iteration, once its final scores and
+      // H2H results are saved for every manager. Marking it first meant a run that failed or timed
+      // out partway left a finished week holding live scores that no later run went back to (GW7).
+      await supabase.from('gameweeks').upsert({
+        season_id: SEASON_ID, gw_number: currentProcessingGw, is_finished: false, data_checked: currentGwData.data_checked
       });
+      let fetchFailures = 0;
 
       // 3. Process Live FPL Data & Build Points Maps
       let allDiscoveredManagers: any[] = [];
@@ -162,6 +178,7 @@ export async function GET(request: Request) {
       for (const division of DIVISIONS) {
         // Fetch H2H Standings
         const res = await fetch(`https://fantasy.premierleague.com/api/leagues-h2h/${division.fplId}/standings/`);
+        if (!res.ok) fetchFailures++;
         if (res.ok) {
           const data = await res.json();
           for (const entrant of data.standings.results) {
@@ -176,6 +193,7 @@ export async function GET(request: Request) {
 
         // Fetch H2H Fixtures for Current Processing Gameweek
         const matchRes = await fetch(`https://fantasy.premierleague.com/api/leagues-h2h-matches/league/${division.fplId}/?event=${currentProcessingGw}`);
+        if (!matchRes.ok) fetchFailures++;
         if (matchRes.ok) {
           const matchData = await matchRes.json();
           for (const match of matchData.results) {
@@ -196,10 +214,14 @@ export async function GET(request: Request) {
       const prevTotals: Record<number, number> = {};
       (prevTotalRows || []).forEach((r: any) => { prevTotals[Number(r.manager_fpl_id)] = r.classic_total_points; });
 
-      for (const manager of allDiscoveredManagers) {
-        await supabase.from('managers').upsert({ fpl_id: manager.fpl_id, real_name: manager.real_name });
-        await supabase.from('season_managers').upsert({ season_id: SEASON_ID, manager_fpl_id: manager.fpl_id, team_name: manager.team_name, division: manager.division });
+      if (allDiscoveredManagers.length > 0) {
+        await supabase.from('managers').upsert(allDiscoveredManagers.map(m => ({ fpl_id: m.fpl_id, real_name: m.real_name })));
+        await supabase.from('season_managers').upsert(allDiscoveredManagers.map(m => ({ season_id: SEASON_ID, manager_fpl_id: m.fpl_id, team_name: m.team_name, division: m.division })));
+      }
 
+      // Eight managers at a time: one by one, 30 managers' FPL calls could run past the
+      // function's 60 seconds.
+      const managerStats = await mapLimit(allDiscoveredManagers, 8, async (manager) => {
         let gwStats: { net: number, points_on_bench: number, event_transfers_cost: number, total_points: number } | null = null;
 
         if (!isGwFinished) {
@@ -226,21 +248,24 @@ export async function GET(request: Request) {
 
         if (!gwStats) {
           const historyRes = await fetch(`https://fantasy.premierleague.com/api/entry/${manager.fpl_id}/history/`);
-          if (!historyRes.ok) continue;
+          if (!historyRes.ok) return null;
           const historyData = await historyRes.json();
           const h = historyData.current.find((x: any) => x.event === currentProcessingGw);
           if (h) gwStats = { net: h.points - (h.event_transfers_cost || 0), points_on_bench: h.points_on_bench, event_transfers_cost: h.event_transfers_cost, total_points: h.total_points };
         }
+        return gwStats;
+      });
 
-        if (gwStats) {
-          managerPointsMap[manager.fpl_id] = gwStats.net;
-          scoresToInsert.push({
-            season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: manager.fpl_id,
-            points: gwStats.net, bench_points: gwStats.points_on_bench,
-            transfers_cost: gwStats.event_transfers_cost, classic_total_points: gwStats.total_points
-          });
-        }
-      }
+      allDiscoveredManagers.forEach((manager, i) => {
+        const gwStats = managerStats[i];
+        if (!gwStats) return;
+        managerPointsMap[manager.fpl_id] = gwStats.net;
+        scoresToInsert.push({
+          season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: manager.fpl_id,
+          points: gwStats.net, bench_points: gwStats.points_on_bench,
+          transfers_cost: gwStats.event_transfers_cost, classic_total_points: gwStats.total_points
+        });
+      });
 
       // Before the first kickoff every live total is 0, which would record a phantom 0-0 draw
       // for every H2H tie. Write nothing for the live week until some points exist.
@@ -258,8 +283,23 @@ export async function GET(request: Request) {
         h2hToInsert.push({ season_id: SEASON_ID, gw_number: currentProcessingGw, manager_fpl_id: match.m2, opponent_fpl_id: match.m1, manager_score: p2, opponent_score: p1, result: res2 });
       }
 
-      if (hasLiveData && scoresToInsert.length > 0) await supabase.from('manager_gw_scores').upsert(scoresToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
-      if (hasLiveData && h2hToInsert.length > 0) await supabase.from('h2h_fixtures').upsert(h2hToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
+      let saveFailed = false;
+      if (hasLiveData && scoresToInsert.length > 0) {
+        const { error } = await supabase.from('manager_gw_scores').upsert(scoresToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
+        if (error) { saveFailed = true; console.error(`GW${currentProcessingGw} scores not saved:`, error.message); }
+      }
+      if (hasLiveData && h2hToInsert.length > 0) {
+        const { error } = await supabase.from('h2h_fixtures').upsert(h2hToInsert, { onConflict: 'season_id,gw_number,manager_fpl_id' });
+        if (error) { saveFailed = true; console.error(`GW${currentProcessingGw} H2H not saved:`, error.message); }
+      }
+
+      // A finished week whose final figures are not all in stays unfinished, and the cups wait for
+      // it: the next run fetches it again. The cups below only ever see complete weeks.
+      const complete = allDiscoveredManagers.length > 0 && scoresToInsert.length === allDiscoveredManagers.length && fetchFailures === 0 && !saveFailed;
+      if (isGwFinished && !complete) {
+        console.warn(`⚠️ GW${currentProcessingGw} is finished on FPL but only ${scoresToInsert.length}/${allDiscoveredManagers.length} final scores came in (${fetchFailures} league fetches failed${saveFailed ? ', save failed' : ''}); retrying next run.`);
+        continue;
+      }
 
       // =========================================
       // 4. CUSTOM LEAGUES & CUPS ENGINE
@@ -300,6 +340,14 @@ export async function GET(request: Request) {
           const stage1Standings = await getStageStandings('Stage 1', clEntrants);
           const s2Standings = await getStageStandings('Stage 2', stage1Standings.slice(0, -1).map(s => s.id));
           activeManagers = s2Standings.slice(0, 2).map(s => s.id); schedStartGw = clConfig.final_start_gw; maxRounds = 1;
+        }
+
+        // A stage's schedule is created once. Its first week is processed on every run while live,
+        // and creating it each time filled the table with copies of every tie.
+        if (stageToSchedule) {
+          const { count } = await supabase.from('tournament_fixtures').select('id', { count: 'exact', head: true })
+            .eq('season_id', SEASON_ID).eq('tournament_type', 'CHAMPIONS_LEAGUE').eq('stage', stageToSchedule);
+          if (count) stageToSchedule = null;
         }
 
         if (stageToSchedule && activeManagers.length > 0) {
@@ -346,7 +394,9 @@ export async function GET(request: Request) {
           const { data: currentEntrants } = await supabase.from('onion_baggers_entrants').select('*').eq('season_id', SEASON_ID);
           const qualifiedCount = currentEntrants?.length || 0;
 
-          if (qualifiedCount < 16) {
+          // Once per week: a week can now be processed again if its final scores came in late.
+          const alreadyQualified = currentEntrants?.some(e => e.qualified_in_gw === currentProcessingGw);
+          if (qualifiedCount < 16 && !alreadyQualified) {
             const qualifiedIds = currentEntrants?.map(e => Number(e.manager_fpl_id)) || [];
             
             const { data: historicalScores } = await supabase
@@ -385,7 +435,9 @@ export async function GET(request: Request) {
 
         if (currentProcessingGw === obConfig.knockout_start_gw && isGwFinished) {
           const { data: entrants } = await supabase.from('onion_baggers_entrants').select('*').eq('season_id', SEASON_ID);
-          if (entrants && entrants.length === 16) {
+          const { count: r16Count } = await supabase.from('tournament_fixtures').select('id', { count: 'exact', head: true })
+            .eq('season_id', SEASON_ID).eq('tournament_type', 'ONION_BAGGERS_CUP').eq('stage', 'Round of 16');
+          if (entrants && entrants.length === 16 && !r16Count) {
             const seedMap: Record<number, number> = {};
             entrants.forEach(e => seedMap[e.seed] = Number(e.manager_fpl_id));
             
@@ -427,7 +479,11 @@ export async function GET(request: Request) {
               else if (currentStage === 'Quarter-Final') nextStage = 'Semi-Final';
               else if (currentStage === 'Semi-Final') nextStage = 'Final';
 
-              if (nextStage) {
+              const { count: nextCount } = nextStage
+                ? await supabase.from('tournament_fixtures').select('id', { count: 'exact', head: true })
+                  .eq('season_id', SEASON_ID).eq('tournament_type', 'ONION_BAGGERS_CUP').eq('stage', nextStage)
+                : { count: 0 };
+              if (nextStage && !nextCount) {
                 const nextRoundFixtures = [];
                 for (let i = 0; i < resolvedFixtures.length; i += 2) {
                   nextRoundFixtures.push({
@@ -443,6 +499,12 @@ export async function GET(request: Request) {
             }
           }
         }
+      }
+
+      if (isGwFinished) {
+        await supabase.from('gameweeks').upsert({
+          season_id: SEASON_ID, gw_number: currentProcessingGw, is_finished: true, data_checked: currentGwData.data_checked
+        });
       }
     } // End of Gameweek Loop
 

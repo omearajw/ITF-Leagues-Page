@@ -14,7 +14,7 @@ export type SubCandidate = {
 export type AutoSubProjection = {
   out: number[];          // starters certain to be replaced
   in: number[];           // bench players certain to come on, paired with `out`
-  undecided: number[];    // starters who will be replaced, but by whom depends on matches still to play
+  unreplaced: number[];   // starters who did not play and are not certain to be replaced: no sub is counted for them
   benchDue: number;       // points the certain incoming players bring
   captainToVice: boolean; // captain finished on zero minutes, vice carries the armband
   captainExtra: number;   // extra points from the vice's doubled score
@@ -41,7 +41,7 @@ export function projectAutoSubs(picks: SubCandidate[], activeChip: string | null
   const captainToVice = !benchBoost && !!captain && wontPlay(captain) && !!vice && !wontPlay(vice);
   const captainExtra = captainToVice && vice ? vice.points : 0;
 
-  if (benchBoost) return { out: [], in: [], undecided: [], benchDue: 0, captainToVice, captainExtra, benchBoost };
+  if (benchBoost) return { out: [], in: [], unreplaced: [], benchDue: 0, captainToVice, captainExtra, benchBoost };
 
   const xi = new Map(starters.map(p => [p.element, p.role]));
   const replaced = new Set<number>();
@@ -68,6 +68,6 @@ export function projectAutoSubs(picks: SubCandidate[], activeChip: string | null
     xi.delete(target.element); xi.set(sub.element, sub.role);
   }
 
-  const undecided = starters.filter(st => wontPlay(st) && !replaced.has(st.element)).map(st => st.element);
-  return { out, in: inn, undecided, benchDue, captainToVice, captainExtra, benchBoost };
+  const unreplaced = starters.filter(st => wontPlay(st) && !replaced.has(st.element)).map(st => st.element);
+  return { out, in: inn, unreplaced, benchDue, captainToVice, captainExtra, benchBoost };
 }

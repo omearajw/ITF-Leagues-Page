@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { SITE_DATA_TAG } from '@/lib/site-cache';
+import { fplGet, FPL_FALLBACK_MS } from '@/lib/fpl-fetch';
 import { createPublicClient } from '@/utils/supabase/public';
 
 export const SEASON_ID = '2026-27';
@@ -109,18 +110,13 @@ type FplSnapshot = {
   fixtures: Record<number, FplFixture[]>;
 };
 
-const FPL_API = 'https://fantasy.premierleague.com/api';
 const SNAPSHOT_TTL_MS = 60_000;
 
 // Module-level memo rather than Next's fetch cache: it survives warm invocations,
 // needs no cacheComponents-specific directives, and a failed fetch is never stored.
 let snapshotMemo: { at: number; value: FplSnapshot } | null = null;
 
-async function fplFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${FPL_API}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
-  if (!res.ok) throw new Error(`FPL ${path} responded ${res.status}`);
-  return res.json();
-}
+const fplFetch = fplGet;
 
 async function fetchFplSnapshot(): Promise<FplSnapshot | null> {
   if (snapshotMemo && Date.now() - snapshotMemo.at < SNAPSHOT_TTL_MS) return snapshotMemo.value;
@@ -151,6 +147,8 @@ async function fetchFplSnapshot(): Promise<FplSnapshot | null> {
     return value;
   } catch (err) {
     console.error('FPL status fetch failed:', err instanceof Error ? err.message : err);
+    // A recent copy beats "FPL unavailable" while FPL is overloaded.
+    if (snapshotMemo && Date.now() - snapshotMemo.at < FPL_FALLBACK_MS) return snapshotMemo.value;
     return null;
   }
 }

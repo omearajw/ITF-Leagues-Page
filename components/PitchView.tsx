@@ -22,7 +22,7 @@ export type PitchPlayer = {
   minutes?: number;
   projectedOut?: boolean;
   projectedIn?: boolean;
-  projectedUndecided?: boolean;
+  projectedUnreplaced?: boolean;
   projectedCaptain?: boolean;
   benchBoost?: boolean;
 };
@@ -66,10 +66,10 @@ function PlayerCard({ player, live, onGrass }: { player: PitchPlayer; live: bool
   const yetToPlay = player.fixtureState === 'pending' || player.fixtureState === 'none';
   const playing = player.fixtureState === 'playing';
   const scored = player.points === null || yetToPlay ? null : player.points * (player.multiplier || 1);
-  const faded = player.subbedOut || player.projectedOut || player.projectedUndecided;
+  const faded = player.subbedOut || player.projectedOut || player.projectedUnreplaced;
   // Fills deep enough for white letters to pass contrast.
   const leftTag = player.projectedOut ? { text: '✕', cls: 'bg-loss text-white', title: 'Did not play: due to be auto-subbed out' }
-    : player.projectedUndecided ? { text: '✕ ?', cls: 'bg-loss text-white', title: 'Did not play: which substitute comes on depends on matches still to be played' }
+    : player.projectedUnreplaced ? { text: '✕', cls: 'bg-loss text-white', title: 'Did not play' }
     : player.projectedIn ? { text: 'DUE ON', cls: 'bg-win text-white', title: 'Due to come on as an auto-sub' }
     : player.subbedIn ? { text: 'IN', cls: 'bg-win text-white', title: 'Auto-subbed in' }
     : player.subbedOut ? { text: 'OUT', cls: 'bg-loss text-white', title: 'Auto-subbed out' }
