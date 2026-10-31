@@ -50,7 +50,7 @@ async function ChampionsLeagueContent() {
   const { data: entrantsData } = await supabase.from('champions_league_entrants').select(`manager_fpl_id, season_managers!inner (team_name, managers!inner (real_name))`).eq('season_id', SEASON_ID);
   
   const { data: fixtureRows } = await supabase.from('tournament_fixtures').select('*').eq('season_id', SEASON_ID).eq('tournament_type', 'CHAMPIONS_LEAGUE');
-  const fixtures = uniqueTies(fixtureRows as any[]).sort((a, b) => a.gw_number - b.gw_number || a.id - b.id);
+  const fixtures = uniqueTies(fixtureRows as any[]).sort((a, b) => a.gw_number - b.gw_number || a.manager_1_id - b.manager_1_id);
   const events = await getFplEvents();
 
   const entrants: Record<number, any> = {};
