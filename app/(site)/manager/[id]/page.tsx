@@ -222,8 +222,8 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   const tieSettled = selectedGw <= gw.syncedThroughGw;
   const matchScore = mineLive && theirsLive ? [mineLive.score, theirsLive.score] : tie ? [Number(tie.manager_score), Number(tie.opponent_score)] : null;
   const tieMargin = matchScore ? matchScore[0] - matchScore[1] : 0;
-  // This week's other fixtures: any Champions League or Onion Baggers Cup tie, alongside the
-  // league match. A live week's scores come from the same live figures as everything else.
+  // This week's cup ties (Champions League, Onion Baggers Cup), shown as tiles under the league
+  // match. A live week's scores come from the same live figures as everything else.
   const { data: cupRows } = await supabase.from('tournament_fixtures').select('*')
     .eq('season_id', SEASON_ID).eq('gw_number', selectedGw).or(`manager_1_id.eq.${managerId},manager_2_id.eq.${managerId}`);
   const cupTies = uniqueTies(cupRows as any[]);
@@ -235,10 +235,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   const outcome = (mine: number, theirs: number, settled: boolean) => settled
     ? (mine > theirs ? 'Beat' : mine < theirs ? 'Lost to' : 'Drew with')
     : (mine > theirs ? 'Beating' : mine < theirs ? 'Losing to' : 'Drawing with');
-  const weekFixtures: { competition: string; score: [number, number] | null; opponentId: number | null; opponentName: string; outcome: string | null }[] = [];
-  if (tie && matchScore) {
-    weekFixtures.push({ competition: 'League', score: [matchScore[0], matchScore[1]], opponentId, opponentName: opponentName || 'opponent', outcome: outcome(matchScore[0], matchScore[1], selectedGw <= gw.syncedThroughGw) });
-  }
+  const cupFixtures: { competition: string; score: [number, number] | null; opponentId: number | null; opponentName: string; outcome: string | null }[] = [];
   for (const t of cupTies) {
     const mineFirst = t.manager_1_id === managerId;
     const themId = (mineFirst ? t.manager_2_id : t.manager_1_id) as number;
@@ -248,8 +245,8 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
     const mine = played ? (isLiveWeek && mineLive ? mineLive.score : storedMine) : null;
     const theirs = played ? (isLiveWeek && projection ? liveWeekScore(dueFor(projection, selectedGw, themId), storedTheirs) : storedTheirs) : null;
     const name = (cupNames || []).find((n: any) => Number(n.manager_fpl_id) === themId)?.team_name;
-    weekFixtures.push({
-      competition: `${(t as any).tournament_type === 'ONION_BAGGERS_CUP' ? 'Onion Baggers Cup' : 'Champions League'} · ${t.stage}`,
+    cupFixtures.push({
+      competition: (t as any).tournament_type === 'ONION_BAGGERS_CUP' ? `OB Cup · ${t.stage}` : 'Champions League',
       score: mine !== null && theirs !== null ? [mine, theirs] : null,
       opponentId: themId, opponentName: name ? getTeamNameDisplayText(name) : 'opponent',
       outcome: mine !== null && theirs !== null ? outcome(mine, theirs, selectedGw <= gw.syncedThroughGw) : null,
@@ -361,7 +358,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
       ) : (
         <>
           {/* The week at a glance, as one scoreboard row */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-t-2 border-ink/80 mb-10 -mx-3">
+          <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-t-2 border-ink/80 -mx-3 ${cupFixtures.length ? '' : 'mb-10'}`}>
             {[
               // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
               { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
@@ -382,24 +379,21 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
             })}
           </div>
 
-          {weekFixtures.length > 0 && (
-            <section className="mb-10">
-              <h2 className="label mb-2">GW{selectedGw} fixtures</h2>
-              <ul className="divide-y divide-line border-y border-line">
-                {weekFixtures.map(f => (
-                  <li key={f.competition} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)] sm:grid-cols-[13rem_auto_minmax(0,1fr)] items-center gap-x-3 py-2.5 text-sm">
-                    <span className="text-dim min-w-0">{f.competition}</span>
-                    <span className={`plate w-[5.5rem] h-7 font-display text-xl leading-none ${isLiveWeek ? 'text-live-2' : 'text-ink'}`}>
-                      {f.score ? <>{f.score[0]}<span className="text-faint mx-1">-</span>{f.score[1]}</> : <span className="label">v</span>}
-                    </span>
-                    <span className="min-w-0">
-                      {f.outcome && <span className="text-dim">{f.outcome} </span>}
-                      {f.opponentId ? <Link href={`/manager/${f.opponentId}`} className="font-semibold text-ink hover:underline">{f.opponentName}</Link> : f.opponentName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+          {/* Cup ties that week, as tiles like the league match, lined up under it on wide screens. */}
+          {cupFixtures.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-10 -mx-3">
+              {cupFixtures.map((f, i) => (
+                // Under the league match tile, which is the last in the row above at every width (2, 3 or 6 across).
+                <div key={f.competition} className={`py-3 px-3 min-w-0 break-words border-b border-line ${i === 0 ? (cupFixtures.length === 1 ? 'col-start-2 sm:col-start-3 lg:col-start-6' : 'sm:col-start-2 lg:col-start-5') : ''}`}>
+                  <div className="label">{f.competition}</div>
+                  <div className="font-display text-3xl leading-none mt-1.5 text-ink">{f.score ? `${f.score[0]} - ${f.score[1]}` : 'v'}</div>
+                  <div className="text-xs mt-1 text-dim">
+                    {f.outcome ? `${f.outcome} ` : ''}
+                    {f.opponentId ? <Link href={`/manager/${f.opponentId}`} className="hover:text-ink hover:underline">{f.opponentName}</Link> : f.opponentName}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
           {players ? (
