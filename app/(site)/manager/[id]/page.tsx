@@ -358,7 +358,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
       ) : (
         <>
           {/* The week at a glance, as one scoreboard row */}
-          <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-t-2 border-ink/80 -mx-3 ${cupFixtures.length ? '' : 'mb-10'}`}>
+          <div className={`grid grid-cols-2 sm:grid-cols-3 border-t-2 border-ink/80 -mx-3 ${cupFixtures.length ? 'lg:grid-cols-5' : 'lg:grid-cols-6 mb-10'}`}>
             {[
               // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
               { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
@@ -366,7 +366,8 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
               { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
               { label: 'On bench', value: benchPoints, sub: 'points' },
               { label: 'Chip', value: picks.active_chip ? (chipLabel[picks.active_chip] || picks.active_chip) : 'None', sub: picks.active_chip ? 'played' : '', played: !!picks.active_chip },
-              { label: 'League match', value: tie && matchScore ? `${matchScore[0]} - ${matchScore[1]}` : '–', sub: tie ? `${tieOutcome} ${opponentName || 'opponent'}` : 'no match recorded' },
+              // With a cup tie as well, every fixture moves to its own row below.
+              ...(cupFixtures.length ? [] : [{ label: 'League match', value: tie && matchScore ? `${matchScore[0]} - ${matchScore[1]}` : '–', sub: tie ? `${tieOutcome} ${opponentName || 'opponent'}` : 'no match recorded' }]),
             ].map(tile => {
               const filled = 'played' in tile && tile.played;
               return (
@@ -379,12 +380,15 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
             })}
           </div>
 
-          {/* Cup ties that week, as tiles like the league match, lined up under it on wide screens. */}
+          {/* More than one fixture that week: all of them on a row of their own, league first,
+              sharing the width evenly (two to a row on phones). */}
           {cupFixtures.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-10 -mx-3">
-              {cupFixtures.map((f, i) => (
-                // Under the league match tile, which is the last in the row above at every width (2, 3 or 6 across).
-                <div key={f.competition} className={`py-3 px-3 min-w-0 break-words border-b border-line ${i === 0 ? (cupFixtures.length === 1 ? 'col-start-2 sm:col-start-3 lg:col-start-6' : 'sm:col-start-2 lg:col-start-5') : ''}`}>
+            <div className="flex flex-wrap mb-10 -mx-3">
+              {[
+                ...(tie && matchScore ? [{ competition: 'League match', score: matchScore as [number, number], opponentId, opponentName: opponentName || 'opponent', outcome: tieOutcome }] : []),
+                ...cupFixtures,
+              ].map(f => (
+                <div key={f.competition} className="basis-1/2 sm:basis-0 sm:flex-1 py-3 px-3 min-w-0 break-words border-b border-line">
                   <div className="label">{f.competition}</div>
                   <div className="font-display text-3xl leading-none mt-1.5 text-ink">{f.score ? `${f.score[0]} - ${f.score[1]}` : 'v'}</div>
                   <div className="text-xs mt-1 text-dim">
