@@ -181,7 +181,7 @@ export function FlipButton({ flipped, onToggle, label }: { flipped: boolean; onT
 
 export type PitchOpponent = { name: string; week: number; starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number };
 
-export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, opponent, title = 'Line-up' }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; opponent?: PitchOpponent | null; title?: React.ReactNode }) {
+export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, note, opponent, title = 'Line-up' }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; note?: string; opponent?: PitchOpponent | null; title?: React.ReactNode }) {
   const [flipped, setFlipped] = useState(false);
   const mineIds = new Set([...starters, ...bench].map(p => p.element));
   const theirIds = new Set(opponent ? [...opponent.starters, ...opponent.bench].map(p => p.element) : []);
@@ -211,6 +211,7 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
         {flipped && opponent ? <>{opponent.name}<span className="text-dim"> · GW{opponent.week} opponent</span></> : title}
         {live && <span className="ml-3 align-middle font-sans"><LiveChip /></span>}
         {pointsUnavailable && <span className="ml-3 align-middle font-sans normal-case text-sm text-dim">player points unavailable</span>}
+        {note && <span className="ml-3 align-middle font-sans normal-case text-sm text-live-2">{note}</span>}
       </SectionHeading>
       {back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front}
     </section>

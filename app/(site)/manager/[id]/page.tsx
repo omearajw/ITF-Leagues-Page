@@ -9,8 +9,9 @@ import PageHeader from '@/components/PageHeader';
 import { GameweekChip } from '@/components/GameweekBadge';
 import PitchView, { type PitchPlayer, type PitchOpponent } from '@/components/PitchView';
 import { ManagerSkeleton, Bone } from '@/components/Skeletons';
-import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk } from '@/lib/gameweek-status';
-import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, getGwFixtureStatus, type ManagerPicks, type LiveStats, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
+import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk, formatUkTime } from '@/lib/gameweek-status';
+import { fplAsOf } from '@/lib/fpl-mirror';
+import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, getGwFixtureStatus, fplKeys, type ManagerPicks, type LiveStats, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
 import { projectAutoSubs, type FixtureState, type AutoSubProjection } from '@/lib/autosubs';
 import { getLiveWeekPicks } from '@/lib/projection';
 import { getMyTeamId } from '@/lib/my-team';
@@ -191,6 +192,9 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   const gross = mineLive?.gross ?? picks?.entry_history.points ?? null;
   const net = mineLive?.net ?? scoreRow?.points ?? (gross !== null ? gross - cost : null);
   const benchPoints = mineLive?.bench ?? picks?.entry_history.points_on_bench ?? 0;
+  // When FPL has stopped answering, the live points are the last copy we have; say how old.
+  const liveAsOf = isLiveWeek && live ? fplAsOf(fplKeys.live(selectedGw, false)) : null;
+  const pointsNote = liveAsOf && Date.now() - liveAsOf > 4 * 60_000 ? `FPL not responding · points as of ${formatUkTime(new Date(liveAsOf).toISOString())}` : undefined;
   // Season points as the Open counts them: the stored total with this week's stored score swapped
   // for the live one. FPL's own running total (entry) is refreshed less often and can disagree.
   const seasonPoints = mineLive && scoreRow ? scoreRow.classic_total_points - scoreRow.points + mineLive.score : entry?.summary_overall_points;
@@ -340,7 +344,14 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
             })}
           </div>
 
-          <PitchView starters={starters} bench={bench} benchPoints={benchPoints} live={isLiveWeek} pointsUnavailable={live === null} opponent={pitchOpponent} />
+          {players ? (
+            <PitchView starters={starters} bench={bench} benchPoints={benchPoints} live={isLiveWeek} pointsUnavailable={live === null} note={pointsNote} opponent={pitchOpponent} />
+          ) : (
+            <section className="mb-10">
+              <SectionHeading>Line-up</SectionHeading>
+              <div className="text-live-2 border-y border-live/30 py-4 text-sm">FPL isn&apos;t responding right now, so the line-up can&apos;t be shown. Try again in a minute.</div>
+            </section>
+          )}
 
           <section className="mb-10">
             <SectionHeading className="mb-1">Transfers · GW{selectedGw}</SectionHeading>

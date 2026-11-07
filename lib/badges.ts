@@ -1,13 +1,14 @@
-import { cacheLife } from 'next/cache';
 import { createPublicClient } from '@/utils/supabase/public';
 import { SEASON_ID } from '@/lib/gameweek-status';
 import { getManagerEntry } from '@/lib/fpl-manager';
+import { mirrored } from '@/lib/fpl-mirror';
 
-// FPL's Adobe Express team badges, keyed by manager id. Badges change rarely, so the league-wide
-// map is kept in the shared cache for six hours: one lookup of every team for the whole site,
-// rather than one per server every hour.
-export async function getLeagueBadges(): Promise<Record<number, string>> {
-  'use cache: remote';
+export const BADGES_KEY = 'badges';
+
+// FPL's Adobe Express team badges, keyed by manager id. Checking that each badge image exists
+// means a request per team to FPL's servers, so the sync job (/api/fpl-sync) does it every few
+// hours and pages read the result from the FPL mirror.
+export async function loadLeagueBadges(): Promise<Record<number, string>> {
   const supabase = createPublicClient();
   const { data } = await supabase.from('season_managers').select('manager_fpl_id').eq('season_id', SEASON_ID);
   const ids = (data || []).map((m: any) => Number(m.manager_fpl_id));
@@ -22,8 +23,9 @@ export async function getLeagueBadges(): Promise<Record<number, string>> {
   }));
   const value: Record<number, string> = {};
   checks.forEach(c => { if (c) value[c[0]] = c[1]; });
-  // A run where FPL failed for most teams is kept briefly, so the badges come back soon after.
-  if (entries.filter(Boolean).length < ids.length / 2) cacheLife('brief');
-  else cacheLife({ stale: 300, revalidate: 6 * 3600, expire: 24 * 3600 });
   return value;
+}
+
+export async function getLeagueBadges(): Promise<Record<number, string>> {
+  return (await mirrored(BADGES_KEY, loadLeagueBadges)) || {};
 }

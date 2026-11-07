@@ -1,7 +1,8 @@
 import { cache } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { SITE_DATA_TAG } from '@/lib/site-cache';
-import { fplGet, FPL_FALLBACK_MS } from '@/lib/fpl-fetch';
+import { fplGet } from '@/lib/fpl-fetch';
+import { mirrored, fplAsOf } from '@/lib/fpl-mirror';
 import { createPublicClient } from '@/utils/supabase/public';
 
 export const SEASON_ID = '2026-27';
@@ -62,6 +63,8 @@ export type GameweekStatus = {
   fplDataChecked: boolean;
   nextGw: { id: number; name: string; deadline: string } | null;
   timeline: GameweekTimelineAnchors;
+  // When the FPL data behind this was fetched; old when FPL has stopped answering.
+  asOf: string | null;
 };
 
 // Estimated boundaries of one gameweek cycle. FPL publishes deadlines and kickoffs;
@@ -110,48 +113,37 @@ type FplSnapshot = {
   fixtures: Record<number, FplFixture[]>;
 };
 
-const SNAPSHOT_TTL_MS = 60_000;
-
-// Module-level memo rather than Next's fetch cache: it survives warm invocations,
-// needs no cacheComponents-specific directives, and a failed fetch is never stored.
-let snapshotMemo: { at: number; value: FplSnapshot } | null = null;
-
 const fplFetch = fplGet;
 
-async function fetchFplSnapshot(): Promise<FplSnapshot | null> {
-  if (snapshotMemo && Date.now() - snapshotMemo.at < SNAPSHOT_TTL_MS) return snapshotMemo.value;
-  try {
-    const bootstrap = await fplFetch<{ events: any[] }>('/bootstrap-static/');
-    const events: FplEvent[] = bootstrap.events.map((e: any) => ({
-      id: e.id, name: e.name, deadline_time: e.deadline_time,
-      is_previous: e.is_previous, is_current: e.is_current, is_next: e.is_next, finished: e.finished, data_checked: e.data_checked,
-      average_entry_score: e.average_entry_score ?? 0,
-    }));
+// FPL's gameweek list and the fixtures around the current week. Read from the FPL mirror like
+// the rest of the site's FPL data (lib/fpl-mirror.ts); the sync job runs this loader to refresh it.
+export async function loadFplSnapshot(): Promise<FplSnapshot> {
+  const bootstrap = await fplFetch<{ events: any[] }>('/bootstrap-static/');
+  const events: FplEvent[] = bootstrap.events.map((e: any) => ({
+    id: e.id, name: e.name, deadline_time: e.deadline_time,
+    is_previous: e.is_previous, is_current: e.is_current, is_next: e.is_next, finished: e.finished, data_checked: e.data_checked,
+    average_entry_score: e.average_entry_score ?? 0,
+  }));
 
-    const wanted = events.filter(e => e.is_previous || e.is_current || e.is_next).map(e => e.id);
-    if (wanted.length === 0) {
-      const lastFinished = [...events].reverse().find(e => e.finished);
-      if (lastFinished) wanted.push(lastFinished.id);
-    }
-
-    const fixtureLists = await Promise.all(wanted.map(id => fplFetch<any[]>(`/fixtures/?event=${id}`)));
-    const fixtures: Record<number, FplFixture[]> = {};
-    wanted.forEach((id, i) => {
-      fixtures[id] = fixtureLists[i].map((f: any) => ({
-        kickoff_time: f.kickoff_time, started: !!f.started, finished: !!f.finished, finished_provisional: !!f.finished_provisional,
-      }));
-    });
-
-    const value = { events, fixtures };
-    snapshotMemo = { at: Date.now(), value };
-    return value;
-  } catch (err) {
-    console.error('FPL status fetch failed:', err instanceof Error ? err.message : err);
-    // A recent copy beats "FPL unavailable" while FPL is overloaded.
-    if (snapshotMemo && Date.now() - snapshotMemo.at < FPL_FALLBACK_MS) return snapshotMemo.value;
-    return null;
+  const wanted = events.filter(e => e.is_previous || e.is_current || e.is_next).map(e => e.id);
+  if (wanted.length === 0) {
+    const lastFinished = [...events].reverse().find(e => e.finished);
+    if (lastFinished) wanted.push(lastFinished.id);
   }
+
+  const fixtureLists = await Promise.all(wanted.map(id => fplFetch<any[]>(`/fixtures/?event=${id}`)));
+  const fixtures: Record<number, FplFixture[]> = {};
+  wanted.forEach((id, i) => {
+    fixtures[id] = fixtureLists[i].map((f: any) => ({
+      kickoff_time: f.kickoff_time, started: !!f.started, finished: !!f.finished, finished_provisional: !!f.finished_provisional,
+    }));
+  });
+
+  return { events, fixtures };
 }
+
+export const SNAPSHOT_KEY = 'snapshot';
+const fetchFplSnapshot = () => mirrored<FplSnapshot>(SNAPSHOT_KEY, loadFplSnapshot);
 
 // `average` is FPL's average score across every entry; 0 until the week has been played.
 export type FplEventLite = { id: number; name: string; deadline_time: string; finished: boolean; average: number };
@@ -199,6 +191,7 @@ export const getGameweekStatus = cache(async (): Promise<GameweekStatus> => {
       fixturesTotal: 0, fixturesUnscheduled: 0, fixturesStarted: 0, fixturesFinished: 0,
       fplFinished: false, fplDataChecked: false, nextGw: null,
       timeline: { upcomingStart: null, deadline: null, finalWhistle: null, confirmed: null, synced: null },
+      asOf: null,
     };
   }
 
@@ -268,6 +261,7 @@ export const getGameweekStatus = cache(async (): Promise<GameweekStatus> => {
     fplDataChecked: focus?.data_checked ?? false,
     nextGw: after ? { id: after.id, name: after.name, deadline: after.deadline_time } : null,
     timeline,
+    asOf: new Date(fplAsOf(SNAPSHOT_KEY) ?? Date.now()).toISOString(),
   };
 });
 
@@ -283,6 +277,12 @@ export function formatUk(iso: string | null | undefined, withTime = true): strin
   return withTime ? `${date}, ${get('hour')}:${get('minute')}` : date;
 }
 
+// "10:31", UK time — for "as of" notes on the same day.
+export function formatUkTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+}
+
 // "Sat 15:00" — for ranges where the full date would be repeated.
 export function formatUkShort(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -295,7 +295,16 @@ export function formatUkShort(iso: string | null | undefined): string {
 
 export const SYNC_CADENCE = 'updates every 15 min';
 
+// Older than this, the status says FPL is not responding rather than looking current.
+const STALE_STATUS_MS = 4 * 60_000;
+
 export function describePhase(gw: GameweekStatus): string {
+  const text = describeStage(gw);
+  const stale = gw.asOf && Date.now() - Date.parse(gw.asOf) > STALE_STATUS_MS;
+  return stale ? `${text} · FPL not responding, as of ${formatUkTime(gw.asOf)}` : text;
+}
+
+function describeStage(gw: GameweekStatus): string {
   switch (gw.phase) {
     case 'upcoming': {
       const prefix = gw.syncedThroughGw > 0 && gw.syncedThroughGw < gw.activeGw ? `GW${gw.syncedThroughGw} Complete · ` : '';
