@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LiveChip } from '@/components/GameweekBadge';
 import SectionHeading from '@/components/SectionHeading';
+import type { BreakdownRow } from '@/lib/score-breakdown';
 
 export type PitchPlayer = {
   element: number;
@@ -25,6 +26,8 @@ export type PitchPlayer = {
   projectedUnreplaced?: boolean;
   projectedCaptain?: boolean;
   benchBoost?: boolean;
+  // How the points were made up, one list per match, for the tap-to-see popup.
+  breakdown?: BreakdownRow[][];
 };
 
 const POSITION_ORDER: PitchPlayer['position'][] = ['GKP', 'DEF', 'MID', 'FWD'];
@@ -183,6 +186,7 @@ export type PitchOpponent = { name: string; week: number; starters: PitchPlayer[
 
 export default function PitchView({ starters, bench, benchPoints, live, pointsUnavailable, note, opponent, title = 'Line-up' }: { starters: PitchPlayer[]; bench: PitchPlayer[]; benchPoints: number; live: boolean; pointsUnavailable: boolean; note?: string; opponent?: PitchOpponent | null; title?: React.ReactNode }) {
   const [flipped, setFlipped] = useState(false);
+  const [selected, setSelected] = useState<PitchPlayer | null>(null);
   const mineIds = new Set([...starters, ...bench].map(p => p.element));
   const theirIds = new Set(opponent ? [...opponent.starters, ...opponent.bench].map(p => p.element) : []);
 
@@ -194,7 +198,14 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
       benchLabel={label}
       renderPlayer={(p, onBench) => (
         <div className={`w-full ${sharedWith.has(p.element) ? 'opacity-90' : ''}`}>
-          <PlayerCard player={onBench ? { ...p, multiplier: 1 } : p} live={live} onGrass={!onBench} />
+          {/* Tapping a player with a score opens how it was made up. */}
+          {p.points !== null ? (
+            <button type="button" onClick={() => setSelected(onBench ? { ...p, multiplier: 1 } : p)} className="w-full rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2" aria-label={`${p.name}: how the points were scored`}>
+              <PlayerCard player={onBench ? { ...p, multiplier: 1 } : p} live={live} onGrass={!onBench} />
+            </button>
+          ) : (
+            <PlayerCard player={onBench ? { ...p, multiplier: 1 } : p} live={live} onGrass={!onBench} />
+          )}
           {opponent && sharedWith.has(p.element) && <div className="mx-auto mt-1 w-fit rounded-sm bg-black/55 px-1.5 text-[11px] font-bold uppercase tracking-wider text-white">both own</div>}
         </div>
       )}
@@ -214,6 +225,65 @@ export default function PitchView({ starters, bench, benchPoints, live, pointsUn
         {note && <span className="ml-3 align-middle font-sans normal-case text-sm text-live-2">{note}</span>}
       </SectionHeading>
       {back ? <FlipPitch front={front} back={back} flipped={flipped} /> : front}
+      {selected && <ScoreDialog player={selected} onClose={() => setSelected(null)} />}
     </section>
+  );
+}
+
+// How a player's points were made up, like FPL's own popup: one line per thing that scored, then
+// the total, doubled (or trebled) for a captain.
+function ScoreDialog({ player, onClose }: { player: PitchPlayer; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  const total = (player.points ?? 0) * (player.multiplier || 1);
+  const matches = player.breakdown ?? [];
+  const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  return (
+    <dialog ref={ref} onClose={onClose} onClick={e => { if (e.target === ref.current) ref.current?.close(); }}
+      className="w-[min(24rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-0 text-ink backdrop:bg-black/70">
+      <div className="p-5">
+        <div className="flex items-start gap-3">
+          <Visual player={player} />
+          <div className="min-w-0 flex-1 pt-1">
+            <div className="font-display text-2xl leading-none tracking-[0.01em] truncate">{player.name}</div>
+            <div className="mt-1 text-sm text-dim">{player.team} · {player.position}</div>
+          </div>
+          <div className="text-right">
+            <div className="font-display text-4xl leading-none">{total}</div>
+            <div className="label mt-1">pts</div>
+          </div>
+        </div>
+
+        {matches.length === 0 ? (
+          <p className="mt-5 text-sm text-dim">{player.fixtureState === 'pending' || player.fixtureState === 'none' ? 'Hasn\u2019t played yet.' : 'No breakdown from FPL yet.'}</p>
+        ) : matches.map((rows, i) => (
+          <div key={i} className="mt-5">
+            {matches.length > 1 && <div className="label mb-1">Match {i + 1}</div>}
+            <table className="w-full text-sm">
+              <thead className="sr-only"><tr><th>Stat</th><th>Count</th><th>Points</th></tr></thead>
+              <tbody className="divide-y divide-line">
+                {rows.map(r => (
+                  <tr key={r.label}>
+                    <td className="py-1.5 text-ink-2">{r.label}</td>
+                    <td className="py-1.5 px-3 text-right text-dim tabular">{r.value}</td>
+                    <td className={`py-1.5 text-right font-semibold tabular ${r.points > 0 ? 'text-win-2' : r.points < 0 ? 'text-loss-2' : 'text-dim'}`}>{signed(r.points)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
+        {matches.length > 0 && (
+          <div className="mt-3 pt-3 border-t-2 border-ink/80 flex justify-between text-sm font-semibold">
+            <span>Total{player.multiplier > 1 ? ` · ${player.multiplier === 3 ? 'triple captain' : 'captain'} ×${player.multiplier}` : ''}</span>
+            <span className="tabular">{player.multiplier > 1 ? `${player.points} × ${player.multiplier} = ${total}` : total}</span>
+          </div>
+        )}
+      </div>
+      <form method="dialog" className="border-t border-line">
+        <button className="w-full py-3 text-sm font-semibold text-dim hover:text-ink">Close</button>
+      </form>
+    </dialog>
   );
 }

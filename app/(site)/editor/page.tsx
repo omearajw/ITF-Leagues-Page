@@ -1,24 +1,17 @@
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
-import { revalidatePath, updateTag } from 'next/cache';
-import { SITE_DATA_TAG } from '@/lib/site-cache';
-import SaveToast from '@/components/SaveToast';
-import WriteUpEditor from '@/components/WriteUpEditor';
-import { toPlainText } from '@/lib/richtext';
+import EditorBoard, { type EditorItem } from '@/components/EditorBoard';
 import { Suspense } from 'react';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { EditorSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
 import { getGameweekStatus } from '@/lib/gameweek-status';
 
-export default async function EditorPage({ searchParams }: { searchParams: Promise<{ saved?: string; gw?: string }> }) {
-  const { saved, gw } = await searchParams;
+export default async function EditorPage({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
+  const { gw } = await searchParams;
   const requestedGw = gw ? parseInt(gw, 10) : NaN;
 
   return (
     <div className="max-w-5xl mx-auto py-8">
-      {saved && <SaveToast message={`Write-up saved (${saved})`} />}
       <header className="mb-8 border-b pb-4">
         <h1 className="text-3xl font-bold text-ink">Content Editor</h1>
         <p className="text-dim">Update weekly write-ups and snippets displayed across the ITF Hub.</p>
@@ -51,52 +44,21 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
     { id: 'team-of-the-week', title: 'Team of the Week' },
   ];
 
-  // 3. Fetch existing content for the current gameweek
-  const { data: existingContent } = await supabase
-    .from('page_content')
-    .select('*')
-    .eq('gw_number', currentGw);
-
-  const contentMap: Record<string, any> = {};
-  existingContent?.forEach((item) => {
-    contentMap[item.id] = item;
+  // 3. Published write-ups for the week, and any drafts. Drafts are only readable with the service
+  // key (page_content_drafts has no public access); this page is staff-only (proxy.ts).
+  const [{ data: published }, { data: drafts }] = await Promise.all([
+    supabase.from('page_content').select('id, content, updated_at').eq('gw_number', currentGw),
+    createAdminClient().from('page_content_drafts').select('id, content, updated_at').eq('gw_number', currentGw),
+  ]);
+  const items: EditorItem[] = managedPages.map(page => {
+    const live = published?.find(p => p.id === page.id);
+    const draft = drafts?.find(d => d.id === page.id);
+    return {
+      id: page.id, title: page.title,
+      published: live?.content ?? null, publishedAt: live?.updated_at ?? null,
+      draft: draft?.content ?? null, draftAt: draft?.updated_at ?? null,
+    };
   });
-
-  // 4. Server Action to Upsert Weekly Content
-  async function updateSnippet(formData: FormData) {
-    'use server';
-    
-    const id = formData.get('id') as string;
-    const title = formData.get('title') as string;
-    const content = formData.get('content') as string;
-    if (!toPlainText(content).trim()) redirect(`/editor?gw=${parseInt(formData.get('gw_number') as string)}`);
-    const gwNumber = parseInt(formData.get('gw_number') as string);
-    
-    // Only staff may save, and the save goes through the service key: the public key can only read
-    // once RLS is on.
-    const role = (await cookies()).get('itf_role')?.value;
-    if (role !== process.env.ADMIN_SECRET_TOKEN && role !== process.env.EDITOR_SECRET_TOKEN) return;
-    const supabaseClient = createAdminClient();
-    
-    const { error: upsertError } = await supabaseClient
-      .from('page_content')
-      .upsert({ 
-        id, 
-        gw_number: gwNumber,
-        title,
-        content, 
-        updated_at: new Date().toISOString() 
-      }, { onConflict: 'id,gw_number' });
-
-    if (upsertError) {
-      console.error('Failed to update:', upsertError);
-    }
-
-    updateTag(SITE_DATA_TAG);
-    revalidatePath('/editor');
-    revalidatePath('/');
-    redirect(`/editor?gw=${gwNumber}&saved=${encodeURIComponent(title)}`);
-  }
 
   return (
     <div>
@@ -112,39 +74,12 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
           {gw.liveGw ? `GW${gw.liveGw} in progress · latest completed GW${latestGw}` : `Latest completed GW${latestGw}`}
         </GameweekBadge>
         <p className="w-full text-xs text-brand-2/70">
-          Pages always show the most recent saved write-up, so a week never goes blank: the current text stays until a newer week is saved.
-          Line breaks are kept.
+          Pages always show the most recent published write-up, so a week never goes blank: the current text stays until a newer week is published.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {managedPages.map((page) => {
-          const entry = contentMap[page.id];
-
-          return (
-            <div key={page.id} className="bg-surface p-6 rounded-xl border shadow-sm flex flex-col">
-              <h2 className="text-lg font-bold text-ink mb-1">{page.title}</h2>
-              <p className="text-xs text-faint mb-4">
-                {entry ? `Last updated: ${new Date(entry.updated_at).toLocaleDateString()}` : 'No write-up for this week yet'}
-              </p>
-              
-              <form action={updateSnippet} className="flex flex-col flex-grow">
-                <input type="hidden" name="id" value={page.id} />
-                <input type="hidden" name="title" value={page.title} />
-                <input type="hidden" name="gw_number" value={currentGw} />
-                <WriteUpEditor name="content" initialHtml={entry?.content || ''} placeholder={`Write the summary for Gameweek ${currentGw}...`} />
-                
-                <button 
-                  type="submit"
-                  className="mt-auto bg-panel text-white py-2 px-4 rounded-lg font-medium hover:bg-surface-2 transition whitespace-nowrap"
-                >
-                  Save GW{currentGw} Write-Up
-                </button>
-              </form>
-            </div>
-          );
-        })}
-      </div>
+      {/* Keyed by week, so switching weeks starts the board afresh. */}
+      <EditorBoard key={currentGw} gw={currentGw} items={items} />
     </div>
   );
 }

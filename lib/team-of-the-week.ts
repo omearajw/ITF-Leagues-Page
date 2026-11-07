@@ -1,3 +1,4 @@
+import { breakdownFrom } from '@/lib/score-breakdown';
 import { cache } from 'react';
 import { createPublicClient } from '@/utils/supabase/public';
 import { SEASON_ID } from '@/lib/gameweek-status';
@@ -71,6 +72,7 @@ export const getFinalLineup = cache(async (managerId: number, gw: number) => {
       position: pl?.position || 'MID', points: live ? (live[p.element]?.total_points ?? 0) : null,
       multiplier: p.multiplier, isCaptain: p.is_captain, isVice: p.is_vice_captain,
       subbedIn: picks.automatic_subs.some(a => a.element_in === p.element), subbedOut: picks.automatic_subs.some(a => a.element_out === p.element),
+      breakdown: breakdownFrom(live?.[p.element]?.explain),
     };
   };
   return {

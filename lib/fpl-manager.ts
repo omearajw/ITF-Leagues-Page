@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import { fplGet } from '@/lib/fpl-fetch';
 import { mirrored } from '@/lib/fpl-mirror';
+import type { FplExplain } from '@/lib/score-breakdown';
 
 // Public FPL data for players and managers' teams. Each getter reads our copy in the FPL mirror
 // (lib/fpl-mirror.ts, kept current by /api/fpl-sync) and only asks FPL itself when the copy is out
@@ -12,7 +13,8 @@ const finalKey = (key: string, isFinal: boolean) => (isFinal ? `${key}:final` : 
 export const fplKeys = {
   players: () => 'players',
   picks: (managerId: number, gw: number, isFinal: boolean) => finalKey(`picks:${managerId}:${gw}`, isFinal),
-  live: (gw: number, isFinal: boolean) => finalKey(`live:${gw}`, isFinal),
+  // v2 copies carry each player's score breakdown; older copies without it are ignored.
+  live: (gw: number, isFinal: boolean) => finalKey(`live:${gw}:v2`, isFinal),
   transfers: (managerId: number) => `transfers:${managerId}`,
   entry: (managerId: number) => `entry:${managerId}`,
   fixtureRuns: (fromGw: number, count: number) => `fixtures:${fromGw}:${count}`,
@@ -64,12 +66,17 @@ export function getManagerPicks(managerId: number, gw: number, isFinal: boolean)
   return mirrored<ManagerPicks>(fplKeys.picks(managerId, gw, isFinal), () => loadPicks(managerId, gw));
 }
 
-export type LiveStats = Record<number, { total_points: number; minutes: number; bonus: number }>;
+export type LiveStats = Record<number, { total_points: number; minutes: number; bonus: number; explain?: FplExplain }>;
 
 async function loadLive(gw: number): Promise<LiveStats> {
   const data = await fplJson<any>(`/event/${gw}/live/`);
   const out: LiveStats = {};
-  data.elements.forEach((e: any) => { out[e.id] = { total_points: e.stats.total_points, minutes: e.stats.minutes, bonus: e.stats.bonus }; });
+  data.elements.forEach((e: any) => {
+    out[e.id] = {
+      total_points: e.stats.total_points, minutes: e.stats.minutes, bonus: e.stats.bonus,
+      explain: (e.explain || []).map((m: any) => ({ fixture: m.fixture, stats: (m.stats || []).map((s: any) => ({ identifier: s.identifier, value: s.value, points: s.points })) })),
+    };
+  });
   return out;
 }
 

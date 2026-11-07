@@ -14,11 +14,11 @@ const COLOURS = [
 ];
 const EMOJI = ['⚽', '🔥', '😂', '😭', '🏆', '💀', '🧤', '🚀', '🤡', '👀', '🎯', '🥇'];
 
-type Props = { name: string; initialHtml: string; placeholder?: string };
+type Props = { name: string; initialHtml: string; placeholder?: string; onChange?: (html: string) => void };
 
 // Dependency-free rich text editor built on contentEditable. The HTML it produces is
 // sanitised on render (lib/richtext.ts), so the toolbar only needs to be convenient.
-export default function WriteUpEditor({ name, initialHtml, placeholder }: Props) {
+export default function WriteUpEditor({ name, initialHtml, placeholder, onChange }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(initialHtml);
   const [showColours, setShowColours] = useState(false);
@@ -28,16 +28,28 @@ export default function WriteUpEditor({ name, initialHtml, placeholder }: Props)
     if (ref.current && ref.current.innerHTML !== initialHtml) ref.current.innerHTML = initialHtml;
   }, [initialHtml]);
 
-  const sync = () => setHtml(ref.current?.innerHTML || '');
+  const sync = () => {
+    const value = ref.current?.innerHTML || '';
+    setHtml(value);
+    onChange?.(value);
+  };
   const run = (command: string, value?: string) => {
     ref.current?.focus();
     document.execCommand(command, false, value);
     sync();
   };
   const insertText = (text: string) => { ref.current?.focus(); document.execCommand('insertText', false, text); sync(); };
+  // Pasted text arrives as plain text. Inserted as it is, Safari keeps its line breaks as raw
+  // newline characters, which a page doesn't show, so the paragraphs run together. Building the
+  // paragraphs ourselves keeps them in every browser: a blank line starts a new paragraph, a
+  // single line break stays a line break.
   const onPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+    const text = e.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n');
+    const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    if (paragraphs.length <= 1 && !text.includes('\n')) document.execCommand('insertText', false, text);
+    else document.execCommand('insertHTML', false, paragraphs.map(p => `<p>${escape(p).replace(/\n/g, '<br>')}</p>`).join(''));
     sync();
   };
 

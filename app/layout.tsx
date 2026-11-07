@@ -133,6 +133,12 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: INTRO_HEAD_SCRIPT }} />
       </head>
       <body className="bg-bg text-ink font-sans min-h-screen flex flex-col">
+        {/* The test site (Vercel preview deployments, e.g. the staging branch) shares the live database. */}
+        {process.env.VERCEL_ENV === 'preview' && (
+          <div role="note" className="bg-live text-on-light text-center text-sm font-semibold px-4 py-2">
+            Test site · this uses the live data: anything published, saved or sent here is real
+          </div>
+        )}
 
         {/* 3. Wrap the dynamic Navbar in a Suspense boundary */}
         <Suspense fallback={<div className="h-14 lg:h-[104px] bg-panel w-full animate-pulse" />}>

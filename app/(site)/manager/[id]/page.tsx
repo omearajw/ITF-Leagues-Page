@@ -11,6 +11,9 @@ import PitchView, { type PitchPlayer, type PitchOpponent } from '@/components/Pi
 import { ManagerSkeleton, Bone } from '@/components/Skeletons';
 import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk, formatUkTime } from '@/lib/gameweek-status';
 import { fplAsOf } from '@/lib/fpl-mirror';
+import { breakdownFrom } from '@/lib/score-breakdown';
+import { uniqueTies } from '@/lib/tournament-fixtures';
+import { getWeekProjection, dueFor, liveWeekScore } from '@/lib/projection';
 import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, getGwFixtureStatus, fplKeys, type ManagerPicks, type LiveStats, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
 import { projectAutoSubs, type FixtureState, type AutoSubProjection } from '@/lib/autosubs';
 import { getLiveWeekPicks } from '@/lib/projection';
@@ -159,6 +162,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
       projectedUnreplaced: !!projection?.unreplaced.includes(b.element),
       projectedCaptain: !!projection?.captainToVice && b.isVice,
       benchBoost: !!projection?.benchBoost,
+      breakdown: breakdownFrom(liveStats?.[b.element]?.explain),
     });
     return {
       starters: base.filter(b => b.slot <= 11).map(toPitch),
@@ -218,6 +222,40 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   const tieSettled = selectedGw <= gw.syncedThroughGw;
   const matchScore = mineLive && theirsLive ? [mineLive.score, theirsLive.score] : tie ? [Number(tie.manager_score), Number(tie.opponent_score)] : null;
   const tieMargin = matchScore ? matchScore[0] - matchScore[1] : 0;
+  // This week's other fixtures: any Champions League or Onion Baggers Cup tie, alongside the
+  // league match. A live week's scores come from the same live figures as everything else.
+  const { data: cupRows } = await supabase.from('tournament_fixtures').select('*')
+    .eq('season_id', SEASON_ID).eq('gw_number', selectedGw).or(`manager_1_id.eq.${managerId},manager_2_id.eq.${managerId}`);
+  const cupTies = uniqueTies(cupRows as any[]);
+  const cupOpponentIds = cupTies.map(t => (t.manager_1_id === managerId ? t.manager_2_id : t.manager_1_id)).filter(Boolean) as number[];
+  const [{ data: cupNames }, projection] = await Promise.all([
+    cupOpponentIds.length ? supabase.from('season_managers').select('manager_fpl_id, team_name').eq('season_id', SEASON_ID).in('manager_fpl_id', cupOpponentIds) : Promise.resolve({ data: [] as any[] }),
+    isLiveWeek && cupTies.length ? getWeekProjection() : Promise.resolve(null),
+  ]);
+  const outcome = (mine: number, theirs: number, settled: boolean) => settled
+    ? (mine > theirs ? 'Beat' : mine < theirs ? 'Lost to' : 'Drew with')
+    : (mine > theirs ? 'Beating' : mine < theirs ? 'Losing to' : 'Drawing with');
+  const weekFixtures: { competition: string; score: [number, number] | null; opponentId: number | null; opponentName: string; outcome: string | null }[] = [];
+  if (tie && matchScore) {
+    weekFixtures.push({ competition: 'League', score: [matchScore[0], matchScore[1]], opponentId, opponentName: opponentName || 'opponent', outcome: outcome(matchScore[0], matchScore[1], selectedGw <= gw.syncedThroughGw) });
+  }
+  for (const t of cupTies) {
+    const mineFirst = t.manager_1_id === managerId;
+    const themId = (mineFirst ? t.manager_2_id : t.manager_1_id) as number;
+    const storedMine = mineFirst ? t.manager_1_score : t.manager_2_score;
+    const storedTheirs = mineFirst ? t.manager_2_score : t.manager_1_score;
+    const played = storedMine !== null && storedTheirs !== null;
+    const mine = played ? (isLiveWeek && mineLive ? mineLive.score : storedMine) : null;
+    const theirs = played ? (isLiveWeek && projection ? liveWeekScore(dueFor(projection, selectedGw, themId), storedTheirs) : storedTheirs) : null;
+    const name = (cupNames || []).find((n: any) => Number(n.manager_fpl_id) === themId)?.team_name;
+    weekFixtures.push({
+      competition: `${(t as any).tournament_type === 'ONION_BAGGERS_CUP' ? 'Onion Baggers Cup' : 'Champions League'} · ${t.stage}`,
+      score: mine !== null && theirs !== null ? [mine, theirs] : null,
+      opponentId: themId, opponentName: name ? getTeamNameDisplayText(name) : 'opponent',
+      outcome: mine !== null && theirs !== null ? outcome(mine, theirs, selectedGw <= gw.syncedThroughGw) : null,
+    });
+  }
+
   const tieOutcome = !tie ? null
     : tieSettled ? (tie.result === 'W' ? 'Beat' : tie.result === 'L' ? 'Lost to' : 'Drew with')
     : tieMargin > 0 ? 'Beating' : tieMargin < 0 ? 'Losing to' : 'Drawing with';
@@ -343,6 +381,26 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
               );
             })}
           </div>
+
+          {weekFixtures.length > 0 && (
+            <section className="mb-10">
+              <h2 className="label mb-2">GW{selectedGw} fixtures</h2>
+              <ul className="divide-y divide-line border-y border-line">
+                {weekFixtures.map(f => (
+                  <li key={f.competition} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)] sm:grid-cols-[13rem_auto_minmax(0,1fr)] items-center gap-x-3 py-2.5 text-sm">
+                    <span className="text-dim min-w-0">{f.competition}</span>
+                    <span className={`plate w-[5.5rem] h-7 font-display text-xl leading-none ${isLiveWeek ? 'text-live-2' : 'text-ink'}`}>
+                      {f.score ? <>{f.score[0]}<span className="text-faint mx-1">-</span>{f.score[1]}</> : <span className="label">v</span>}
+                    </span>
+                    <span className="min-w-0">
+                      {f.outcome && <span className="text-dim">{f.outcome} </span>}
+                      {f.opponentId ? <Link href={`/manager/${f.opponentId}`} className="font-semibold text-ink hover:underline">{f.opponentName}</Link> : f.opponentName}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {players ? (
             <PitchView starters={starters} bench={bench} benchPoints={benchPoints} live={isLiveWeek} pointsUnavailable={live === null} note={pointsNote} opponent={pitchOpponent} />
