@@ -246,12 +246,21 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
     const theirs = played ? (isLiveWeek && projection ? liveWeekScore(dueFor(projection, selectedGw, themId), storedTheirs) : storedTheirs) : null;
     const name = (cupNames || []).find((n: any) => Number(n.manager_fpl_id) === themId)?.team_name;
     cupFixtures.push({
-      competition: (t as any).tournament_type === 'ONION_BAGGERS_CUP' ? `OB Cup · ${t.stage}` : 'Champions League',
+      competition: (t as any).tournament_type === 'ONION_BAGGERS_CUP' ? 'Onion Baggers Cup' : 'Champions League',
       score: mine !== null && theirs !== null ? [mine, theirs] : null,
       opponentId: themId, opponentName: name ? getTeamNameDisplayText(name) : 'opponent',
       outcome: mine !== null && theirs !== null ? outcome(mine, theirs, selectedGw <= gw.syncedThroughGw) : null,
     });
   }
+
+  // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
+  const scoreTiles: TileProps[] = picks ? [
+    { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
+    { label: 'Team points', value: gross ?? '–', sub: 'before hits' },
+    { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
+    { label: 'On bench', value: benchPoints, sub: 'points' },
+    { label: 'Chip', value: picks.active_chip ? (chipLabel[picks.active_chip] || picks.active_chip) : 'None', sub: picks.active_chip ? 'played' : '', filled: !!picks.active_chip },
+  ] : [];
 
   const tieOutcome = !tie ? null
     : tieSettled ? (tie.result === 'W' ? 'Beat' : tie.result === 'L' ? 'Lost to' : 'Drew with')
@@ -357,46 +366,32 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
         </p>
       ) : (
         <>
-          {/* The week at a glance, as one scoreboard row */}
-          <div className={`grid grid-cols-2 sm:grid-cols-3 border-t-2 border-ink/80 -mx-3 ${cupFixtures.length ? 'lg:grid-cols-5' : 'lg:grid-cols-6 mb-10'}`}>
-            {[
-              // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
-              { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
-              { label: 'Team points', value: gross ?? '–', sub: 'before hits' },
-              { label: 'Transfers', value: `${picks.entry_history.event_transfers}${cost ? ` (−${cost})` : ''}`, sub: cost ? 'points deducted' : 'no hit' },
-              { label: 'On bench', value: benchPoints, sub: 'points' },
-              { label: 'Chip', value: picks.active_chip ? (chipLabel[picks.active_chip] || picks.active_chip) : 'None', sub: picks.active_chip ? 'played' : '', played: !!picks.active_chip },
-              // With a cup tie as well, every fixture moves to its own row below.
-              ...(cupFixtures.length ? [] : [{ label: 'League match', value: tie && matchScore ? `${matchScore[0]} - ${matchScore[1]}` : '–', sub: tie ? `${tieOutcome} ${opponentName || 'opponent'}` : 'no match recorded' }]),
-            ].map(tile => {
-              const filled = 'played' in tile && tile.played;
-              return (
-                <div key={tile.label} className={`py-3 px-3 min-w-0 break-words border-b border-line ${filled ? 'bg-brand text-white' : ''}`}>
-                  <div className={`label ${filled ? 'text-white/85' : ''}`}>{tile.label}</div>
-                  <div className={`font-display text-3xl leading-none mt-1.5 ${filled ? 'text-white' : 'text-ink'}`}>{tile.value}</div>
-                  {tile.sub && <div className={`text-xs mt-1 ${filled ? 'text-white/85' : 'text-dim'}`}>{tile.sub}</div>}
+          {/* The week at a glance. With only a league match it is one scoreboard row. With a cup tie
+              as well it splits: the team's figures on the left, every fixture on the right (league on
+              top, cup ties beneath), stacking on phones. */}
+          {cupFixtures.length === 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-t-2 border-ink/80 mb-10 -mx-3">
+              {scoreTiles.map(t => <StatTile key={t.label} {...t} />)}
+              <StatTile label="League match" value={tie && matchScore ? `${matchScore[0]} - ${matchScore[1]}` : '–'} sub={tie ? `${tieOutcome} ${opponentName || 'opponent'}` : 'no match recorded'} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 border-t-2 border-ink/80 mb-10 -mx-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 content-start">
+                {scoreTiles.map(t => <StatTile key={t.label} {...t} />)}
+              </div>
+              <div className="lg:border-l lg:border-line lg:pl-3">
+                {tie && matchScore && (
+                  <StatTile label={manager.division || 'League match'} value={`${matchScore[0]} - ${matchScore[1]}`}
+                    sub={<>{tieOutcome} {opponentId ? <Link href={`/manager/${opponentId}`} className="hover:text-ink hover:underline">{opponentName}</Link> : opponentName}</>} />
+                )}
+                <div className="flex flex-wrap">
+                  {cupFixtures.map(f => (
+                    <StatTile key={f.competition} className="basis-1/2 flex-1" labelClassName="text-brand-2" label={f.competition}
+                      value={f.score ? `${f.score[0]} - ${f.score[1]}` : 'v'}
+                      sub={<>{f.outcome ? `${f.outcome} ` : ''}{f.opponentId ? <Link href={`/manager/${f.opponentId}`} className="hover:text-ink hover:underline">{f.opponentName}</Link> : f.opponentName}</>} />
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* More than one fixture that week: all of them on a row of their own, league first,
-              sharing the width evenly (two to a row on phones). */}
-          {cupFixtures.length > 0 && (
-            <div className="flex flex-wrap mb-10 -mx-3">
-              {[
-                ...(tie && matchScore ? [{ competition: 'League match', score: matchScore as [number, number], opponentId, opponentName: opponentName || 'opponent', outcome: tieOutcome }] : []),
-                ...cupFixtures,
-              ].map(f => (
-                <div key={f.competition} className="basis-1/2 sm:basis-0 sm:flex-1 py-3 px-3 min-w-0 break-words border-b border-line">
-                  <div className="label">{f.competition}</div>
-                  <div className="font-display text-3xl leading-none mt-1.5 text-ink">{f.score ? `${f.score[0]} - ${f.score[1]}` : 'v'}</div>
-                  <div className="text-xs mt-1 text-dim">
-                    {f.outcome ? `${f.outcome} ` : ''}
-                    {f.opponentId ? <Link href={`/manager/${f.opponentId}`} className="hover:text-ink hover:underline">{f.opponentName}</Link> : f.opponentName}
-                  </div>
-                </div>
-              ))}
+              </div>
             </div>
           )}
 
@@ -457,5 +452,19 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
         </>
       )}
     </>
+  );
+}
+
+type TileProps = { label: string; value: React.ReactNode; sub?: React.ReactNode; filled?: boolean; className?: string; labelClassName?: string };
+
+// One figure in the week's scoreboard: a label, a big value and a line under it. `filled` marks a
+// played chip.
+function StatTile({ label, value, sub, filled = false, className = '', labelClassName = '' }: TileProps) {
+  return (
+    <div className={`py-3 px-3 min-w-0 break-words border-b border-line ${filled ? 'bg-brand text-white' : ''} ${className}`}>
+      <div className={`label ${filled ? 'text-white/85' : labelClassName}`}>{label}</div>
+      <div className={`font-display text-3xl leading-none mt-1.5 ${filled ? 'text-white' : 'text-ink'}`}>{value}</div>
+      {sub && <div className={`text-xs mt-1 ${filled ? 'text-white/85' : 'text-dim'}`}>{sub}</div>}
+    </div>
   );
 }
