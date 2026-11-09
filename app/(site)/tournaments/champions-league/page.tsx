@@ -14,6 +14,8 @@ import { championsLeagueNextLine } from '@/lib/tournament-next';
 import { getWeekProjection, dueFor, type WeekProjection, liveWeekScore } from '@/lib/projection';
 import DueMark from '@/components/DueMark';
 import SectionHeading from '@/components/SectionHeading';
+import RichText from '@/components/RichText';
+import { FeedbackPrompt } from '@/components/Feedback';
 import ScrollFade from '@/components/ScrollFade';
 
 export default function ChampionsLeaguePage() {
@@ -151,6 +153,12 @@ async function ChampionsLeagueContent() {
           {championsLeagueNextLine(gw, { s1Start, s2Start, finalStart, s1MaxRounds, s2MaxRounds })}
           {gw.liveGw ? ` · GW${gw.liveGw} ties are live in Fixtures & Results; standings update once the week is confirmed.` : ''}
         </p>}
+        {contentData?.content && (
+          <article className="max-w-[34rem] border-t border-line pt-5 mt-5 text-[15px] leading-relaxed text-ink-2">
+            <RichText content={contentData.content} />
+            <FeedbackPrompt>Thoughts on this week&apos;s write-up?</FeedbackPrompt>
+          </article>
+        )}
       </PageHeader>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 xl:gap-0 xl:divide-x xl:divide-line">
