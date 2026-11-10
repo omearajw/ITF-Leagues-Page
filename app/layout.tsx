@@ -11,6 +11,7 @@ import { FeedbackDialog, FeedbackTrigger, FeedbackNavButton } from '@/components
 import { getUnreadFeedbackCount } from '@/lib/feedback-data';
 import Image from 'next/image';
 import { wordmarkFont, displayFont, textFont } from '@/lib/fonts';
+import pkg from '@/package.json';
 
 export const metadata = {
   title: 'ITF Fantasy Football',
@@ -21,6 +22,10 @@ const navLink = 'whitespace-nowrap text-[13px] xl:text-sm font-medium text-ink-2
 const navGroup = 'text-xs font-semibold uppercase tracking-[0.08em] text-faint hidden xl:block pl-1.5 xl:pl-2';
 
 // Reference pages that still live on the old ITF site until they are rebuilt here (log items 7 and 8).
+// The version is bumped by hand in package.json when a release goes live; the code beside it is the
+// deployed commit, which Vercel supplies, so a report can name the exact build (absent locally).
+const SITE_VERSION = `v${pkg.version}${process.env.VERCEL_GIT_COMMIT_SHA ? ` (${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)})` : ''}`;
+
 const FOOTER_LINKS = [
   { label: 'Rulebook', href: 'https://itf1718.wordpress.com/itf-rulebook/' },
   { label: 'Trophy Cabinets', href: 'https://itf1718.wordpress.com/honours/' },
@@ -164,6 +169,7 @@ export default function RootLayout({
             <FeedbackTrigger className="font-semibold text-dim hover:text-white transition" />
           </div>
           © 2026 ITF League. Data sourced from official FPL API.
+          <div className="mt-2 text-xs tabular">Version {SITE_VERSION}</div>
         </footer>
         {/* Clears the fixed ticker (48px tall) so it never covers the end of the page */}
         <div className="hidden md:block h-12 bg-panel" aria-hidden="true" />
