@@ -17,6 +17,7 @@ import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
 import { FeedbackBanner } from '@/components/Feedback';
 import SectionHeading from '@/components/SectionHeading';
 import OpenTable from '@/components/OpenTable';
+import { getOverallRanks } from '@/lib/fpl-manager';
 import { getGameweekStatus, getFplEvents } from '@/lib/gameweek-status';
 import { buildMotm } from '@/lib/motm';
 import { DIVISIONS } from '@/lib/divisions';
@@ -160,6 +161,7 @@ async function DashboardContent() {
   const openStanding = (t: any) => ({ total: liveSeason(t.manager_fpl_id, t.classic_total_points, t.points), week: liveWeek(t.manager_fpl_id, t.points), name: t.season_managers.team_name });
   const openOrder = [...(scores || [])].sort((a, b) => compareStanding(openStanding(a), openStanding(b)));
   const topTenITF = openOrder.slice(0, 10);
+  const ranks = await getOverallRanks(topTenITF.map((t: any) => Number(t.manager_fpl_id)));
 
   // Movement: divisions compare with last week's confirmed standings; the ITF Open
   // compares live totals with the last confirmed week (or last week when nothing is live).
@@ -226,65 +228,76 @@ async function DashboardContent() {
       <section>
         <SectionHeading>Tournaments</SectionHeading>
         <div className="grid grid-cols-1 md:grid-cols-3 items-start gap-4">
-          <TournamentWidget
-            name="Onion Baggers Cup"
-            stage={currentGw < obKnock ? `Qualifiers, since GW${obQual}` : `Knockouts, since GW${obKnock}`}
-            pending={currentGw < obQual}
-            status={currentGw < obQual ? `Starts GW${obQual}` : currentGw < obKnock ? 'Qualifying' : 'Knockouts'}
-            nextLine={nextLines.ob}
-            summary={`16 places · the two highest scorers each week qualify from GW${obQual} · knockouts from GW${obKnock}`}
-            link="/tournaments/onion-baggers-cup"
-            lead={leads['onion-baggers-cup']}
-            placeholder={noWriteUp}
-          />
-          <TournamentWidget
-            name="Champions League"
-            stage={`Stage 1, since GW${clS1}`}
-            pending={currentGw < clS1}
-            status={currentGw < clS1 ? `Starts GW${clS1}` : 'Live'}
-            nextLine={nextLines.cl}
-            summary={clEntrants > 0 ? `${clEntrants} entrants confirmed · round robin from GW${clS1}` : 'Entrants not yet selected'}
-            link="/tournaments/champions-league"
-            lead={leads['champions-league']}
-            placeholder={noWriteUp}
-          />
-          {/* No write-up snippet here: the card shows who's left, then who went out last or, while a
-              week is live, who's at risk. */}
-          <TournamentWidget
-            name="Eliminator"
-            stage={`Running since GW${elStart}`}
-            pending={currentGw < elStart}
-            status={currentGw < elStart ? `Starts GW${elStart}` : <GameweekChip gw={gw} week={scoresGw} live={showingLive} />}
-            noSnippet
-            summary={elStatus && elStatus.length > 0 ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="plate bg-panel font-display text-4xl px-2.5">{elAlive}</span>
-                  <span className="label">remain</span>
-                </div>
-                {elAtRisk.length > 0 ? (
-                  <div className="mt-4">
-                    <span className="inline-block text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm animate-pulse">At risk · GW{scoresGw}</span>
-                    <ol className="mt-2 space-y-1">
-                      {elAtRisk.map(m => (
-                        <li key={m.id} className="flex items-center gap-3 min-w-0">
-                          <span className="w-8 shrink-0 text-right font-display text-xl leading-none text-loss-2 tabular">{m.score}</span>
-                          <TeamName name={m.name} managerId={m.id} inline className="text-ink-2 min-w-0" />
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                ) : elLastCut && (
-                  <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-dim">
-                    <span className="text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm">Last eliminated</span>
-                    <span>GW{elLastCut.eliminated_gw}:</span>
-                    <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
-                  </div>
-                )}
-              </>
-            ) : 'Entrants are registered on the first sync after the start week'}
-            link="/tournaments/eliminator"
-          />
+          {/* Ordered by when each starts (admin settings), so the one running comes first. */}
+          {[
+            { start: obQual, card: (
+              <TournamentWidget
+                name="Onion Baggers Cup"
+                stage={currentGw < obKnock ? `Qualifiers, since GW${obQual}` : `Knockouts, since GW${obKnock}`}
+                pending={currentGw < obQual}
+                status={currentGw < obQual ? `Starts GW${obQual}` : currentGw < obKnock ? 'Qualifying' : 'Knockouts'}
+                nextLine={nextLines.ob}
+                summary={`16 places · the two highest scorers each week qualify from GW${obQual} · knockouts from GW${obKnock}`}
+                link="/tournaments/onion-baggers-cup"
+                lead={leads['onion-baggers-cup']}
+                placeholder={noWriteUp}
+              />
+            ) },
+            { start: clS1, card: (
+              <TournamentWidget
+                name="Champions League"
+                stage={`Stage 1, since GW${clS1}`}
+                pending={currentGw < clS1}
+                status={currentGw < clS1 ? `Starts GW${clS1}` : 'Live'}
+                nextLine={nextLines.cl}
+                summary={clEntrants > 0 ? `${clEntrants} entrants confirmed · round robin from GW${clS1}` : 'Entrants not yet selected'}
+                link="/tournaments/champions-league"
+                lead={leads['champions-league']}
+                placeholder={noWriteUp}
+              />
+            ) },
+            { start: elStart, card: (
+                  <>
+              {/* No write-up snippet here: the card shows who's left, then who went out last or, while a
+                  week is live, who's at risk. */}
+              <TournamentWidget
+                name="Eliminator"
+                stage={`Running since GW${elStart}`}
+                pending={currentGw < elStart}
+                status={currentGw < elStart ? `Starts GW${elStart}` : <GameweekChip gw={gw} week={scoresGw} live={showingLive} />}
+                noSnippet
+                summary={elStatus && elStatus.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="plate bg-panel font-display text-4xl px-2.5">{elAlive}</span>
+                      <span className="label">remain</span>
+                    </div>
+                    {elAtRisk.length > 0 ? (
+                      <div className="mt-4">
+                        <span className="inline-block text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm animate-pulse">At risk · GW{scoresGw}</span>
+                        <ol className="mt-2 space-y-1">
+                          {elAtRisk.map(m => (
+                            <li key={m.id} className="flex items-center gap-3 min-w-0">
+                              <span className="w-8 shrink-0 text-right font-display text-xl leading-none text-loss-2 tabular">{m.score}</span>
+                              <TeamName name={m.name} managerId={m.id} inline className="text-ink-2 min-w-0" />
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ) : elLastCut && (
+                      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-dim">
+                        <span className="text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm">Last eliminated</span>
+                        <span>GW{elLastCut.eliminated_gw}:</span>
+                        <TeamName name={(elLastCut as any).season_managers.team_name} managerId={(elLastCut as any).manager_fpl_id} inline className="font-semibold text-brand-2 min-w-0" />
+                      </div>
+                    )}
+                  </>
+                ) : 'Entrants are registered on the first sync after the start week'}
+                link="/tournaments/eliminator"
+              />
+                  </>
+            ) },
+          ].map((t, i) => ({ ...t, i })).sort((x, y) => x.start - y.start || x.i - y.i).map(t => <div key={t.i} className="contents">{t.card}</div>)}
         </div>
       </section>
 
@@ -346,6 +359,7 @@ async function DashboardContent() {
             week: liveWeek(manager.manager_fpl_id, manager.points),
             total: liveSeason(manager.manager_fpl_id, manager.classic_total_points, manager.points),
             due: dueOf(manager.manager_fpl_id),
+            rank: ranks[Number(manager.manager_fpl_id)] ?? null,
             mark: itfMark(manager.manager_fpl_id),
           }))}
         />

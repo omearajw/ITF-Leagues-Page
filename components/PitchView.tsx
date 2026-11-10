@@ -69,6 +69,8 @@ function PlayerCard({ player, live, onGrass }: { player: PitchPlayer; live: bool
   const yetToPlay = player.fixtureState === 'pending' || player.fixtureState === 'none';
   const playing = player.fixtureState === 'playing';
   const scored = player.points === null || yetToPlay ? null : player.points * (player.multiplier || 1);
+  // Played no minutes once their match is done: the zero shows in red.
+  const didNotPlay = scored === 0 && player.minutes === 0 && !playing;
   const faded = player.subbedOut || player.projectedOut || player.projectedUnreplaced;
   // Fills deep enough for white letters to pass contrast.
   const leftTag = player.projectedOut ? { text: '✕', cls: 'bg-loss text-white', title: 'Did not play: due to be auto-subbed out' }
@@ -91,7 +93,7 @@ function PlayerCard({ player, live, onGrass }: { player: PitchPlayer; live: bool
       <Visual player={player} />
       <div className="mt-1 w-full max-w-[7.5rem] rounded-sm overflow-hidden text-center">
         <div className={`px-1.5 py-1 text-[11px] sm:text-xs font-bold truncate ${onGrass ? 'bg-plate text-white' : 'bg-surface-3 text-ink'}`}>{player.name}</div>
-        <div className={`px-1.5 py-0.5 text-xs font-black ${live && playing ? 'bg-live-2 text-on-light' : yetToPlay ? 'bg-white/70 text-on-light/60' : 'bg-white text-on-light'}`}>
+        <div className={`px-1.5 py-0.5 text-xs font-black ${live && playing ? 'bg-live-2 text-on-light' : yetToPlay ? 'bg-white/70 text-on-light/60' : didNotPlay ? 'bg-white text-loss' : 'bg-white text-on-light'}`}>
           {scored === null ? '–' : scored}
           {player.multiplier > 1 && scored !== null && <span className="ml-1 font-normal text-on-light/60">({player.points})</span>}
         </div>
@@ -255,7 +257,7 @@ function ScoreDialog({ player, onClose }: { player: PitchPlayer; onClose: () => 
         </div>
 
         {matches.length === 0 ? (
-          <p className="mt-5 text-sm text-dim">{player.fixtureState === 'pending' || player.fixtureState === 'none' ? 'Hasn\u2019t played yet.' : 'No breakdown from FPL yet.'}</p>
+          <p className="mt-5 text-sm text-dim">{player.fixtureState === 'pending' || player.fixtureState === 'none' ? 'Hasn\u2019t played yet.' : player.minutes === 0 ? 'Didn\u2019t play.' : 'No breakdown from FPL yet.'}</p>
         ) : matches.map((rows, i) => (
           <div key={i} className="mt-5">
             {matches.length > 1 && <div className="label mb-1">Match {i + 1}</div>}

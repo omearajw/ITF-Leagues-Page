@@ -11,6 +11,7 @@ import { getWeekProjection, dueFor, liveWeekScore, liveTotal } from '@/lib/proje
 import { getGameweekStatus } from '@/lib/gameweek-status';
 import PageHeader from '@/components/PageHeader';
 import { compareStanding } from '@/lib/standings';
+import { getOverallRanks } from '@/lib/fpl-manager';
 
 export default function Index() {
   return (
@@ -87,6 +88,8 @@ async function ITFOpenContent() {
     ? positionDeltas((managers || []).map((m: any) => m.manager_fpl_id), previousOrder)
     : {};
 
+  const ranks = await getOverallRanks((managers || []).map((m: any) => Number(m.manager_fpl_id)));
+
   if (error) {
     return <div className="p-10 text-loss-2">Error loading league: {error.message}</div>;
   }
@@ -106,6 +109,7 @@ async function ITFOpenContent() {
           week: liveWeek(manager.manager_fpl_id, manager.points),
           total: liveSeason(manager.manager_fpl_id, manager.classic_total_points, manager.points),
           due: dueOf(manager.manager_fpl_id),
+          rank: ranks[Number(manager.manager_fpl_id)] ?? null,
           mark: <MovementArrow delta={movement[manager.manager_fpl_id]} />,
         }))}
       />

@@ -12,7 +12,17 @@ export type OpenRow = {
   total: number;
   due: WeekDue | null;
   mark: React.ReactNode;
+  rank: number | null;
 };
+
+// Overall FPL rank, short as the league owner asked: 1,189 → 1.2k, 1,450,000 → 1.45m.
+function shortRank(rank: number) {
+  const trim = (n: number, places: number) => String(Number(n.toFixed(places)));
+  if (rank < 1000) return String(rank);
+  if (rank < 100_000) return `${trim(rank / 1000, 1)}k`;
+  if (Math.round(rank / 1000) < 1000) return `${Math.round(rank / 1000)}k`;
+  return `${trim(rank / 1_000_000, 2)}m`;
+}
 
 // The Open's table, shared by its own page and the hub's top ten so the two always match. The
 // Open is the race for manager of the season, so the manager leads and the team follows. Scores
@@ -38,7 +48,11 @@ export default function OpenTable({ rows, scoresGw, live }: { rows: OpenRow[]; s
             <td className="py-3 pr-2 whitespace-nowrap">{row.mark}</td>
             <td className="py-3 pr-3 min-w-0">
               <Link href={`/manager/${row.id}`} className="font-semibold text-ink hover:underline decoration-brand-2/60 underline-offset-2">{row.manager}</Link>
-              <div className="text-dim">{getTeamNameDisplayText(row.team)}<span className="md:hidden"> · {row.division}</span></div>
+              <div className="text-dim">
+                {getTeamNameDisplayText(row.team)}
+                {row.rank !== null && <span title={`Overall FPL rank ${row.rank.toLocaleString('en-GB')}`}> ({shortRank(row.rank)})</span>}
+                <span className="md:hidden"> · {row.division}</span>
+              </div>
             </td>
             <td className="py-3 pr-3 text-dim hidden md:table-cell">{row.division}</td>
             <td className={`py-3 px-2 text-right font-semibold whitespace-nowrap ${live ? 'text-live-2' : 'text-ink-2'}`}>

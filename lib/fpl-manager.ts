@@ -100,6 +100,12 @@ export function getManagerEntry(managerId: number) {
   return mirrored<ManagerEntry>(fplKeys.entry(managerId), () => loadEntry(managerId));
 }
 
+// Each manager's overall FPL rank, from the mirrored entries (read together as one query).
+export async function getOverallRanks(managerIds: number[]): Promise<Record<number, number | null>> {
+  const entries = await Promise.all(managerIds.map(id => getManagerEntry(id)));
+  return Object.fromEntries(managerIds.map((id, i) => [id, entries[i]?.summary_overall_rank ?? null]));
+}
+
 export type TeamFixture = { gw: number; opponent: string; home: boolean; difficulty: number };
 
 // Each club's next few fixtures with FPL's difficulty rating, keyed by team id.

@@ -22,8 +22,9 @@ const LABELS: Record<string, string> = {
 
 const label = (identifier: string) => LABELS[identifier] ?? identifier.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 
-// One list of rows per match (two in a double gameweek), in FPL's order.
+// One list of rows per match (two in a double gameweek), in FPL's order. Only things that happened
+// are listed (a count above zero), as the league owner asked.
 export function breakdownFrom(explain: FplExplain | undefined): BreakdownRow[][] | undefined {
-  if (!explain?.length) return undefined;
-  return explain.map(match => match.stats.map(s => ({ label: label(s.identifier), value: s.value, points: s.points })));
+  const matches = (explain || []).map(match => match.stats.filter(s => s.value > 0).map(s => ({ label: label(s.identifier), value: s.value, points: s.points }))).filter(rows => rows.length);
+  return matches.length ? matches : undefined;
 }

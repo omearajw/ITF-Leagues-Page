@@ -13,7 +13,8 @@ import { getGameweekStatus, getFplEvents, SEASON_ID, formatUk, formatUkTime } fr
 import { fplAsOf } from '@/lib/fpl-mirror';
 import { breakdownFrom } from '@/lib/score-breakdown';
 import { uniqueTies } from '@/lib/tournament-fixtures';
-import { getWeekProjection, dueFor, liveWeekScore } from '@/lib/projection';
+import { getWeekProjection, dueFor, liveWeekScore, liveTotal } from '@/lib/projection';
+import { compareStanding } from '@/lib/standings';
 import { getPlayers, getManagerPicks, getLivePoints, getManagerTransfers, getManagerEntry, getGwFixtureStatus, fplKeys, type ManagerPicks, type LiveStats, type Player, type TeamGwFixture } from '@/lib/fpl-manager';
 import { projectAutoSubs, type FixtureState, type AutoSubProjection } from '@/lib/autosubs';
 import { getLiveWeekPicks } from '@/lib/projection';
@@ -274,6 +275,50 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
         }
       : { label: 'Team of the week', value: `−${top.points - myWeek.points}`, sub: `behind ${teamName(top.id)} (${top.points})${isLiveWeek ? ' · as it stands' : ''}` };
 
+  // The season so far, beside the Eliminator status. League position is the division table as it
+  // shows by default (after the last finished week); the Open position is the Open as it stands,
+  // live scores included, as the Open page shows it.
+  const [{ data: divisionRows }, { data: openRows }, { data: hitRows }, { data: aliveRows }] = await Promise.all([
+    supabase.from('season_managers').select('manager_fpl_id, team_name, manager_gw_scores (gw_number, points, classic_total_points), h2h_fixtures (gw_number, result)').eq('season_id', SEASON_ID).eq('division', manager.division),
+    supabase.from('manager_gw_scores').select('manager_fpl_id, points, classic_total_points, season_managers!inner (team_name)').eq('season_id', SEASON_ID).eq('gw_number', gw.displayGw),
+    supabase.from('manager_gw_scores').select('transfers_cost').eq('season_id', SEASON_ID).eq('manager_fpl_id', managerId),
+    isLiveWeek && elim && !elim.is_eliminated
+      ? supabase.from('eliminator_status').select('manager_fpl_id').eq('season_id', SEASON_ID).eq('is_eliminated', false)
+      : Promise.resolve({ data: null }),
+  ]);
+  const throughGw = gw.syncedThroughGw;
+  const leaguePosition = (divisionRows || []).map((m: any) => {
+    const pts = (m.h2h_fixtures || []).filter((f: any) => f.gw_number <= throughGw).reduce((sum: number, f: any) => sum + (f.result === 'W' ? 3 : f.result === 'D' ? 1 : 0), 0);
+    const row = (m.manager_gw_scores || []).filter((r: any) => r.gw_number <= throughGw).sort((a: any, b: any) => b.gw_number - a.gw_number)[0];
+    return { id: Number(m.manager_fpl_id), pts, total: row?.classic_total_points ?? 0, week: row?.points ?? 0, name: m.team_name };
+  }).sort(compareStanding).findIndex(r => r.id === managerId) + 1;
+  const openProjection = gw.liveGw === gw.displayGw ? projection ?? await getWeekProjection() : null;
+  const openPosition = (openRows || []).map((r: any) => {
+    const due = openProjection ? dueFor(openProjection, gw.displayGw, Number(r.manager_fpl_id)) : null;
+    return { id: Number(r.manager_fpl_id), total: liveTotal(due, r.classic_total_points, r.points), week: liveWeekScore(due, r.points), name: r.season_managers.team_name };
+  }).sort(compareStanding).findIndex(r => r.id === managerId) + 1;
+  const pointsSpent = (hitRows || []).reduce((sum: number, r: any) => sum + (r.transfers_cost || 0), 0);
+  // At risk in the Eliminator: on the lowest live score among the survivors, the Eliminator page's
+  // rule. Nobody is singled out while every survivor is level (before kickoff).
+  const survivorScores = (aliveRows || []).map((r: any) => weekTable.find(w => w.id === Number(r.manager_fpl_id))?.points ?? 0);
+  const lowestSurvivor = Math.min(...survivorScores);
+  const atRisk = survivorScores.length > 1 && survivorScores.some(score => score !== lowestSurvivor) && (myWeek?.points ?? 0) === lowestSurvivor;
+  // FPL gives each manager one set of chips for GW1-19 and a fresh set for GW20-38 (unused ones
+  // from the first half are lost). The set shown is for the next week still to finish; a chip is
+  // used if one of that half's weeks so far was played with it.
+  const chipWeek = events?.find(e => !e.finished)?.id ?? 38;
+  const halfStart = chipWeek >= 20 ? 20 : 1;
+  const seasonWeeks = Array.from({ length: latestGw }, (_, i) => i + 1);
+  const seasonPicks = await Promise.all(seasonWeeks.map(g => g === selectedGw ? picks
+    : getManagerPicks(managerId, g, g <= gw.syncedThroughGw || !!events?.find(e => e.id === g)?.finished)));
+  const chipsPlayed: Record<string, number> = {};
+  seasonPicks.forEach((p, i) => { if (p?.active_chip && seasonWeeks[i] >= halfStart) chipsPlayed[p.active_chip] = seasonWeeks[i]; });
+  // FPL's own count, which the league owner asked for and the Eliminator tie-break uses: transfers
+  // made in Wildcard and Free Hit weeks are left out. Unknown if any week's picks are missing.
+  const transfersMade = seasonPicks.every(p => p) ? seasonPicks.reduce((sum, p) => sum + p!.entry_history.event_transfers, 0) : null;
+  const chipSet = [{ key: 'freehit', short: 'FH' }, { key: '3xc', short: 'TC' }, { key: 'bboost', short: 'BB' }, { key: 'wildcard', short: 'WC' }];
+  const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`;
+
   // Headline score includes projected auto-subs; FPL's own live figure excludes them until the week is processed.
   const scoreTiles: TileProps[] = picks ? [
     { label: 'Score', value: benchDue > 0 && net !== null ? net + benchDue : (net ?? '–'), sub: benchBoostOn ? 'bench boost: all 15 count' : benchDue > 0 && net !== null ? `includes +${benchDue} due from the bench · ${net} before subs` : isLiveWeek ? 'live · net of hits' : 'net of hits' },
@@ -360,9 +405,49 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
           {elim && (
             <div>
               <dt className="label">Eliminator</dt>
-              <dd className={`mt-1 text-lg font-semibold ${elim.is_eliminated ? 'text-loss-2' : 'text-win-2'}`}>{elim.is_eliminated ? `Out in GW${elim.eliminated_gw}` : 'Still in'}</dd>
+              <dd className={`mt-1 flex items-center gap-2 text-lg font-semibold ${elim.is_eliminated ? 'text-loss-2' : 'text-win-2'}`}>
+                {elim.is_eliminated ? `Out in GW${elim.eliminated_gw}` : 'Still in'}
+                {atRisk && <span className="text-xs font-bold uppercase tracking-[0.08em] bg-loss text-white px-1.5 py-0.5 rounded-sm motion-safe:animate-pulse" title="On the lowest live score: out if it stays this way when the week is confirmed">At risk</span>}
+              </dd>
             </div>
           )}
+          {leaguePosition > 0 && throughGw >= 1 && (
+            <div>
+              <dt className="label">League position</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink tabular">{ordinal(leaguePosition)}</dd>
+            </div>
+          )}
+          {openPosition > 0 && (
+            <div>
+              <dt className="label">Open position</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink tabular">{ordinal(openPosition)}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="label">Transfers made</dt>
+            <dd className="mt-1 text-lg font-semibold text-ink tabular" title="Not counting Wildcard and Free Hit weeks">{transfersMade ?? '–'}</dd>
+          </div>
+          <div>
+            <dt className="label">Points spent</dt>
+            <dd className="mt-1 text-lg font-semibold text-ink tabular">{pointsSpent}</dd>
+          </div>
+          <div>
+            <dt className="label">Chips{halfStart === 20 ? ' · 2nd half' : ''}</dt>
+            <dd className="mt-1.5 flex items-center gap-1">
+              {chipSet.map(chip => {
+                const playedIn = chipsPlayed[chip.key];
+                const name = chipLabel[chip.key];
+                return (
+                  <span key={chip.key} className={`relative w-8 h-6 rounded-sm text-xs font-bold flex items-center justify-center bg-surface-3 ${playedIn ? 'text-faint' : 'text-ink'}`}
+                    title={playedIn ? `${name}: played in GW${playedIn}` : `${name}: available`}>
+                    {chip.short}
+                    {playedIn && <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-loss text-xl leading-none">✕</span>}
+                    <span className="sr-only">{playedIn ? ` (${name}, played in GW${playedIn})` : ` (${name}, available)`}</span>
+                  </span>
+                );
+              })}
+            </dd>
+          </div>
         </dl>
       )}
 
