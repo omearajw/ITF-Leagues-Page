@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { EditorSkeleton } from '@/components/Skeletons';
 import GameweekBadge from '@/components/GameweekBadge';
 import { getGameweekStatus } from '@/lib/gameweek-status';
+import { SITE_PAGES } from '@/lib/site-pages';
 
 export default async function EditorPage({ searchParams }: { searchParams: Promise<{ gw?: string }> }) {
   const { gw } = await searchParams;
@@ -42,19 +43,21 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
     { id: 'onion-baggers-cup', title: 'Onion Baggers Cup' },
     { id: 'eliminator', title: 'Eliminator' },
     { id: 'team-of-the-week', title: 'Team of the Week' },
-  ];
+  ].map(page => ({ ...page, gw: currentGw }));
+  // Site pages (What's changed) are kept under gameweek 0 and show whichever week is chosen.
+  const allPages = [...managedPages, ...SITE_PAGES.map(page => ({ id: page.id, title: page.title, gw: page.gw_number }))];
 
   // 3. Published write-ups for the week, and any drafts. Drafts are only readable with the service
   // key (page_content_drafts has no public access); this page is staff-only (proxy.ts).
   const [{ data: published }, { data: drafts }] = await Promise.all([
-    supabase.from('page_content').select('id, content, updated_at').eq('gw_number', currentGw),
-    createAdminClient().from('page_content_drafts').select('id, content, updated_at').eq('gw_number', currentGw),
+    supabase.from('page_content').select('id, gw_number, content, updated_at').in('gw_number', [currentGw, 0]),
+    createAdminClient().from('page_content_drafts').select('id, gw_number, content, updated_at').in('gw_number', [currentGw, 0]),
   ]);
-  const items: EditorItem[] = managedPages.map(page => {
-    const live = published?.find(p => p.id === page.id);
-    const draft = drafts?.find(d => d.id === page.id);
+  const items: EditorItem[] = allPages.map(page => {
+    const live = published?.find(p => p.id === page.id && p.gw_number === page.gw);
+    const draft = drafts?.find(d => d.id === page.id && d.gw_number === page.gw);
     return {
-      id: page.id, title: page.title,
+      id: page.id, title: page.title, gw: page.gw,
       published: live?.content ?? null, publishedAt: live?.updated_at ?? null,
       draft: draft?.content ?? null, draftAt: draft?.updated_at ?? null,
     };
@@ -79,7 +82,7 @@ async function EditorContent({ requestedGw }: { requestedGw: number | null }) {
       </div>
 
       {/* Keyed by week, so switching weeks starts the board afresh. */}
-      <EditorBoard key={currentGw} gw={currentGw} items={items} />
+      <EditorBoard key={currentGw} items={items} />
     </div>
   );
 }

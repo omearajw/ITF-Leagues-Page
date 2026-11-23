@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Visual, shirtUrl, PitchBoard, FlipPitch, FlipButton } from '@/components/PitchView';
+import { getTeamNameDisplayText } from '@/components/TeamName';
 
 export type PlanPlayer = {
   id: number; code: number; name: string; team: string; teamId: number; teamCode: number; position: 'GKP' | 'DEF' | 'MID' | 'FWD';
@@ -180,6 +181,21 @@ export default function Planner(props: PlannerProps) {
   const shared = starters.filter(s => oppStarters.has(s.element)).map(s => s.element);
   const mine = starters.filter(s => !oppStarters.has(s.element)).map(s => s.element);
   const theirs = (opponent?.squad || []).filter(s => s.position <= 11 && !myStarterIds.has(s.element)).map(s => s.element);
+  // Bench players, each shown once. One started by one side and benched by the other stays in the
+  // starter's lane (the benched copy only scores if auto-subbed on), tagged to say so; the bench row
+  // holds the rest.
+  const myBenchIds = squad.filter(s => s.position > 11).map(s => s.element);
+  const oppBenchIds = (opponent?.squad || []).filter(s => s.position > 11).map(s => s.element);
+  const mySquadIds = new Set(squad.map(s => s.element));
+  const benchLanes = {
+    mine: myBenchIds.filter(id => !oppAll.has(id)),
+    shared: myBenchIds.filter(id => oppBenchIds.includes(id)),
+    theirs: oppBenchIds.filter(id => !mySquadIds.has(id)),
+  };
+  const benchTags: Record<number, string> = Object.fromEntries([
+    ...mine.filter(id => oppBenchIds.includes(id)).map(id => [id, `on ${getTeamNameDisplayText(opponent?.name).trim()}'s bench`]),
+    ...theirs.filter(id => myBenchIds.includes(id)).map(id => [id, isMine ? 'on your bench' : `on ${getTeamNameDisplayText(teamName).trim()}'s bench`]),
+  ]);
 
   const ownPct = (id: number) => leagueSize ? Math.round(((ownership[id]?.owners || 0) / leagueSize) * 100) : 0;
   const capCount = (id: number) => ownership[id]?.captains || 0;
@@ -341,7 +357,7 @@ export default function Planner(props: PlannerProps) {
               <div className="text-sm text-dim">No H2H fixture found for GW{planGw} yet.</div>
             ) : (
               <>
-                <MatchupLanes mine={mine} shared={shared} theirs={theirs} byId={byId} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} ownLabel={isMine ? 'Only you' : `Only ${teamName}`} />
+                <MatchupLanes mine={mine} shared={shared} theirs={theirs} bench={benchLanes} benchTags={benchTags} byId={byId} captain={captain} oppCaptain={oppCaptain} opponentName={opponent.name} ownLabel={isMine ? 'Only you' : `Only ${teamName}`} />
                 <div className="mt-4 pt-3 border-t border-line text-sm text-dim flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span>Captains: {you} <span className="text-ink-2 font-semibold">{captain ? byId[captain]?.name : '—'}</span>, {opponent.name} <span className="text-ink-2 font-semibold">{oppCaptain ? byId[oppCaptain]?.name : '—'}</span>{captain && captain === oppCaptain && <span className="text-live-2"> · same captain, it cancels out</span>}</span>
                   <Link href={`/manager/${opponent.id}`} className="text-brand-2 hover:underline text-xs sm:ml-auto whitespace-nowrap">See {opponent.name}&apos;s team &rarr;</Link>
@@ -493,16 +509,19 @@ function Avatar({ player }: { player: PlanPlayer }) {
 
 // Three lanes: only yours, shared, only theirs. Shared players cancel out in the tie,
 // so the outer lanes are where the match-up is decided.
-function MatchupLanes({ mine, shared, theirs, byId, captain, oppCaptain, opponentName, ownLabel }: {
-  mine: number[]; shared: number[]; theirs: number[]; byId: Record<number, PlanPlayer>; captain: number | null; oppCaptain: number | null; opponentName: string; ownLabel: string;
+function MatchupLanes({ mine, shared, theirs, bench, benchTags, byId, captain, oppCaptain, opponentName, ownLabel }: {
+  mine: number[]; shared: number[]; theirs: number[]; bench: { mine: number[]; shared: number[]; theirs: number[] }; benchTags: Record<number, string>;
+  byId: Record<number, PlanPlayer>; captain: number | null; oppCaptain: number | null; opponentName: string; ownLabel: string;
 }) {
   const sorted = (ids: number[]) => [...ids].sort((a, b) => LANE_ORDER[byId[a]?.position || 'MID'] - LANE_ORDER[byId[b]?.position || 'MID']);
   const lanes = [
-    { key: 'mine', label: ownLabel, ids: sorted(mine), cls: 'bg-brand/10 border-brand/40', head: 'text-ink' },
-    { key: 'shared', label: 'Both', ids: sorted(shared), cls: 'bg-surface-2 border-line', head: 'text-dim' },
-    { key: 'theirs', label: `Only ${opponentName}`, ids: sorted(theirs), cls: 'bg-live/10 border-live/30', head: 'text-live-2' },
+    { key: 'mine', label: ownLabel, ids: sorted(mine), bench: bench.mine, cls: 'bg-brand/10 border-brand/40', head: 'text-ink' },
+    { key: 'shared', label: 'Both', ids: sorted(shared), bench: bench.shared, cls: 'bg-surface-2 border-line', head: 'text-dim' },
+    { key: 'theirs', label: `Only ${opponentName}`, ids: sorted(theirs), bench: bench.theirs, cls: 'bg-live/10 border-live/30', head: 'text-live-2' },
   ];
+  const hasBench = lanes.some(lane => lane.bench.length > 0);
   return (
+    <>
     <div className="grid grid-cols-3 gap-2 sm:gap-3">
       {lanes.map(lane => (
         <div key={lane.key} className={`rounded-xl border p-2 sm:p-3 min-w-0 ${lane.cls}`}>
@@ -517,7 +536,10 @@ function MatchupLanes({ mine, shared, theirs, byId, captain, oppCaptain, opponen
               return (
                 <li key={id} className="flex items-center gap-2 min-w-0">
                   <Avatar player={p} />
-                  <span className="min-w-0 flex-1 text-xs sm:text-sm font-semibold text-ink truncate">{p.name}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs sm:text-sm font-semibold text-ink truncate">{p.name}</span>
+                    {benchTags[id] && <span className="block text-[10px] sm:text-xs text-dim truncate" title={benchTags[id]}>{benchTags[id]}</span>}
+                  </span>
                   {capCls && <span className={`shrink-0 text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center ${capCls}`} title="Captain">C</span>}
                 </li>
               );
@@ -527,6 +549,27 @@ function MatchupLanes({ mine, shared, theirs, byId, captain, oppCaptain, opponen
         </div>
       ))}
     </div>
+    {hasBench && (
+      <div className="mt-3">
+        <div className="text-center text-xs font-semibold uppercase tracking-[0.08em] text-faint mb-2">Bench</div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 opacity-70">
+          {lanes.map(lane => (
+            <ul key={lane.key} className="space-y-1.5 px-2 sm:px-3 min-w-0">
+              {lane.bench.map(id => {
+                const p = byId[id]; if (!p) return null;
+                return (
+                  <li key={id} className="flex items-center gap-2 min-w-0">
+                    <Avatar player={p} />
+                    <span className="min-w-0 flex-1 text-xs sm:text-sm font-semibold text-ink-2 truncate">{p.name}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ))}
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

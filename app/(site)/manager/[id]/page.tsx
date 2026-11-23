@@ -378,8 +378,9 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
         </div>
       </header>
 
+      {/* Equal columns, so a figure that wraps to the next row lines up under the one above. */}
       {(entry || elim || (recent && recent.length > 0)) && (
-        <dl className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-10 gap-y-4 border-y border-line py-4 mb-8">
+        <dl className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-x-6 gap-y-4 border-y border-line py-4 mb-8">
           {entry && (
             <div>
               <dt className="label">Overall rank</dt>

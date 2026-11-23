@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MessageSquare, Star, X } from 'lucide-react';
 import { submitFeedback } from '@/lib/feedback-actions';
@@ -53,7 +54,9 @@ export function FeedbackBanner() {
   return (
     <aside aria-label="Feedback" className="panel flex flex-wrap items-center gap-x-6 gap-y-3">
       <p className="flex-1 min-w-[15rem] text-ink-2">
-        <b className="text-ink">The site&apos;s just been rebuilt.</b> Spotted something broken, or got an idea? Tell us.{' '}
+        <b className="text-ink">The site&apos;s just been rebuilt.</b>{' '}
+        <Link href="/whats-changed" className="font-semibold text-brand-2 hover:underline">See what&apos;s changed</Link>.{' '}
+        Spotted something broken, or got an idea? Tell us.{' '}
         <span className="text-dim">You&apos;ll always find Feedback in the top bar.</span>
       </p>
       <div className="flex items-center gap-2">

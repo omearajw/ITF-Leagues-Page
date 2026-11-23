@@ -5,7 +5,8 @@ import WriteUpEditor from '@/components/WriteUpEditor';
 import { saveDrafts, publishWriteUp } from '@/lib/editor-actions';
 import { toPlainText } from '@/lib/richtext';
 
-export type EditorItem = { id: string; title: string; published: string | null; publishedAt: string | null; draft: string | null; draftAt: string | null };
+// `gw` is the week a write-up is stored under: the chosen week, or 0 for a site page (What's changed).
+export type EditorItem = { id: string; title: string; gw: number; published: string | null; publishedAt: string | null; draft: string | null; draftAt: string | null };
 
 type Entry = { published: string | null; publishedAt: string | null; saved: string; draftAt: string | null; current: string };
 
@@ -15,7 +16,7 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB'
 // putting it on the site; each write-up's Publish puts that one live. Nothing reloads the page, so
 // edits in progress elsewhere on the board are never lost, and leaving with unsaved changes asks
 // first.
-export default function EditorBoard({ gw, items }: { gw: number; items: EditorItem[] }) {
+export default function EditorBoard({ items }: { items: EditorItem[] }) {
   const [entries, setEntries] = useState<Record<string, Entry>>(() => Object.fromEntries(items.map(i => [i.id, {
     published: i.published, publishedAt: i.publishedAt, draftAt: i.draftAt,
     saved: i.draft ?? i.published ?? '', current: i.draft ?? i.published ?? '',
@@ -36,10 +37,13 @@ export default function EditorBoard({ gw, items }: { gw: number; items: EditorIt
   const update = (id: string, change: Partial<Entry>) => setEntries(prev => ({ ...prev, [id]: { ...prev[id], ...change } }));
 
   const saveAll = () => startTransition(async () => {
-    const changed = unsaved.map(i => ({ id: i.id, content: entries[i.id].current }));
+    const changed = unsaved.map(i => ({ id: i.id, gw: i.gw, content: entries[i.id].current }));
     const published = Object.fromEntries(items.map(i => [i.id, entries[i.id].published ?? '']));
-    const result = await saveDrafts(gw, changed, published);
-    if (!result.ok) { setMessage({ text: `Not saved: ${result.error}`, error: true }); return; }
+    let result: Awaited<ReturnType<typeof saveDrafts>> = { ok: true };
+    for (const week of [...new Set(changed.map(c => c.gw))]) {
+      result = await saveDrafts(week, changed.filter(c => c.gw === week).map(({ id, content }) => ({ id, content })), published);
+      if (!result.ok) { setMessage({ text: `Not saved: ${result.error}`, error: true }); return; }
+    }
     changed.forEach(c => update(c.id, { saved: c.content, draftAt: result.at ?? null }));
     setMessage({ text: `Saved ${changed.length} draft${changed.length === 1 ? '' : 's'} at ${when(result.at ?? null)}` });
   });
@@ -48,7 +52,7 @@ export default function EditorBoard({ gw, items }: { gw: number; items: EditorIt
     setPublishing(item.id);
     startTransition(async () => {
       const content = entries[item.id].current;
-      const result = await publishWriteUp(gw, item.id, item.title, content);
+      const result = await publishWriteUp(item.gw, item.id, item.title, content);
       setPublishing(null);
       if (!result.ok) { setMessage({ text: `${item.title} not published: ${result.error}`, error: true }); return; }
       update(item.id, { published: content, publishedAt: result.at ?? null, saved: content, draftAt: null });
@@ -84,14 +88,17 @@ export default function EditorBoard({ gw, items }: { gw: number; items: EditorIt
           return (
             <div key={item.id} className="bg-surface p-6 rounded-xl border flex flex-col">
               <div className="flex items-baseline justify-between gap-3 mb-4">
-                <h2 className="text-lg font-bold text-ink">{item.title}</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-ink">{item.title}</h2>
+                  {!item.gw && <p className="text-xs text-dim">Site page, not tied to a week</p>}
+                </div>
                 <span className={`text-xs font-semibold text-right ${status.cls}`}>{status.text}</span>
               </div>
-              <WriteUpEditor name={`content-${item.id}`} initialHtml={item.draft ?? item.published ?? ''} placeholder={`Write the summary for Gameweek ${gw}...`}
+              <WriteUpEditor name={`content-${item.id}`} initialHtml={item.draft ?? item.published ?? ''} placeholder={item.gw ? `Write the summary for Gameweek ${item.gw}...` : `Write the ${item.title} page...`}
                 onChange={html => update(item.id, { current: html })} />
               <button type="button" onClick={() => publish(item)} disabled={busy || empty || upToDate}
                 className="mt-3 bg-brand text-white py-2 px-4 rounded-lg font-semibold hover:bg-brand/85 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                {publishing === item.id ? 'Publishing…' : upToDate && e.published ? 'Published' : `Publish GW${gw} write-up`}
+                {publishing === item.id ? 'Publishing…' : upToDate && e.published ? 'Published' : item.gw ? `Publish GW${item.gw} write-up` : `Publish ${item.title}`}
               </button>
             </div>
           );

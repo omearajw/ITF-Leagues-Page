@@ -166,6 +166,7 @@ export default function RootLayout({
                 {link.label}
               </a>
             ))}
+            <Link href="/whats-changed" className="font-semibold text-dim hover:text-white transition">What&apos;s changed</Link>
             <FeedbackTrigger className="font-semibold text-dim hover:text-white transition" />
           </div>
           © 2026 ITF League. Data sourced from official FPL API.
