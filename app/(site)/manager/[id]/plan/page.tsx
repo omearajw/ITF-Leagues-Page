@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { cacheLife, cacheTag } from 'next/cache';
 import { createPublicClient } from '@/utils/supabase/public';
 import { SITE_DATA_TAG } from '@/lib/site-cache';
-import TeamName from '@/components/TeamName';
+import TeamName, { getTeamNameDisplayText } from '@/components/TeamName';
 import PageHeader from '@/components/PageHeader';
 import GameweekBadge from '@/components/GameweekBadge';
 import Planner, { type PlanPlayer, type PlanSlot, type PlanStakes } from '@/components/Planner';
@@ -115,8 +115,11 @@ async function PlanContent({ managerId, manager, myTeamId }: { managerId: number
   const toSlots = (list: { element: number; position: number; is_captain: boolean; is_vice_captain: boolean }[]): PlanSlot[] =>
     list.map(p => ({ element: p.element, position: p.position, isCaptain: p.is_captain, isVice: p.is_vice_captain }));
 
+  // Names reach the planner as plain text, without the stars stored in team names.
+  const plainName = (name: string | null | undefined) => getTeamNameDisplayText(name).trim();
+
   // Stakes
-  const names: Record<number, string> = Object.fromEntries((managerRows || []).map((m: any) => [Number(m.manager_fpl_id), m.team_name]));
+  const names: Record<number, string> = Object.fromEntries((managerRows || []).map((m: any) => [Number(m.manager_fpl_id), plainName(m.team_name)]));
   const myElim = (elimRows || []).find((e: any) => Number(e.manager_fpl_id) === managerId) as any;
   const aliveIds = new Set((elimRows || []).filter((e: any) => !e.is_eliminated).map((e: any) => Number(e.manager_fpl_id)));
   const lastWeek = (lastWeekScores || []).map((s: any) => ({ id: Number(s.manager_fpl_id), points: s.points }));
@@ -140,7 +143,7 @@ async function PlanContent({ managerId, manager, myTeamId }: { managerId: number
     const div = current?.divisions.find(d => d.division === manager.division);
     const idx = div ? div.standings.findIndex(s => s.id === managerId) : -1;
     if (current && div && idx >= 0) {
-      motm = { month: current.label, position: idx + 1, points: div.standings[idx].points, leader: div.standings[0] ? { name: div.standings[0].teamName, points: div.standings[0].points } : null, complete: current.complete };
+      motm = { month: current.label, position: idx + 1, points: div.standings[idx].points, leader: div.standings[0] ? { name: plainName(div.standings[0].teamName), points: div.standings[0].points } : null, complete: current.complete };
     }
   }
   const obCup = obConfig
@@ -157,12 +160,12 @@ async function PlanContent({ managerId, manager, myTeamId }: { managerId: number
         badge={<GameweekBadge provisional={false}>GW{planGw} · deadline {formatUk(deadlineIso)}</GameweekBadge>}
         actions={<Link href={`/manager/${managerId}`} className="text-sm font-semibold border border-line text-ink-2 px-3 py-1.5 rounded-sm hover:text-ink hover:border-faint whitespace-nowrap">&larr; Team page</Link>}
       >
-        <p className="text-sm text-dim">{isMine ? `Plan GW${planGw} against your real opponent. Changes save in this browser until you apply them on FPL.` : `A what-if for ${manager.team_name}'s GW${planGw} against their real opponent. Nothing here touches their FPL team.`}</p>
+        <p className="text-sm text-dim">{isMine ? `Plan GW${planGw} against your real opponent. Changes save in this browser until you apply them on FPL.` : `A what-if for ${plainName(manager.team_name)}'s GW${planGw} against their real opponent. Nothing here touches their FPL team.`}</p>
       </PageHeader>
 
       <Planner
         managerId={managerId}
-        teamName={manager.team_name}
+        teamName={plainName(manager.team_name)}
         isMine={isMine}
         myTeamId={myTeamId}
         planGw={planGw}
@@ -173,7 +176,7 @@ async function PlanContent({ managerId, manager, myTeamId }: { managerId: number
         fixtures={fixtures || {}}
         ownership={league.ownership}
         leagueSize={league.managers}
-        opponent={opponentId && opponentPicks ? { id: opponentId, name: (opponentRow as any)?.team_name || 'Opponent', squad: toSlots(opponentPicks.picks) } : null}
+        opponent={opponentId && opponentPicks ? { id: opponentId, name: plainName((opponentRow as any)?.team_name) || 'Opponent', squad: toSlots(opponentPicks.picks) } : null}
         stakes={{ eliminator, motm, obCup }}
       />
       <FeedbackPrompt className="mt-10 pt-3 border-t border-line">How&apos;s the planner working for you?</FeedbackPrompt>

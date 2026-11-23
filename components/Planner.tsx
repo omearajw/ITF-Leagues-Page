@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Visual, shirtUrl, PitchBoard, FlipPitch, FlipButton } from '@/components/PitchView';
-import { getTeamNameDisplayText } from '@/components/TeamName';
 
 export type PlanPlayer = {
   id: number; code: number; name: string; team: string; teamId: number; teamCode: number; position: 'GKP' | 'DEF' | 'MID' | 'FWD';
@@ -193,8 +192,8 @@ export default function Planner(props: PlannerProps) {
     theirs: oppBenchIds.filter(id => !mySquadIds.has(id)),
   };
   const benchTags: Record<number, string> = Object.fromEntries([
-    ...mine.filter(id => oppBenchIds.includes(id)).map(id => [id, `on ${getTeamNameDisplayText(opponent?.name).trim()}'s bench`]),
-    ...theirs.filter(id => myBenchIds.includes(id)).map(id => [id, isMine ? 'on your bench' : `on ${getTeamNameDisplayText(teamName).trim()}'s bench`]),
+    ...mine.filter(id => oppBenchIds.includes(id)).map(id => [id, `on ${opponent?.name}'s bench`]),
+    ...theirs.filter(id => myBenchIds.includes(id)).map(id => [id, isMine ? 'on your bench' : `on ${teamName}'s bench`]),
   ]);
 
   const ownPct = (id: number) => leagueSize ? Math.round(((ownership[id]?.owners || 0) / leagueSize) * 100) : 0;
