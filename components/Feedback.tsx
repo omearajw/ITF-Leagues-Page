@@ -37,24 +37,29 @@ export function FeedbackPrompt({ children, className = 'mt-6 pt-3 border-t borde
   );
 }
 
-const BANNER_KEY = 'itf_feedback_banner_seen';
+const BANNER_KEY = 'itf_whats_changed_seen';
 
-// Shown once per device on the hub, then gone for good once dismissed or used. It only appears
-// after mounting (the server can't know whether it has been seen), so it never mismatches.
-export function FeedbackBanner() {
+// Closing it (or sending feedback) remembers which publish of What's changed this device has seen,
+// so it comes back whenever a newer one goes out, and stays away until something has been published.
+// It only appears after mounting (the server can't know what this device has seen), so it never mismatches.
+export function FeedbackBanner({ updatedAt }: { updatedAt: string | null }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
-    try { if (!localStorage.getItem(BANNER_KEY)) setShow(true); } catch {}
-  }, []);
-  if (!show) return null;
+    if (!updatedAt) return setShow(false);
+    try {
+      const seen = localStorage.getItem(BANNER_KEY);
+      setShow(!seen || Date.parse(seen) < Date.parse(updatedAt));
+    } catch {}
+  }, [updatedAt]);
+  if (!show || !updatedAt) return null;
   const dismiss = () => {
     setShow(false);
-    try { localStorage.setItem(BANNER_KEY, '1'); } catch {}
+    try { localStorage.setItem(BANNER_KEY, updatedAt); } catch {}
   };
   return (
     <aside aria-label="Feedback" className="panel flex flex-wrap items-center gap-x-6 gap-y-3">
       <p className="flex-1 min-w-[15rem] text-ink-2">
-        <b className="text-ink">The site&apos;s just been rebuilt.</b>{' '}
+        <b className="text-ink">The site&apos;s been updated.</b>{' '}
         <Link href="/whats-changed" className="font-semibold text-brand-2 hover:underline">See what&apos;s changed</Link>.{' '}
         Spotted something broken, or got an idea? Tell us.{' '}
         <span className="text-dim">You&apos;ll always find Feedback in the top bar.</span>

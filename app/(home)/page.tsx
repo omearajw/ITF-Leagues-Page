@@ -15,6 +15,7 @@ import { getWeekProjection, dueFor, liveWeekScore, liveTotal } from '@/lib/proje
 import { writeUpLead } from '@/lib/richtext';
 import TeamOfTheWeekBanner from '@/components/TeamOfTheWeekBanner';
 import { FeedbackBanner } from '@/components/Feedback';
+import { WHATS_CHANGED } from '@/lib/site-pages';
 import SectionHeading from '@/components/SectionHeading';
 import OpenTable from '@/components/OpenTable';
 import { getOverallRanks } from '@/lib/fpl-manager';
@@ -65,12 +66,13 @@ async function DashboardContent() {
   const noWriteUp = 'To follow…';
 
   // F. Fetch tournament configs to display status/stage
-  const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }, { data: elStatus }] = await Promise.all([
+  const [{ data: elConfig }, { data: clConfig }, { data: obConfig }, { count: clEntrantCount }, { data: elStatus }, { data: whatsChanged }] = await Promise.all([
     supabase.from('eliminator_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('champions_league_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('onion_baggers_config').select('*').eq('season_id', SEASON_ID).single(),
     supabase.from('champions_league_entrants').select('manager_fpl_id', { count: 'exact', head: true }).eq('season_id', SEASON_ID),
-    supabase.from('eliminator_status').select('manager_fpl_id, is_eliminated, eliminated_gw, season_managers!inner (team_name)').eq('season_id', SEASON_ID)
+    supabase.from('eliminator_status').select('manager_fpl_id, is_eliminated, eliminated_gw, season_managers!inner (team_name)').eq('season_id', SEASON_ID),
+    supabase.from('page_content').select('updated_at').eq('id', WHATS_CHANGED.id).eq('gw_number', WHATS_CHANGED.gw_number).maybeSingle()
   ]);
 
   // Card summaries so each tournament widget says something even without a write-up
@@ -213,7 +215,7 @@ async function DashboardContent() {
 
   return (
     <div className="settle-in flex flex-col gap-12">
-      <FeedbackBanner />
+      <FeedbackBanner updatedAt={whatsChanged?.updated_at ?? null} />
       <TeamOfTheWeekBanner gw={currentGw} />
 
       <section>
