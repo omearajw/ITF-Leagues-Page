@@ -57,12 +57,13 @@ export function FeedbackBanner({ updatedAt }: { updatedAt: string | null }) {
     try { localStorage.setItem(BANNER_KEY, updatedAt); } catch {}
   };
   return (
-    <aside aria-label="Feedback" className="panel flex flex-wrap items-center gap-x-6 gap-y-3">
+    <aside aria-label="Feedback" className="panel border-l-4 border-brand flex flex-wrap items-center gap-x-6 gap-y-3">
+      <span className="self-start mt-0.5 text-xs font-bold uppercase tracking-[0.08em] bg-brand text-white px-1.5 py-0.5 rounded-sm motion-safe:animate-pulse">New</span>
       <p className="flex-1 min-w-[15rem] text-ink-2">
         <b className="text-ink">The site&apos;s been updated.</b>{' '}
-        <Link href="/whats-changed" className="font-semibold text-brand-2 hover:underline">See what&apos;s changed</Link>.{' '}
-        Spotted something broken, or got an idea? Tell us.{' '}
-        <span className="text-dim">You&apos;ll always find Feedback in the top bar.</span>
+        <Link href="/whats-changed" className="font-bold text-brand-2 hover:underline">See what&apos;s changed&nbsp;&rarr;</Link>
+        <br />
+        Spotted something broken, or got an idea? Tell us. Feedback is always in the top bar.
       </p>
       <div className="flex items-center gap-2">
         <FeedbackTrigger onClick={dismiss} className="rounded-sm bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/85 whitespace-nowrap">Send feedback</FeedbackTrigger>
