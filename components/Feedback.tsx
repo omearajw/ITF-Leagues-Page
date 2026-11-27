@@ -61,7 +61,7 @@ export function FeedbackBanner({ updatedAt }: { updatedAt: string | null }) {
       {/* The slanted slab echoes a newspaper's late-news flash; on a phone it becomes a strip across the top. */}
       <div className="flex items-center gap-2.5 w-full sm:w-auto bg-brand text-white font-display uppercase text-[19px] sm:text-2xl tracking-[0.04em] leading-none whitespace-nowrap px-3.5 py-2 sm:py-0 sm:pl-[18px] sm:pr-[34px] sm:[clip-path:polygon(0_0,100%_0,calc(100%_-_16px)_100%,0_100%)]">
         <span aria-hidden="true" className="w-[7px] h-[7px] rounded-full bg-white motion-safe:animate-pulse" />
-        Just in
+        New
       </div>
       <div className="flex-1 basis-full sm:basis-auto min-w-0 px-4 py-3">
         <p className="font-bold text-ink">
