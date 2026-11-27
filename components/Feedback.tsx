@@ -57,15 +57,20 @@ export function FeedbackBanner({ updatedAt }: { updatedAt: string | null }) {
     try { localStorage.setItem(BANNER_KEY, updatedAt); } catch {}
   };
   return (
-    <aside aria-label="Feedback" className="panel border-l-4 border-brand flex flex-wrap items-center gap-x-6 gap-y-3">
-      <span className="self-start mt-0.5 text-xs font-bold uppercase tracking-[0.08em] bg-brand text-white px-1.5 py-0.5 rounded-sm motion-safe:animate-pulse">New</span>
-      <p className="flex-1 min-w-[15rem] text-ink-2">
-        <b className="text-ink">The site&apos;s been updated.</b>{' '}
-        <Link href="/whats-changed" className="font-bold text-brand-2 hover:underline">See what&apos;s changed&nbsp;&rarr;</Link>
-        <br />
-        Spotted something broken, or got an idea? Tell us. Feedback is always in the top bar.
-      </p>
-      <div className="flex items-center gap-2">
+    <aside aria-label="Feedback" className="flex flex-wrap sm:flex-nowrap items-stretch bg-panel-2 border border-line rounded-sm overflow-hidden">
+      {/* The slanted slab echoes a newspaper's late-news flash; on a phone it becomes a strip across the top. */}
+      <div className="flex items-center gap-2.5 w-full sm:w-auto bg-brand text-white font-display uppercase text-[19px] sm:text-2xl tracking-[0.04em] leading-none whitespace-nowrap px-3.5 py-2 sm:py-0 sm:pl-[18px] sm:pr-[34px] sm:[clip-path:polygon(0_0,100%_0,calc(100%_-_16px)_100%,0_100%)]">
+        <span aria-hidden="true" className="w-[7px] h-[7px] rounded-full bg-white motion-safe:animate-pulse" />
+        Just in
+      </div>
+      <div className="flex-1 basis-full sm:basis-auto min-w-0 px-4 py-3">
+        <p className="font-bold text-ink">
+          The site&apos;s been updated.{' '}
+          <Link href="/whats-changed" className="text-brand-2 hover:underline underline-offset-2 whitespace-nowrap">See what&apos;s changed&nbsp;&rarr;</Link>
+        </p>
+        <p className="mt-0.5 text-sm text-ink-2">Spotted something broken, or got an idea? Tell us. Feedback is always in the top bar.</p>
+      </div>
+      <div className="flex items-center gap-2 px-3.5 pb-3.5 sm:p-0 sm:pr-3.5">
         <FeedbackTrigger onClick={dismiss} className="rounded-sm bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/85 whitespace-nowrap">Send feedback</FeedbackTrigger>
         <button type="button" onClick={dismiss} aria-label="Dismiss" className="p-1.5 rounded-sm text-dim hover:text-ink">
           <X size={18} aria-hidden="true" />
