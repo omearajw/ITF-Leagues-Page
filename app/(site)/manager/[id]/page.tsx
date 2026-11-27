@@ -20,6 +20,7 @@ import { projectAutoSubs, type FixtureState, type AutoSubProjection } from '@/li
 import { getLiveWeekPicks } from '@/lib/projection';
 import { getMyTeamId } from '@/lib/my-team';
 import { DIVISIONS } from '@/lib/divisions';
+import { getNextOpponent } from '@/lib/planner-data';
 import TeamBadge from '@/components/TeamBadge';
 import SectionHeading from '@/components/SectionHeading';
 import { getLeagueBadges } from '@/lib/badges';
@@ -117,16 +118,19 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   else cacheLife('league');
   const isUnprocessed = !isFinal;
 
-  const opponentId = h2h ? Number((h2h as any).opponent_fpl_id) : null;
+  const division = DIVISIONS.find(d => d.name === manager.division);
+  // The ingest stores a week's ties only once FPL confirms it, so a live week's opponent comes
+  // from FPL's own fixtures feed (mirrored by the sync) until then.
+  const opponentId = h2h ? Number((h2h as any).opponent_fpl_id)
+    : division ? await getNextOpponent(managerId, division.fplId, selectedGw) : null;
   const [opponentRow, opponentPicks] = opponentId
     ? await Promise.all([
         supabase.from('season_managers').select('team_name').eq('season_id', SEASON_ID).eq('manager_fpl_id', opponentId).maybeSingle().then(r => r.data),
         isLiveWeek ? getLiveWeekPicks(opponentId, selectedGw) : getManagerPicks(opponentId, selectedGw, isFinal),
       ])
     : [null, null];
-  const opponentName = opponentRow ? getTeamNameDisplayText(opponentRow.team_name) : null;
+  const opponentName = opponentRow ? getTeamNameDisplayText(opponentRow.team_name).trim() : null;
 
-  const division = DIVISIONS.find(d => d.name === manager.division);
   const cost = picks?.entry_history.event_transfers_cost ?? scoreRow?.transfers_cost ?? 0;
   const fixtureStateFor = (pl: Player | undefined): FixtureState => {
     const list: TeamGwFixture[] = pl ? (fixtureStatus?.[pl.teamId] || []) : [];
@@ -249,7 +253,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
     cupFixtures.push({
       competition: (t as any).tournament_type === 'ONION_BAGGERS_CUP' ? 'Onion Baggers Cup' : 'Champions League',
       score: mine !== null && theirs !== null ? [mine, theirs] : null,
-      opponentId: themId, opponentName: name ? getTeamNameDisplayText(name) : 'opponent',
+      opponentId: themId, opponentName: name ? getTeamNameDisplayText(name).trim() : 'opponent',
       outcome: mine !== null && theirs !== null ? outcome(mine, theirs, selectedGw <= gw.syncedThroughGw) : null,
     });
   }
@@ -257,7 +261,7 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
   // The Team of the Week race: how this team stands against the week's top score. A live week uses
   // the shared live copy for every team (as the rest of the site does), a finished week the
   // stored scores.
-  const teamName = (id: number) => getTeamNameDisplayText((cupNames || []).find((n: any) => Number(n.manager_fpl_id) === id)?.team_name || 'another team');
+  const teamName = (id: number) => getTeamNameDisplayText((cupNames || []).find((n: any) => Number(n.manager_fpl_id) === id)?.team_name || 'another team').trim();
   const weekTable = (weekScores || []).map((r: any) => {
     const id = Number(r.manager_fpl_id);
     return { id, points: isLiveWeek && projection ? liveWeekScore(dueFor(projection, selectedGw, id), r.points) : r.points };
@@ -329,8 +333,8 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
     totwTile,
   ] : [];
 
-  const tieOutcome = !tie ? null
-    : tieSettled ? (tie.result === 'W' ? 'Beat' : tie.result === 'L' ? 'Lost to' : 'Drew with')
+  const tieOutcome = tie && tieSettled ? (tie.result === 'W' ? 'Beat' : tie.result === 'L' ? 'Lost to' : 'Drew with')
+    : !opponentId ? null
     : tieMargin > 0 ? 'Beating' : tieMargin < 0 ? 'Losing to' : 'Drawing with';
   const badgeSrc = badges[managerId];
   const isMine = myTeamId === managerId;
@@ -481,8 +485,8 @@ async function ManagerContent({ managerId, manager, requestedGw, myTeamId }: { m
               {scoreTiles.map(t => <StatTile key={t.label} {...t} />)}
             </div>
             <div className="lg:border-l lg:border-line lg:pl-3">
-              <StatTile label={manager.division || 'League match'} value={tie && matchScore ? `${matchScore[0]} - ${matchScore[1]}` : '–'}
-                sub={tie ? <>{tieOutcome} {opponentId ? <Link href={`/manager/${opponentId}`} className="hover:text-ink hover:underline">{opponentName}</Link> : opponentName}</> : 'no match recorded'} />
+              <StatTile label={manager.division || 'League match'} value={opponentId && matchScore ? `${matchScore[0]} - ${matchScore[1]}` : '–'}
+                sub={opponentId ? <>{tieOutcome} {opponentId ? <Link href={`/manager/${opponentId}`} className="hover:text-ink hover:underline">{opponentName}</Link> : opponentName}</> : 'no match recorded'} />
               {cupFixtures.length > 0 && (
                 <div className="flex flex-wrap">
                   {cupFixtures.map(f => (
